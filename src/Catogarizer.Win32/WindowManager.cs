@@ -39,5 +39,22 @@ public sealed class WindowManager : IWindowManager
         NativeMethods.PostMessage(windowHandle, NativeMethods.WM_CLOSE, 0, 0);
     }
 
+    public WindowRect? GetRect(nint windowHandle)
+    {
+        if (!IsUsable(windowHandle))
+            return null;
+
+        if (!NativeMethods.GetWindowRect(windowHandle, out var rect))
+            return null;
+
+        return new WindowRect
+        {
+            X = rect.Left,
+            Y = rect.Top,
+            Width = rect.Right - rect.Left,
+            Height = rect.Bottom - rect.Top,
+        };
+    }
+
     private static bool IsUsable(nint windowHandle) => windowHandle != 0 && NativeMethods.IsWindow(windowHandle);
 }

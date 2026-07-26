@@ -1,4 +1,5 @@
 using System.Windows;
+using Catogarizer.App.Services;
 using Catogarizer.App.ViewModels;
 using Catogarizer.Core.Persistence;
 using Catogarizer.Core.Services;
@@ -21,7 +22,9 @@ public partial class App : Application
         services.AddSingleton<IProcessLauncher, ProcessLauncher>();
         services.AddSingleton<IAutostartManager, AutostartManager>();
         services.AddSingleton<IAppBlocker, AppBlocker>();
+        services.AddSingleton<IWindowEnumerator, WindowEnumerator>();
         services.AddSingleton<ICategoryActionService, CategoryActionService>();
+        services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
 

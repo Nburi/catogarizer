@@ -47,3 +47,23 @@ clicks.
   afterward.
 
 Neither is a bug in our code to "fix" outright; see `TODO.md` Known Issues.
+
+## Owned dialog windows show up nested under their owner in UI Automation
+When driving the app via `AutomationElement.FromHandle` for manual testing,
+a modal dialog opened with `Window.Owner` set does **not** appear as a
+sibling of the main window under `AutomationElement.RootElement.Children` -
+it shows up as a `ControlType.Window` *descendant* of the owner's own
+element. Search `mainWindowRoot.FindAll(TreeScope.Descendants, ...)` for the
+dialog, not the desktop root, or you'll conclude the dialog never opened.
+
+## `[ObservableProperty]` needs `NotifyPropertyChangedFor` on *every* source, not just one
+`CategoryEditDialogViewModel` had a computed `HasError => !string.IsNullOrEmpty(NameError)`.
+`Name` was annotated with `[NotifyPropertyChangedFor(nameof(HasError))]` but
+`NameError` itself was not - so validation logic worked correctly (the error
+was computed and stored) but the UI never found out `HasError` had changed,
+and the inline error message stayed invisible. Found via manual UI
+Automation testing (the dialog stayed open on a duplicate name, as expected,
+but no error text was found in the tree) rather than by reading the code.
+Lesson: when a computed property depends on N observable properties, all N
+need the `NotifyPropertyChangedFor` attribute, not just the one that seemed
+most obviously "the trigger."

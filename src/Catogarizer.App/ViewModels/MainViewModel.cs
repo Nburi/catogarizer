@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
-using CommunityToolkit.Mvvm.ComponentModel;
+using Catogarizer.App.Services;
+using Catogarizer.Core.Models;
 using Catogarizer.Core.Persistence;
 using Catogarizer.Core.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace Catogarizer.App.ViewModels;
 
@@ -10,6 +13,8 @@ public partial class MainViewModel : ObservableObject
     private readonly IConfigStore _configStore;
     private readonly ICategoryActionService _actionService;
     private readonly IProcessLauncher _launcher;
+    private readonly IDialogService _dialogService;
+    private AppConfig _config = new();
 
     public ObservableCollection<CategoryViewModel> Categories { get; } = new();
 
@@ -23,11 +28,16 @@ public partial class MainViewModel : ObservableObject
     public bool ShowEmptyState => !IsLoading && !HasCategories;
     public bool ShowCategoryContent => !IsLoading && HasCategories && SelectedCategory is not null;
 
-    public MainViewModel(IConfigStore configStore, ICategoryActionService actionService, IProcessLauncher launcher)
+    public MainViewModel(
+        IConfigStore configStore,
+        ICategoryActionService actionService,
+        IProcessLauncher launcher,
+        IDialogService dialogService)
     {
         _configStore = configStore;
         _actionService = actionService;
         _launcher = launcher;
+        _dialogService = dialogService;
         Categories.CollectionChanged += (_, _) => NotifyDerivedState();
     }
 
@@ -36,10 +46,10 @@ public partial class MainViewModel : ObservableObject
         IsLoading = true;
         try
         {
-            var config = await _configStore.LoadAsync();
+            _config = await _configStore.LoadAsync();
             Categories.Clear();
-            foreach (var category in config.Categories.OrderBy(c => c.Order))
-                Categories.Add(new CategoryViewModel(category, _actionService, _launcher));
+            foreach (var category in _config.Categories.OrderBy(c => c.Order))
+                Categories.Add(CreateCategoryViewModel(category));
 
             SelectedCategory = Categories.FirstOrDefault();
         }
@@ -48,6 +58,64 @@ public partial class MainViewModel : ObservableObject
             IsLoading = false;
         }
     }
+
+    [RelayCommand]
+    private async Task AddCategoryAsync()
+    {
+        var name = _dialogService.ShowCategoryEdit(null, _config.Categories);
+        if (name is null)
+            return;
+
+        var category = new Category { Name = name, Order = _config.Categories.Count };
+        _config.Categories.Add(category);
+
+        var viewModel = CreateCategoryViewModel(category);
+        Categories.Add(viewModel);
+        SelectedCategory = viewModel;
+
+        await PersistAsync();
+    }
+
+    [RelayCommand]
+    private async Task EditCategoryAsync(CategoryViewModel? categoryViewModel)
+    {
+        if (categoryViewModel is null)
+            return;
+
+        var name = _dialogService.ShowCategoryEdit(categoryViewModel.Model, _config.Categories);
+        if (name is null)
+            return;
+
+        categoryViewModel.Model.Name = name;
+        categoryViewModel.NotifyNameChanged();
+        await PersistAsync();
+    }
+
+    [RelayCommand]
+    private async Task DeleteCategoryAsync(CategoryViewModel? categoryViewModel)
+    {
+        if (categoryViewModel is null)
+            return;
+
+        var confirmed = _dialogService.ShowConfirm(
+            "Delete category",
+            $"Delete \"{categoryViewModel.Name}\" and its {categoryViewModel.Apps.Count} app(s)? This can't be undone.");
+        if (!confirmed)
+            return;
+
+        _config.Categories.Remove(categoryViewModel.Model);
+        var wasSelected = ReferenceEquals(SelectedCategory, categoryViewModel);
+        Categories.Remove(categoryViewModel);
+        if (wasSelected)
+            SelectedCategory = Categories.FirstOrDefault();
+
+        await PersistAsync();
+    }
+
+    private CategoryViewModel CreateCategoryViewModel(Category category) =>
+        new(category, _actionService, _launcher, _dialogService, PersistAsync);
+
+    private Task PersistAsync() => _configStore.SaveAsync(_config);
 
     partial void OnIsLoadingChanged(bool value) => NotifyDerivedState();
 

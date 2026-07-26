@@ -1,6 +1,18 @@
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Catogarizer.Win32.Interop;
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct Rect
+{
+    public int Left;
+    public int Top;
+    public int Right;
+    public int Bottom;
+}
+
+internal delegate bool EnumWindowsProc(nint hWnd, nint lParam);
 
 internal static class NativeMethods
 {
@@ -8,6 +20,7 @@ internal static class NativeMethods
     internal const int SW_RESTORE = 9;
     internal const uint WM_CLOSE = 0x0010;
     internal const uint SWP_NOZORDER = 0x0004;
+    internal const int GW_OWNER = 4;
 
     [DllImport("user32.dll", SetLastError = true)]
     internal static extern bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
@@ -20,4 +33,25 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     internal static extern bool IsWindow(nint hWnd);
+
+    [DllImport("user32.dll")]
+    internal static extern bool GetWindowRect(nint hWnd, out Rect lpRect);
+
+    [DllImport("user32.dll")]
+    internal static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, nint lParam);
+
+    [DllImport("user32.dll")]
+    internal static extern bool IsWindowVisible(nint hWnd);
+
+    [DllImport("user32.dll")]
+    internal static extern nint GetWindow(nint hWnd, uint uCmd);
+
+    [DllImport("user32.dll")]
+    internal static extern int GetWindowTextLength(nint hWnd);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    internal static extern int GetWindowText(nint hWnd, StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll")]
+    internal static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
 }

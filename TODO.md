@@ -6,7 +6,7 @@
 - [x] 3. Win32 layer: launch process, enumerate/move/resize/minimize/close windows
 - [x] 4. Main window shell: custom chrome, sidebar category list, empty state
 - [x] 5. App tile grid wired to Open/Minimize/Close-all, with loading state
-- [ ] 6. Add/Edit Category & App dialogs, "capture window position" helper, validation
+- [x] 6. Add/Edit Category & App dialogs, "capture window position" helper, validation
 - [ ] 7. Tray icon, minimize-to-tray, quick category switch from tray menu
 - [ ] 8. Autostart toggle + Settings page
 - [ ] 9. App blocking: background process watcher + notification
@@ -22,6 +22,8 @@
 - Global hotkey for quick category switch
 - Additional themes (Dark Focus, Light Clean, Nord Cool, Minimal Mono — already
   designed in `design/concepts.html`, just need the theme to be swappable)
+- Reordering categories/apps (drag-and-drop, or simple up/down). Not built yet
+  - new categories/apps are just appended at the end (`Order = current count`).
 
 ## Known issues
 - Apps that restore their own last window state on launch (e.g. modern Windows
@@ -34,3 +36,7 @@
   recognize them as "running" afterward. Verified during manual testing of
   milestone 5 - stick to apps whose main .exe stays resident when adding test
   categories.
+- (Fixed in milestone 6) `CategoryEditDialogViewModel.NameError` was missing
+  `[NotifyPropertyChangedFor(nameof(HasError))]`, so the inline validation
+  message never became visible even though validation itself worked. See
+  ERRORS.md.

@@ -14,4 +14,5 @@ internal sealed class FakeWindowManager : IWindowManager
     public void Minimize(nint windowHandle) => MinimizeCalls.Add(windowHandle);
     public void Restore(nint windowHandle) => RestoreCalls.Add(windowHandle);
     public void Close(nint windowHandle) => CloseCalls.Add(windowHandle);
+    public WindowRect? GetRect(nint windowHandle) => null;
 }
