@@ -7,7 +7,7 @@
 - [x] 4. Main window shell: custom chrome, sidebar category list, empty state
 - [x] 5. App tile grid wired to Open/Minimize/Close-all, with loading state
 - [x] 6. Add/Edit Category & App dialogs, "capture window position" helper, validation
-- [ ] 7. Tray icon, minimize-to-tray, quick category switch from tray menu
+- [x] 7. Tray icon, minimize-to-tray, quick category switch from tray menu
 - [ ] 8. Autostart toggle + Settings page
 - [ ] 9. App blocking: background process watcher + notification
 - [ ] 10. Cyberpunk Neon visual polish pass
