@@ -1,3 +1,4 @@
+using Catogarizer.Core.Automation;
 using Catogarizer.Core.Models;
 using Catogarizer.Core.Persistence;
 using Xunit;
@@ -69,6 +70,38 @@ public class JsonConfigStoreTests : IDisposable
         Assert.Equal(1000, app.Window.Width);
         Assert.True(loaded.Settings.AutostartEnabled);
         Assert.Single(loaded.BlockedApps);
+    }
+
+    [Fact]
+    public async Task SaveAsync_ThenLoadAsync_RoundTripsAutomationRules()
+    {
+        var store = new JsonConfigStore(_configPath);
+        var categoryId = Guid.NewGuid();
+        var config = new AppConfig
+        {
+            AutomationRules =
+            {
+                new AutomationRule
+                {
+                    Name = "Morning focus",
+                    TriggerType = AutomationTriggerType.Scheduled,
+                    TriggerConfig = "08:00",
+                    Action = AutomationActionType.OpenCategory,
+                    TargetCategoryId = categoryId,
+                },
+            },
+        };
+
+        await store.SaveAsync(config);
+        var loaded = await store.LoadAsync();
+
+        var rule = Assert.Single(loaded.AutomationRules);
+        Assert.Equal("Morning focus", rule.Name);
+        Assert.Equal(AutomationTriggerType.Scheduled, rule.TriggerType);
+        Assert.Equal("08:00", rule.TriggerConfig);
+        Assert.Equal(AutomationActionType.OpenCategory, rule.Action);
+        Assert.Equal(categoryId, rule.TargetCategoryId);
+        Assert.True(rule.Enabled);
     }
 
     [Fact]

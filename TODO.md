@@ -11,7 +11,7 @@
 - [x] 8. Autostart toggle + Settings page
 - [x] 9. App blocking: background process watcher + notification
 - [x] 10. Cyberpunk Neon visual polish pass
-- [ ] 11. Automation/integration seams (`ITrigger`/`IAction`, `ITodoIntegration` stub)
+- [x] 11. Automation/integration seams (`ITrigger`/`IAction`, `ITodoIntegration` stub)
 - [ ] 12. Self-contained publish profile + app icon
 - [ ] 13. Full test run + manual pass (golden path + edge cases)
 - [ ] 14. User guide
