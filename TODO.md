@@ -10,7 +10,7 @@
 - [x] 7. Tray icon, minimize-to-tray, quick category switch from tray menu
 - [x] 8. Autostart toggle + Settings page
 - [x] 9. App blocking: background process watcher + notification
-- [ ] 10. Cyberpunk Neon visual polish pass
+- [x] 10. Cyberpunk Neon visual polish pass
 - [ ] 11. Automation/integration seams (`ITrigger`/`IAction`, `ITodoIntegration` stub)
 - [ ] 12. Self-contained publish profile + app icon
 - [ ] 13. Full test run + manual pass (golden path + edge cases)
@@ -24,6 +24,13 @@
   designed in `design/concepts.html`, just need the theme to be swappable)
 - Reordering categories/apps (drag-and-drop, or simple up/down). Not built yet
   - new categories/apps are just appended at the end (`Order = current count`).
+- Other 4 designed themes (Dark Focus, Light Clean, Nord Cool, Cyberpunk Neon's
+  siblings) aren't wired up as switchable options yet - only Cyberpunk Neon
+  ships. Secondary/icon buttons (ActionButtonSecondary, RowIconButton,
+  CategoryListBoxItem) still use instant hover-color swaps rather than the
+  animated-overlay pattern used for the primary button/toggle switch -
+  animating those safely needs a template restructure (to avoid mutating a
+  shared brush instance), deliberately deferred rather than rushed.
 
 ## Known issues
 - Apps that restore their own last window state on launch (e.g. modern Windows

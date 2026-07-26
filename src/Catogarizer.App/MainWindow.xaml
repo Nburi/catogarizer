@@ -18,6 +18,16 @@
         <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" />
     </shell:WindowChrome.WindowChrome>
 
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.25" />
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="36" />
@@ -120,7 +130,23 @@
             <Grid Grid.Column="1">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="Loading workspaces…" Style="{StaticResource BodyMutedText}" HorizontalAlignment="Center" />
+                    <Ellipse Width="28" Height="28" StrokeThickness="3" Stroke="{StaticResource CyanBrush}"
+                             StrokeDashArray="2 1.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                             HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                        <Ellipse.RenderTransform>
+                            <RotateTransform x:Name="SpinnerRotate" Angle="0" />
+                        </Ellipse.RenderTransform>
+                        <Ellipse.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetName="SpinnerRotate" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:0.9" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Ellipse.Triggers>
+                    </Ellipse>
+                    <TextBlock Text="Loading workspaces…" Style="{StaticResource BodyMutedText}" HorizontalAlignment="Center" Margin="0,12,0,0" />
                 </StackPanel>
 
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360"
