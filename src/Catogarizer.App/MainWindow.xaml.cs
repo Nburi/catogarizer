@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using Catogarizer.App.ViewModels;
+using H.NotifyIcon.Core;
 
 namespace Catogarizer.App;
 
@@ -14,6 +15,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         TrayIcon.DataContext = viewModel;
+        viewModel.AppBlocked += (_, args) => Dispatcher.BeginInvoke(() =>
+            TrayIcon.ShowNotification(
+                "Blocked",
+                $"{args.ProcessName} was closed because it's on your blocked list.",
+                NotificationIcon.Warning));
         Loaded += async (_, _) => await viewModel.InitializeAsync();
     }
 

@@ -39,6 +39,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _serviceProvider?.GetService<IAppBlocker>()?.Stop();
         _serviceProvider?.Dispose();
         base.OnExit(e);
     }

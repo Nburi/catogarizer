@@ -204,37 +204,74 @@
                 </Grid>
 
                 <!-- Settings -->
-                <StackPanel Margin="28" MaxWidth="420" HorizontalAlignment="Left"
-                            Visibility="{Binding ShowSettingsContent, Converter={StaticResource BoolToVis}}"
-                            DataContext="{Binding Settings}">
-                    <TextBlock Text="Settings" Style="{StaticResource HeadingText}" FontSize="20" Margin="0,0,0,22" />
+                <ScrollViewer Margin="28" VerticalScrollBarVisibility="Auto"
+                              Visibility="{Binding ShowSettingsContent, Converter={StaticResource BoolToVis}}">
+                    <StackPanel MaxWidth="420" HorizontalAlignment="Left">
+                        <TextBlock Text="Settings" Style="{StaticResource HeadingText}" FontSize="20" Margin="0,0,0,22" />
 
-                    <Grid Margin="0,0,0,18">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                            <TextBlock Text="Start with Windows" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
-                            <TextBlock Text="Launch Catogarizer automatically when you sign in." Style="{StaticResource BodyMutedText}" Margin="0,2,0,0" />
-                        </StackPanel>
-                        <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding AutostartEnabled}"
-                                  VerticalAlignment="Center" AutomationProperties.Name="Start with Windows" />
-                    </Grid>
+                        <StackPanel DataContext="{Binding Settings}">
+                            <Grid Margin="0,0,0,18">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <TextBlock Text="Start with Windows" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
+                                    <TextBlock Text="Launch Catogarizer automatically when you sign in." Style="{StaticResource BodyMutedText}" Margin="0,2,0,0" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding AutostartEnabled}"
+                                          VerticalAlignment="Center" AutomationProperties.Name="Start with Windows" />
+                            </Grid>
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                            <TextBlock Text="Start minimized to tray" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
-                            <TextBlock Text="When Catogarizer starts with Windows, keep the window hidden until you open it from the tray." Style="{StaticResource BodyMutedText}" Margin="0,2,0,0" />
+                            <Grid Margin="0,0,0,30">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <TextBlock Text="Start minimized to tray" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
+                                    <TextBlock Text="When Catogarizer starts with Windows, keep the window hidden until you open it from the tray." Style="{StaticResource BodyMutedText}" Margin="0,2,0,0" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding StartMinimizedToTray}"
+                                          VerticalAlignment="Center" AutomationProperties.Name="Start minimized to tray" />
+                            </Grid>
                         </StackPanel>
-                        <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding StartMinimizedToTray}"
-                                  VerticalAlignment="Center" AutomationProperties.Name="Start minimized to tray" />
-                    </Grid>
-                </StackPanel>
+
+                        <TextBlock Text="Blocked apps" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,2" />
+                        <TextBlock Text="Anything on this list gets closed automatically the moment it launches." Style="{StaticResource BodyMutedText}" Margin="0,0,0,12" />
+
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Style="{StaticResource FormTextBox}" Margin="0,0,8,0"
+                                     Text="{Binding NewBlockedAppName, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="New blocked process name" />
+                            <Button Grid.Column="1" Content="Block" Style="{StaticResource ActionButtonSecondary}"
+                                    Command="{Binding AddBlockedAppCommand}" />
+                        </Grid>
+
+                        <ItemsControl ItemsSource="{Binding BlockedApps}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="0,8">
+                                        <Grid AutomationProperties.Name="{Binding ProcessName}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding ProcessName}" FontSize="13" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}" />
+                                            <Button Grid.Column="1" Content="&#x2715;" Style="{StaticResource RowIconButton}"
+                                                    Command="{Binding DataContext.RemoveBlockedAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}" ToolTip="Unblock" AutomationProperties.Name="Unblock" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
         </Grid>
     </Grid>

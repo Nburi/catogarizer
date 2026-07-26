@@ -15,9 +15,16 @@ public partial class MainViewModel : ObservableObject
     private readonly IProcessLauncher _launcher;
     private readonly IDialogService _dialogService;
     private readonly IAutostartManager _autostartManager;
+    private readonly IAppBlocker _appBlocker;
     private AppConfig _config = new();
 
+    public event EventHandler<AppBlockedEventArgs>? AppBlocked;
+
     public ObservableCollection<CategoryViewModel> Categories { get; } = new();
+    public ObservableCollection<BlockedApp> BlockedApps { get; } = new();
+
+    [ObservableProperty]
+    private string newBlockedAppName = string.Empty;
 
     [ObservableProperty]
     private CategoryViewModel? selectedCategory;
@@ -40,13 +47,16 @@ public partial class MainViewModel : ObservableObject
         ICategoryActionService actionService,
         IProcessLauncher launcher,
         IDialogService dialogService,
-        IAutostartManager autostartManager)
+        IAutostartManager autostartManager,
+        IAppBlocker appBlocker)
     {
         _configStore = configStore;
         _actionService = actionService;
         _launcher = launcher;
         _dialogService = dialogService;
         _autostartManager = autostartManager;
+        _appBlocker = appBlocker;
+        _appBlocker.AppBlocked += (sender, args) => AppBlocked?.Invoke(this, args);
         Categories.CollectionChanged += (_, _) => NotifyDerivedState();
     }
 
@@ -63,11 +73,45 @@ public partial class MainViewModel : ObservableObject
             SelectedCategory = Categories.FirstOrDefault();
             Settings = new SettingsViewModel(_config.Settings, _autostartManager, PersistAsync);
             OnPropertyChanged(nameof(Settings));
+
+            BlockedApps.Clear();
+            foreach (var blocked in _config.BlockedApps)
+                BlockedApps.Add(blocked);
+            _appBlocker.Start(_config.BlockedApps);
         }
         finally
         {
             IsLoading = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task AddBlockedAppAsync()
+    {
+        var processName = NewBlockedAppName.Trim();
+        if (string.IsNullOrEmpty(processName))
+            return;
+
+        var blocked = new BlockedApp { ProcessName = processName };
+        _config.BlockedApps.Add(blocked);
+        BlockedApps.Add(blocked);
+        NewBlockedAppName = string.Empty;
+
+        _appBlocker.UpdateBlockList(_config.BlockedApps);
+        await PersistAsync();
+    }
+
+    [RelayCommand]
+    private async Task RemoveBlockedAppAsync(BlockedApp? blocked)
+    {
+        if (blocked is null)
+            return;
+
+        _config.BlockedApps.Remove(blocked);
+        BlockedApps.Remove(blocked);
+
+        _appBlocker.UpdateBlockList(_config.BlockedApps);
+        await PersistAsync();
     }
 
     [RelayCommand]
