@@ -67,3 +67,22 @@ but no error text was found in the tree) rather than by reading the code.
 Lesson: when a computed property depends on N observable properties, all N
 need the `NotifyPropertyChangedFor` attribute, not just the one that seemed
 most obviously "the trigger."
+
+## Renaming `<AssemblyName>` breaks scripts that hardcode the old process name
+When milestone 12 changed the App project's `AssemblyName` from
+`Catogarizer.App` to `Catogarizer`, the output exe/process name changed too
+(`Catogarizer.App.exe` -> `Catogarizer.exe`). Every `Get-Process -Name
+"Catogarizer.App"` in manual test scripts after that point needs updating to
+`"Catogarizer"` - easy to forget and get a confusing "no such process" error
+that looks like the app failed to launch when it actually started fine.
+
+## Never test "app blocking" with a real running application's process name
+During the milestone 13 end-to-end pass, `steam.exe` was added to the
+blocked-apps list as test data without checking whether Steam was actually
+running - it was, and the poller killed it within its ~1.5s cycle (confirmed
+by the live "Steam" process disappearing and a `steamerrorreporter64` crash
+handler appearing in its place). The block entry was removed immediately and
+the user was informed. Lesson: before adding *anything* to a live block-list
+during testing, check `Get-Process` first - test data for this feature can
+have real side effects on whatever the user has open, unlike testing
+"launch/close/minimize" against apps we started ourselves.

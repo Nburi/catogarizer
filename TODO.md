@@ -13,7 +13,7 @@
 - [x] 10. Cyberpunk Neon visual polish pass
 - [x] 11. Automation/integration seams (`ITrigger`/`IAction`, `ITodoIntegration` stub)
 - [x] 12. Self-contained publish profile + app icon
-- [ ] 13. Full test run + manual pass (golden path + edge cases)
+- [x] 13. Full test run + manual pass (golden path + edge cases)
 - [ ] 14. User guide
 
 ## Backlog (future features, not yet built)
