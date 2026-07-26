@@ -8,7 +8,7 @@ namespace Catogarizer.Core.Services;
 /// </summary>
 public interface ICategoryActionService
 {
-    Task OpenAsync(Category category, CancellationToken cancellationToken = default);
-    Task CloseAsync(Category category, CancellationToken cancellationToken = default);
-    Task MinimizeAsync(Category category, CancellationToken cancellationToken = default);
+    Task<CategoryActionResult> OpenAsync(Category category, CancellationToken cancellationToken = default);
+    Task<CategoryActionResult> CloseAsync(Category category, CancellationToken cancellationToken = default);
+    Task<CategoryActionResult> MinimizeAsync(Category category, CancellationToken cancellationToken = default);
 }
