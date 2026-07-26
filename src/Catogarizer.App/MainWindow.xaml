@@ -195,7 +195,15 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Style="{StaticResource AppTile}" AutomationProperties.Name="{Binding Name}">
+                                        <Border Style="{StaticResource AppTile}" AutomationProperties.Name="{Binding Name}"
+                                                ToolTip="{Binding StatusMessage}">
+                                            <Border.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Open" Command="{Binding OpenCommand}" />
+                                                    <MenuItem Header="Minimize" Command="{Binding MinimizeCommand}" />
+                                                    <MenuItem Header="Close" Command="{Binding CloseCommand}" />
+                                                </ContextMenu>
+                                            </Border.ContextMenu>
                                             <StackPanel>
                                                 <Grid HorizontalAlignment="Left">
                                                     <Border Style="{StaticResource AppTileIcon}">

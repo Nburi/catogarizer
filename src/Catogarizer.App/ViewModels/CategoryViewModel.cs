@@ -53,7 +53,7 @@ public partial class CategoryViewModel : ObservableObject
         _persistAsync = persistAsync;
 
         Apps = new ObservableCollection<AppTileViewModel>(
-            model.Apps.OrderBy(a => a.Order).Select(a => new AppTileViewModel(a)));
+            model.Apps.OrderBy(a => a.Order).Select(CreateAppTileViewModel));
         Apps.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasApps));
 
         RefreshRunningStatus();
@@ -78,7 +78,7 @@ public partial class CategoryViewModel : ObservableObject
             return;
 
         Model.Apps.Add(entry);
-        Apps.Add(new AppTileViewModel(entry));
+        Apps.Add(CreateAppTileViewModel(entry));
         RefreshRunningStatus();
         await _persistAsync();
     }
@@ -99,7 +99,7 @@ public partial class CategoryViewModel : ObservableObject
 
         var tileIndex = Apps.IndexOf(tile);
         if (tileIndex >= 0)
-            Apps[tileIndex] = new AppTileViewModel(updated);
+            Apps[tileIndex] = CreateAppTileViewModel(updated);
 
         RefreshRunningStatus();
         await _persistAsync();
@@ -153,9 +153,12 @@ public partial class CategoryViewModel : ObservableObject
         }
     }
 
+    private AppTileViewModel CreateAppTileViewModel(AppEntry entry) =>
+        new(entry, _actionService, _launcher);
+
     private void RefreshRunningStatus()
     {
         foreach (var tile in Apps)
-            tile.IsRunning = _launcher.FindRunning(tile.Model) is not null;
+            tile.RefreshRunningState();
     }
 }
