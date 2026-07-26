@@ -1,6 +1,11 @@
 # Stack
 
-## Chosen: .NET 8 + WPF (C#)
+## Chosen: .NET 10 + WPF (C#)
+
+Originally scoped for .NET 8, but the SDK actually available on this machine
+is 10.0.302 — .NET 10 is the current LTS release (Nov 2025), so the project
+targets `net10.0-windows` instead. Nothing else about the reasoning below
+changes.
 
 The hard part of this app isn't the UI, it's manipulating *other processes'*
 windows — moving, resizing, minimizing, detecting close, launching with saved
