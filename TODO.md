@@ -1,11 +1,11 @@
 # TODO
 
 ## Build plan (in order)
-- [ ] 1. Solution scaffolding, project docs, `.gitignore`
-- [ ] 2. Core domain models + JSON store + unit tests
-- [ ] 3. Win32 layer: launch process, enumerate/move/resize/minimize/close windows
-- [ ] 4. Main window shell: custom chrome, sidebar category list, empty state
-- [ ] 5. App tile grid wired to Open/Minimize/Close-all, with loading state
+- [x] 1. Solution scaffolding, project docs, `.gitignore`
+- [x] 2. Core domain models + JSON store + unit tests
+- [x] 3. Win32 layer: launch process, enumerate/move/resize/minimize/close windows
+- [x] 4. Main window shell: custom chrome, sidebar category list, empty state
+- [x] 5. App tile grid wired to Open/Minimize/Close-all, with loading state
 - [ ] 6. Add/Edit Category & App dialogs, "capture window position" helper, validation
 - [ ] 7. Tray icon, minimize-to-tray, quick category switch from tray menu
 - [ ] 8. Autostart toggle + Settings page
@@ -24,4 +24,13 @@
   designed in `design/concepts.html`, just need the theme to be swappable)
 
 ## Known issues
-(none yet)
+- Apps that restore their own last window state on launch (e.g. modern Windows
+  Notepad reopening its previous session) can override the position/size we
+  just applied, shortly after we apply it. Not fixable in general; a future
+  option is re-applying the saved rect once more after a short delay.
+- Launcher-stub executables that spawn the real UI in a different process and
+  exit immediately (e.g. `control.exe`) won't get a window handle from our
+  launch-and-poll approach, so positioning is skipped and the category won't
+  recognize them as "running" afterward. Verified during manual testing of
+  milestone 5 - stick to apps whose main .exe stays resident when adding test
+  categories.

@@ -1,12 +1,15 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Catogarizer.Core.Persistence;
+using Catogarizer.Core.Services;
 
 namespace Catogarizer.App.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
     private readonly IConfigStore _configStore;
+    private readonly ICategoryActionService _actionService;
+    private readonly IProcessLauncher _launcher;
 
     public ObservableCollection<CategoryViewModel> Categories { get; } = new();
 
@@ -20,9 +23,11 @@ public partial class MainViewModel : ObservableObject
     public bool ShowEmptyState => !IsLoading && !HasCategories;
     public bool ShowCategoryContent => !IsLoading && HasCategories && SelectedCategory is not null;
 
-    public MainViewModel(IConfigStore configStore)
+    public MainViewModel(IConfigStore configStore, ICategoryActionService actionService, IProcessLauncher launcher)
     {
         _configStore = configStore;
+        _actionService = actionService;
+        _launcher = launcher;
         Categories.CollectionChanged += (_, _) => NotifyDerivedState();
     }
 
@@ -34,7 +39,7 @@ public partial class MainViewModel : ObservableObject
             var config = await _configStore.LoadAsync();
             Categories.Clear();
             foreach (var category in config.Categories.OrderBy(c => c.Order))
-                Categories.Add(new CategoryViewModel(category));
+                Categories.Add(new CategoryViewModel(category, _actionService, _launcher));
 
             SelectedCategory = Categories.FirstOrDefault();
         }
