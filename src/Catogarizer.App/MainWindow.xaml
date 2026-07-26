@@ -81,7 +81,16 @@
                                 Command="{Binding AddCategoryCommand}" ToolTip="New category"
                                 AutomationProperties.Name="New category" />
                     </DockPanel>
-                    <ListBox DockPanel.Dock="Top" Background="Transparent" BorderThickness="0"
+                    <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0">
+                        <Button HorizontalAlignment="Left" Margin="10,8" Style="{StaticResource ActionButtonSecondary}"
+                                Command="{Binding ToggleSettingsCommand}" AutomationProperties.Name="Settings">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#x2699;" FontSize="12" Margin="0,0,8,0" />
+                                <TextBlock Text="Settings" FontSize="12" />
+                            </StackPanel>
+                        </Button>
+                    </Border>
+                    <ListBox Background="Transparent" BorderThickness="0"
                              ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"
                              ItemContainerStyle="{StaticResource CategoryListBoxItem}"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -193,6 +202,39 @@
                         <TextBlock Text="Working…" Style="{StaticResource BodyMutedText}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                 </Grid>
+
+                <!-- Settings -->
+                <StackPanel Margin="28" MaxWidth="420" HorizontalAlignment="Left"
+                            Visibility="{Binding ShowSettingsContent, Converter={StaticResource BoolToVis}}"
+                            DataContext="{Binding Settings}">
+                    <TextBlock Text="Settings" Style="{StaticResource HeadingText}" FontSize="20" Margin="0,0,0,22" />
+
+                    <Grid Margin="0,0,0,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                            <TextBlock Text="Start with Windows" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
+                            <TextBlock Text="Launch Catogarizer automatically when you sign in." Style="{StaticResource BodyMutedText}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding AutostartEnabled}"
+                                  VerticalAlignment="Center" AutomationProperties.Name="Start with Windows" />
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                            <TextBlock Text="Start minimized to tray" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
+                            <TextBlock Text="When Catogarizer starts with Windows, keep the window hidden until you open it from the tray." Style="{StaticResource BodyMutedText}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding StartMinimizedToTray}"
+                                  VerticalAlignment="Center" AutomationProperties.Name="Start minimized to tray" />
+                    </Grid>
+                </StackPanel>
             </Grid>
         </Grid>
     </Grid>

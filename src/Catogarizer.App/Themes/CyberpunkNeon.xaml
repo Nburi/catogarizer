@@ -304,4 +304,30 @@
         <Setter Property="Padding" Value="8,6" />
     </Style>
 
+    <!-- Pill toggle switch used on the Settings page -->
+    <Style x:Key="ToggleSwitch" TargetType="CheckBox">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Border x:Name="Track" Width="42" Height="24" CornerRadius="12"
+                            Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource LineBrush}" BorderThickness="1">
+                        <Border x:Name="Thumb" Width="18" Height="18" CornerRadius="9"
+                                Background="{StaticResource TextMutedBrush}"
+                                HorizontalAlignment="Left" Margin="2,0,0,0" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Track" Property="Background" Value="{StaticResource AccentGradientBrush}" />
+                            <Setter TargetName="Thumb" Property="Background" Value="White" />
+                            <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
+                            <Setter TargetName="Thumb" Property="Margin" Value="0,0,2,0" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

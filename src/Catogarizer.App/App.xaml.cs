@@ -32,6 +32,9 @@ public partial class App : Application
 
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         mainWindow.Show();
+
+        if (e.Args.Contains("--minimized"))
+            mainWindow.WindowState = WindowState.Minimized;
     }
 
     protected override void OnExit(ExitEventArgs e)

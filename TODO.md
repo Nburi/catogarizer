@@ -8,7 +8,7 @@
 - [x] 5. App tile grid wired to Open/Minimize/Close-all, with loading state
 - [x] 6. Add/Edit Category & App dialogs, "capture window position" helper, validation
 - [x] 7. Tray icon, minimize-to-tray, quick category switch from tray menu
-- [ ] 8. Autostart toggle + Settings page
+- [x] 8. Autostart toggle + Settings page
 - [ ] 9. App blocking: background process watcher + notification
 - [ ] 10. Cyberpunk Neon visual polish pass
 - [ ] 11. Automation/integration seams (`ITrigger`/`IAction`, `ITodoIntegration` stub)

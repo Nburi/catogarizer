@@ -14,6 +14,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ICategoryActionService _actionService;
     private readonly IProcessLauncher _launcher;
     private readonly IDialogService _dialogService;
+    private readonly IAutostartManager _autostartManager;
     private AppConfig _config = new();
 
     public ObservableCollection<CategoryViewModel> Categories { get; } = new();
@@ -24,20 +25,28 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool isLoading;
 
+    [ObservableProperty]
+    private bool isSettingsOpen;
+
+    public SettingsViewModel? Settings { get; private set; }
+
     public bool HasCategories => Categories.Count > 0;
-    public bool ShowEmptyState => !IsLoading && !HasCategories;
-    public bool ShowCategoryContent => !IsLoading && HasCategories && SelectedCategory is not null;
+    public bool ShowEmptyState => !IsLoading && !IsSettingsOpen && !HasCategories;
+    public bool ShowCategoryContent => !IsLoading && !IsSettingsOpen && HasCategories && SelectedCategory is not null;
+    public bool ShowSettingsContent => !IsLoading && IsSettingsOpen;
 
     public MainViewModel(
         IConfigStore configStore,
         ICategoryActionService actionService,
         IProcessLauncher launcher,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IAutostartManager autostartManager)
     {
         _configStore = configStore;
         _actionService = actionService;
         _launcher = launcher;
         _dialogService = dialogService;
+        _autostartManager = autostartManager;
         Categories.CollectionChanged += (_, _) => NotifyDerivedState();
     }
 
@@ -52,12 +61,17 @@ public partial class MainViewModel : ObservableObject
                 Categories.Add(CreateCategoryViewModel(category));
 
             SelectedCategory = Categories.FirstOrDefault();
+            Settings = new SettingsViewModel(_config.Settings, _autostartManager, PersistAsync);
+            OnPropertyChanged(nameof(Settings));
         }
         finally
         {
             IsLoading = false;
         }
     }
+
+    [RelayCommand]
+    private void ToggleSettings() => IsSettingsOpen = !IsSettingsOpen;
 
     [RelayCommand]
     private async Task AddCategoryAsync()
@@ -119,6 +133,8 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnIsLoadingChanged(bool value) => NotifyDerivedState();
 
+    partial void OnIsSettingsOpenChanged(bool value) => NotifyDerivedState();
+
     partial void OnSelectedCategoryChanged(CategoryViewModel? value) => NotifyDerivedState();
 
     private void NotifyDerivedState()
@@ -126,5 +142,6 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(HasCategories));
         OnPropertyChanged(nameof(ShowEmptyState));
         OnPropertyChanged(nameof(ShowCategoryContent));
+        OnPropertyChanged(nameof(ShowSettingsContent));
     }
 }
