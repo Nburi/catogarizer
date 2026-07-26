@@ -12,25 +12,32 @@
 - [x] 9. App blocking: background process watcher + notification
 - [x] 10. Cyberpunk Neon visual polish pass
 - [x] 11. Automation/integration seams (`ITrigger`/`IAction`, `ITodoIntegration` stub)
-- [ ] 12. Self-contained publish profile + app icon
+- [x] 12. Self-contained publish profile + app icon
 - [ ] 13. Full test run + manual pass (golden path + edge cases)
 - [ ] 14. User guide
 
 ## Backlog (future features, not yet built)
-- Scheduled/automatic category triggers (e.g. open a category at a set time)
-- To-do list API integration
+- Scheduled/automatic category triggers (e.g. open a category at a set time) -
+  data model (`AutomationRule`) and persistence already in place, no scheduler
+  or UI to create rules yet
+- To-do list API integration - `ITodoIntegrationProvider` seam exists, no
+  concrete provider or UI
 - Global hotkey for quick category switch
 - Additional themes (Dark Focus, Light Clean, Nord Cool, Minimal Mono — already
-  designed in `design/concepts.html`, just need the theme to be swappable)
+  designed in `design/concepts.html`) aren't wired up as switchable options
+  yet; only Cyberpunk Neon ships
 - Reordering categories/apps (drag-and-drop, or simple up/down). Not built yet
-  - new categories/apps are just appended at the end (`Order = current count`).
-- Other 4 designed themes (Dark Focus, Light Clean, Nord Cool, Cyberpunk Neon's
-  siblings) aren't wired up as switchable options yet - only Cyberpunk Neon
-  ships. Secondary/icon buttons (ActionButtonSecondary, RowIconButton,
+  - new categories/apps are just appended at the end (`Order = current count`)
+- Secondary/icon buttons (ActionButtonSecondary, RowIconButton,
   CategoryListBoxItem) still use instant hover-color swaps rather than the
   animated-overlay pattern used for the primary button/toggle switch -
   animating those safely needs a template restructure (to avoid mutating a
-  shared brush instance), deliberately deferred rather than rushed.
+  shared brush instance), deliberately deferred rather than rushed
+- App/tray icon (`Assets/app.ico`) is a single 64x64 resolution rather than a
+  true multi-resolution icon (16/32/48/256) - a hand-rolled multi-size ICO was
+  attempted and produced corrupted pixel data at some sizes, so it was reverted
+  in favor of the known-good single size. Windows scales it adequately for
+  taskbar/title bar/tray; it just won't be pixel-crisp at every size.
 
 ## Known issues
 - Apps that restore their own last window state on launch (e.g. modern Windows

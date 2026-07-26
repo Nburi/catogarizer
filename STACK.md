@@ -37,3 +37,15 @@ Catogarizer.sln
   src/Catogarizer.App      — WPF UI (MVVM)
   tests/Catogarizer.Core.Tests
 ```
+
+## Packaging
+Self-contained single-file publish profile at
+`src/Catogarizer.App/Properties/PublishProfiles/win-x64.pubxml` — no .NET
+runtime install required on the target machine. Build with:
+```
+dotnet publish src/Catogarizer.App/Catogarizer.App.csproj -p:PublishProfile=win-x64
+```
+Output lands in `src/Catogarizer.App/bin/Release/net10.0-windows/publish/win-x64/Catogarizer.exe`
+(~140MB, since the .NET runtime + WPF are bundled in). Trimming is
+intentionally left off (`PublishTrimmed=false`) since WPF apps don't reliably
+survive IL trimming.

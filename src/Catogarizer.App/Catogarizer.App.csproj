@@ -22,6 +22,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <AssemblyName>Catogarizer</AssemblyName>
+    <RootNamespace>Catogarizer.App</RootNamespace>
+    <Product>Catogarizer</Product>
+    <AssemblyTitle>Catogarizer</AssemblyTitle>
+    <Description>Organize your apps into categories you can open, close, or minimize with one click.</Description>
+    <Version>0.1.0</Version>
+    <Copyright>Copyright (C) $([System.DateTime]::Now.Year)</Copyright>
   </PropertyGroup>
 
 </Project>
