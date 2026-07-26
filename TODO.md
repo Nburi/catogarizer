@@ -14,7 +14,7 @@
 - [x] 11. Automation/integration seams (`ITrigger`/`IAction`, `ITodoIntegration` stub)
 - [x] 12. Self-contained publish profile + app icon
 - [x] 13. Full test run + manual pass (golden path + edge cases)
-- [ ] 14. User guide
+- [x] 14. User guide
 
 ## Backlog (future features, not yet built)
 - Scheduled/automatic category triggers (e.g. open a category at a set time) -
