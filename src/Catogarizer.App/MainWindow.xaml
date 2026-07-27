@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:tb="http://www.hardcodet.net/taskbar"
+        xmlns:behaviors="clr-namespace:Catogarizer.App.Behaviors"
         Title="Catogarizer"
         Icon="Assets/app.ico"
         Height="720" Width="1180" MinHeight="480" MinWidth="760"
@@ -196,34 +197,42 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Style="{StaticResource AppTile}" AutomationProperties.Name="{Binding Name}"
-                                                ToolTip="{Binding StatusMessage}">
+                                                ToolTip="{Binding StatusMessage}"
+                                                behaviors:ClickCommandBehavior.SingleClickCommand="{Binding OpenCommand}"
+                                                behaviors:ClickCommandBehavior.DoubleClickCommand="{Binding DataContext.SelectedCategory.EditAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                behaviors:ClickCommandBehavior.DoubleClickCommandParameter="{Binding}">
                                             <Border.ContextMenu>
                                                 <ContextMenu>
                                                     <MenuItem Header="Open" Command="{Binding OpenCommand}" />
+                                                    <MenuItem Header="Edit"
+                                                              Command="{Binding DataContext.SelectedCategory.EditAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              CommandParameter="{Binding}" />
                                                     <MenuItem Header="Minimize" Command="{Binding MinimizeCommand}" />
                                                     <MenuItem Header="Close" Command="{Binding CloseCommand}" />
+                                                    <Separator />
+                                                    <MenuItem Header="Remove"
+                                                              Command="{Binding DataContext.SelectedCategory.DeleteAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              CommandParameter="{Binding}" />
                                                 </ContextMenu>
                                             </Border.ContextMenu>
-                                            <StackPanel>
-                                                <Grid HorizontalAlignment="Left">
-                                                    <Border Style="{StaticResource AppTileIcon}">
-                                                        <TextBlock Text="{Binding Initial}" FontSize="15" Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                    </Border>
-                                                    <Ellipse Style="{StaticResource RunningDot}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,-2,0" />
-                                                </Grid>
-                                                <TextBlock Text="{Binding Name}" Margin="0,10,0,0" FontSize="12"
-                                                           Foreground="{StaticResource TextPrimaryBrush}"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           AutomationProperties.Name="{Binding Name}" />
-                                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                                    <Button Content="&#x270E;" Style="{StaticResource RowIconButton}"
-                                                            Command="{Binding DataContext.SelectedCategory.EditAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}" ToolTip="Edit" AutomationProperties.Name="Edit app" />
-                                                    <Button Content="&#x2715;" Style="{StaticResource RowIconButton}"
-                                                            Command="{Binding DataContext.SelectedCategory.DeleteAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}" ToolTip="Remove" AutomationProperties.Name="Remove app" />
+                                            <Grid>
+                                                <StackPanel VerticalAlignment="Top">
+                                                    <Grid HorizontalAlignment="Left">
+                                                        <Border Style="{StaticResource AppTileIcon}">
+                                                            <TextBlock Text="{Binding Initial}" FontSize="15" Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                        </Border>
+                                                        <Ellipse Style="{StaticResource RunningDot}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,-2,0" />
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Name}" Margin="0,10,0,0" FontSize="12"
+                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               AutomationProperties.Name="{Binding Name}" />
                                                 </StackPanel>
-                                            </StackPanel>
+                                                <Button Content="&#x2715;" Style="{StaticResource RowIconButton}"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                        Command="{Binding DataContext.SelectedCategory.DeleteAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}" ToolTip="Remove" AutomationProperties.Name="Remove app" />
+                                            </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
