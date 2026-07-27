@@ -205,14 +205,14 @@
 
     <!-- App tile -->
     <Style x:Key="AppTile" TargetType="Border">
-        <Setter Property="Width" Value="120" />
-        <Setter Property="Height" Value="120" />
-        <Setter Property="Margin" Value="0,0,12,12" />
-        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Width" Value="92" />
+        <Setter Property="Height" Value="92" />
+        <Setter Property="Margin" Value="0,0,10,10" />
+        <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="12" />
+        <Setter Property="Padding" Value="10" />
         <Setter Property="Cursor" Value="Hand" />
     </Style>
 
