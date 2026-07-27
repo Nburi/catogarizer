@@ -29,3 +29,14 @@
   app icon.
 - 18 unit tests covering Core domain logic (config persistence, validation,
   category action orchestration).
+
+### Changed
+- Theme simplified to a single primary accent color (magenta) — the
+  magenta/cyan gradient and all cyan-only usages (focus ring, spinner, status
+  banner, textbox focus) were replaced with one solid `PrimaryBrush`. Danger
+  red stays separate as a semantic error color.
+- App tiles are now perfectly square, with the remove button moved to a
+  top-right overlay corner. The edit pencil/remove-button row was removed:
+  a single click on a tile now opens that one app, and a double click opens
+  the edit dialog (also reachable from the right-click context menu, which
+  gained Edit/Remove entries).

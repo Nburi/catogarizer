@@ -38,5 +38,6 @@ with saved window geometry per app.
 ## Chosen design
 - **Layout:** Launcher Grid — sidebar of categories, tile grid of that
   category's apps, Open/Minimize/Close toolbar always visible.
-- **Theme:** Cyberpunk Neon — ink-black surfaces, magenta/cyan accents.
+- **Theme:** Cyberpunk Neon — ink-black surfaces, single magenta primary accent
+  (no gradient/two-tone accent).
 - Full design exploration (6 layouts × 5 themes): `design/concepts.html`
