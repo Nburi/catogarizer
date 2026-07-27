@@ -23,6 +23,7 @@ public partial class App : Application
         services.AddSingleton<IAutostartManager, AutostartManager>();
         services.AddSingleton<IAppBlocker, AppBlocker>();
         services.AddSingleton<IWindowEnumerator, WindowEnumerator>();
+        services.AddSingleton<IAppIconProvider, ShellIconProvider>();
         services.AddSingleton<ICategoryActionService, CategoryActionService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<MainViewModel>();

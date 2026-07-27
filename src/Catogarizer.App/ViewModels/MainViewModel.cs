@@ -16,6 +16,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IDialogService _dialogService;
     private readonly IAutostartManager _autostartManager;
     private readonly IAppBlocker _appBlocker;
+    private readonly IAppIconProvider _iconProvider;
     private AppConfig _config = new();
 
     public event EventHandler<AppBlockedEventArgs>? AppBlocked;
@@ -48,7 +49,8 @@ public partial class MainViewModel : ObservableObject
         IProcessLauncher launcher,
         IDialogService dialogService,
         IAutostartManager autostartManager,
-        IAppBlocker appBlocker)
+        IAppBlocker appBlocker,
+        IAppIconProvider iconProvider)
     {
         _configStore = configStore;
         _actionService = actionService;
@@ -56,6 +58,7 @@ public partial class MainViewModel : ObservableObject
         _dialogService = dialogService;
         _autostartManager = autostartManager;
         _appBlocker = appBlocker;
+        _iconProvider = iconProvider;
         _appBlocker.AppBlocked += (sender, args) => AppBlocked?.Invoke(this, args);
         Categories.CollectionChanged += (_, _) => NotifyDerivedState();
     }
@@ -171,7 +174,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     private CategoryViewModel CreateCategoryViewModel(Category category) =>
-        new(category, _actionService, _launcher, _dialogService, PersistAsync);
+        new(category, _actionService, _launcher, _dialogService, _iconProvider, PersistAsync);
 
     private Task PersistAsync() => _configStore.SaveAsync(_config);
 

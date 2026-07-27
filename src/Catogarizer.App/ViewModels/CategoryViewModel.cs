@@ -12,6 +12,7 @@ public partial class CategoryViewModel : ObservableObject
     private readonly ICategoryActionService _actionService;
     private readonly IProcessLauncher _launcher;
     private readonly IDialogService _dialogService;
+    private readonly IAppIconProvider _iconProvider;
     private readonly Func<Task> _persistAsync;
 
     public Category Model { get; }
@@ -44,12 +45,14 @@ public partial class CategoryViewModel : ObservableObject
         ICategoryActionService actionService,
         IProcessLauncher launcher,
         IDialogService dialogService,
+        IAppIconProvider iconProvider,
         Func<Task> persistAsync)
     {
         Model = model;
         _actionService = actionService;
         _launcher = launcher;
         _dialogService = dialogService;
+        _iconProvider = iconProvider;
         _persistAsync = persistAsync;
 
         Apps = new ObservableCollection<AppTileViewModel>(
@@ -154,7 +157,7 @@ public partial class CategoryViewModel : ObservableObject
     }
 
     private AppTileViewModel CreateAppTileViewModel(AppEntry entry) =>
-        new(entry, _actionService, _launcher);
+        new(entry, _actionService, _launcher, _iconProvider);
 
     private void RefreshRunningStatus()
     {
