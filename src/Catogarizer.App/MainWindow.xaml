@@ -63,7 +63,7 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
-                    <TextBlock Text="&#x25C6;" Foreground="{StaticResource MagentaBrush}" FontSize="12" VerticalAlignment="Center" />
+                    <TextBlock Text="&#x25C6;" Foreground="{StaticResource PrimaryBrush}" FontSize="12" VerticalAlignment="Center" />
                     <TextBlock Text="C A T O G A R I Z E R" Margin="8,0,0,0" Style="{StaticResource EyebrowText}" VerticalAlignment="Center" />
                 </StackPanel>
 
@@ -130,7 +130,7 @@
             <Grid Grid.Column="1">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
-                    <Ellipse Width="28" Height="28" StrokeThickness="3" Stroke="{StaticResource CyanBrush}"
+                    <Ellipse Width="28" Height="28" StrokeThickness="3" Stroke="{StaticResource PrimaryBrush}"
                              StrokeDashArray="2 1.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                              HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
                         <Ellipse.RenderTransform>
@@ -152,7 +152,7 @@
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360"
                             Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVis}}">
                     <Border Width="56" Height="56" CornerRadius="12" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" HorizontalAlignment="Center">
-                        <TextBlock Text="&#x25A6;" FontSize="22" Foreground="{StaticResource CyanBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <TextBlock Text="&#x25A6;" FontSize="22" Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <TextBlock Text="No categories yet" Style="{StaticResource HeadingText}" HorizontalAlignment="Center" Margin="0,18,0,8" />
                     <TextBlock Style="{StaticResource BodyMutedText}" TextAlignment="Center"

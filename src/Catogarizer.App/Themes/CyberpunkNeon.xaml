@@ -8,8 +8,7 @@
     <Color x:Key="ColorLine">#241F3A</Color>
     <Color x:Key="ColorTextPrimary">#E7E9F0</Color>
     <Color x:Key="ColorTextMuted">#8B8FA3</Color>
-    <Color x:Key="ColorMagenta">#FF2E88</Color>
-    <Color x:Key="ColorCyan">#22D3EE</Color>
+    <Color x:Key="ColorPrimary">#FF2E88</Color>
     <Color x:Key="ColorDanger">#FF4D4D</Color>
 
     <SolidColorBrush x:Key="InkBrush" Color="{StaticResource ColorInk}" />
@@ -18,17 +17,8 @@
     <SolidColorBrush x:Key="LineBrush" Color="{StaticResource ColorLine}" />
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource ColorTextPrimary}" />
     <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource ColorTextMuted}" />
-    <SolidColorBrush x:Key="MagentaBrush" Color="{StaticResource ColorMagenta}" />
-    <SolidColorBrush x:Key="CyanBrush" Color="{StaticResource ColorCyan}" />
+    <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource ColorPrimary}" />
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource ColorDanger}" />
-
-    <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Color="{StaticResource ColorMagenta}" Offset="0" />
-        <GradientStop Color="{StaticResource ColorCyan}" Offset="1" />
-    </LinearGradientBrush>
-
-    <DropShadowEffect x:Key="MagentaGlow" Color="{StaticResource ColorMagenta}" BlurRadius="16" ShadowDepth="0" Opacity="0.55" />
-    <DropShadowEffect x:Key="CyanGlow" Color="{StaticResource ColorCyan}" BlurRadius="16" ShadowDepth="0" Opacity="0.5" />
 
     <!-- Custom keyboard focus ring, replacing the default blue dotted rectangle -->
     <Style x:Key="{x:Static SystemParameters.FocusVisualStyleKey}">
@@ -36,7 +26,7 @@
             <Setter.Value>
                 <ControlTemplate>
                     <Rectangle Margin="1" SnapsToDevicePixels="True" StrokeThickness="1"
-                               Stroke="{StaticResource CyanBrush}" StrokeDashArray="1 2" RadiusX="4" RadiusY="4" />
+                               Stroke="{StaticResource PrimaryBrush}" StrokeDashArray="1 2" RadiusX="4" RadiusY="4" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -131,7 +121,7 @@
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="Root" Property="Background" Value="{StaticResource SurfaceRaisedBrush}" />
-                            <Setter TargetName="Accent" Property="Background" Value="{StaticResource AccentGradientBrush}" />
+                            <Setter TargetName="Accent" Property="Background" Value="{StaticResource PrimaryBrush}" />
                             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -148,7 +138,7 @@
     <!-- Category action toolbar -->
     <Style x:Key="ActionButtonPrimary" TargetType="Button">
         <Setter Property="Padding" Value="16,8" />
-        <Setter Property="Background" Value="{StaticResource AccentGradientBrush}" />
+        <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
         <Setter Property="Foreground" Value="White" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="BorderThickness" Value="0" />
@@ -158,7 +148,7 @@
                 <ControlTemplate TargetType="Button">
                     <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
                         <Border.Effect>
-                            <DropShadowEffect x:Name="Glow" Color="{StaticResource ColorMagenta}" BlurRadius="16" ShadowDepth="0" Opacity="0" />
+                            <DropShadowEffect x:Name="Glow" Color="{StaticResource ColorPrimary}" BlurRadius="16" ShadowDepth="0" Opacity="0" />
                         </Border.Effect>
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
@@ -216,13 +206,14 @@
     <!-- App tile -->
     <Style x:Key="AppTile" TargetType="Border">
         <Setter Property="Width" Value="120" />
-        <Setter Property="Height" Value="136" />
+        <Setter Property="Height" Value="120" />
         <Setter Property="Margin" Value="0,0,12,12" />
         <Setter Property="CornerRadius" Value="10" />
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="12" />
+        <Setter Property="Cursor" Value="Hand" />
     </Style>
 
     <Style x:Key="AppTileIcon" TargetType="Border">
@@ -245,8 +236,8 @@
 
     <!-- Status banner shown after Open/Close/Minimize -->
     <Style x:Key="StatusBanner" TargetType="Border">
-        <Setter Property="Background" Value="#1A22D3EE" />
-        <Setter Property="BorderBrush" Value="{StaticResource CyanBrush}" />
+        <Setter Property="Background" Value="#1AFF2E88" />
+        <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="6" />
         <Setter Property="Padding" Value="12,8" />
@@ -314,7 +305,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsFocused" Value="True">
-                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource CyanBrush}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.5" />
@@ -351,7 +342,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Track" Property="Background" Value="{StaticResource AccentGradientBrush}" />
+                            <Setter TargetName="Track" Property="Background" Value="{StaticResource PrimaryBrush}" />
                             <Setter TargetName="Thumb" Property="Background" Value="White" />
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
