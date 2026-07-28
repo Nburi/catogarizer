@@ -91,6 +91,48 @@ WinForms window whose `FormClosing` cancels the close, to simulate a
 refusing app deterministically rather than relying on mocked test doubles
 for that guarantee.
 
+## `FindRunning` matched the wrong process (or none) for multi-process / packaged apps
+Close/Minimize still didn't work after the `WindowManager` verification fix above,
+because the bug was one layer up: `ProcessLauncher.FindRunning` matched by process
+name *and* required `MainModule.FileName` to string-equal the configured
+`ExecutablePath` exactly, then returned on the *first* name match regardless of
+whether that specific process owned a window. Two real shapes break this,
+confirmed against the user's actual running apps:
+- **Multi-process apps** (Electron/Chromium: Discord, Spotify) run several
+  same-named processes - only one owns the real window, the rest are
+  renderer/GPU/utility helpers with `MainWindowHandle == 0`. `Process
+  .GetProcessesByName` enumeration order isn't guaranteed to put the real one
+  first. Confirmed live: the user's Spotify was 7 processes, only 1 with a
+  window; `FindRunning` returned null every time because it also required an
+  exact path match, and the real running processes' resolved package path
+  (`C:\Program Files\WindowsApps\SpotifyAB.Spotify..\Spotify.exe`) never equals
+  the configured alias path (`...\AppData\Local\Microsoft\WindowsApps\Spotify.exe`)
+  - that's expected: Store/alias-launched apps always resolve to a different
+    real path than the alias stub.
+- **Helper-process UIs**: Steam's actual client window is owned by
+  `steamwebhelper.exe`, never by `steam.exe` (the configured target) - a
+  *different process name entirely*, confirmed live (`steam.exe`
+  `MainWindowHandle` was always 0; `steamwebhelper.exe` had the real "Steam"
+  window).
+
+Fixed by relaxing `FindRunning`: exact path is now a *preference* between
+same-named matches, not a hard filter, and any same-name match that owns a
+window wins immediately. Added a directory-scoped fallback pass (any process
+whose module path lives under the configured exe's install folder) for the
+helper-process case, guarded with a trailing separator so `Steam` can't
+falsely prefix-match a sibling folder like `SteamVR`.
+
+There's no existing unit test project that exercises real Win32
+processes/windows (Core.Tests only exercises `CategoryActionService` against
+fakes) - verified instead with a throwaway console harness referencing the
+real `Catogarizer.Win32`/`Catogarizer.Core` projects directly: a synthetic
+cooperative window, a synthetic window that cancels `FormClosing` to simulate
+a refusing app, and - since minimizing is safe/reversible with no data loss -
+the real, currently-running Steam and Spotify processes and a real
+`CategoryActionService.MinimizeAsync` call against the actual playing Spotify
+window (restored afterward). All resolved and behaved correctly after the fix;
+none did before it.
+
 ## Never test "app blocking" with a real running application's process name
 During the milestone 13 end-to-end pass, `steam.exe` was added to the
 blocked-apps list as test data without checking whether Steam was actually

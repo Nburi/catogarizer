@@ -48,3 +48,13 @@
   request, prompt to save, or minimize-to-tray instead of exiting (Discord,
   Spotify, and similar apps) are now correctly reported as failed rather than
   the status banner falsely claiming "closed"/"minimized".
+- Fixed the deeper reason Close/Minimize did nothing at all for several real
+  apps: `FindRunning` required an exact "process name AND file path" match and
+  stopped at the first name hit, so multi-process apps (Discord, Spotify -
+  renderer/GPU/utility processes share the visible one's name but not its
+  window) and helper-process apps (Steam's window is owned by
+  `steamwebhelper.exe`, never `steam.exe`) were invisible to the app - Close/
+  Minimize silently reported "Not running" for something clearly running.
+  `FindRunning` now prefers any same-name match that owns a window over an
+  exact-path match that doesn't, and falls back to scanning for a
+  window-owning process under the same install directory.
