@@ -10,9 +10,25 @@ internal sealed class FakeWindowManager : IWindowManager
     public List<nint> RestoreCalls { get; } = new();
     public List<nint> CloseCalls { get; } = new();
 
+    /// <summary>Lets tests simulate a window that ignores the request (e.g. minimize-to-tray apps).</summary>
+    public bool MinimizeSucceeds { get; set; } = true;
+    public bool CloseSucceeds { get; set; } = true;
+
     public void MoveResize(nint windowHandle, WindowRect rect) => MoveResizeCalls.Add((windowHandle, rect));
-    public void Minimize(nint windowHandle) => MinimizeCalls.Add(windowHandle);
+
+    public Task<bool> MinimizeAsync(nint windowHandle, CancellationToken cancellationToken = default)
+    {
+        MinimizeCalls.Add(windowHandle);
+        return Task.FromResult(MinimizeSucceeds);
+    }
+
     public void Restore(nint windowHandle) => RestoreCalls.Add(windowHandle);
-    public void Close(nint windowHandle) => CloseCalls.Add(windowHandle);
+
+    public Task<bool> CloseAsync(nint windowHandle, CancellationToken cancellationToken = default)
+    {
+        CloseCalls.Add(windowHandle);
+        return Task.FromResult(CloseSucceeds);
+    }
+
     public WindowRect? GetRect(nint windowHandle) => null;
 }

@@ -40,3 +40,11 @@
   a single click on a tile now opens that one app, and a double click opens
   the edit dialog (also reachable from the right-click context menu, which
   gained Edit/Remove entries).
+
+### Fixed
+- Category and app-tile Close/Minimize actions now verify the target window
+  actually closed or minimized before reporting success, instead of assuming
+  the fire-and-forget Win32 request worked. Apps that ignore the close
+  request, prompt to save, or minimize-to-tray instead of exiting (Discord,
+  Spotify, and similar apps) are now correctly reported as failed rather than
+  the status banner falsely claiming "closed"/"minimized".

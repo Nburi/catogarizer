@@ -76,6 +76,21 @@ When milestone 12 changed the App project's `AssemblyName` from
 `"Catogarizer"` - easy to forget and get a confusing "no such process" error
 that looks like the app failed to launch when it actually started fine.
 
+## `PostMessage(WM_CLOSE)` / `ShowWindow(SW_MINIMIZE)` return before the window actually changes state
+`WindowManager.Close`/`Minimize` only issued the Win32 call and immediately
+reported success to the caller, without ever checking whether the window
+actually closed or minimized. `PostMessage` just enqueues `WM_CLOSE` and
+returns instantly - apps that ignore it, pop a "save changes?" prompt, or
+hide to tray instead of exiting (Discord, Spotify, Slack-style apps) still
+got counted as "closed," so the category action banner could say "3 apps
+closed" while one of them was still sitting right there. Fixed by polling
+the real end state (`IsWindow` / `IsIconic`) for up to 2s after issuing the
+request and only reporting success once it's confirmed - see
+`WindowManager.CloseAsync`/`MinimizeAsync`. Verified against a synthetic
+WinForms window whose `FormClosing` cancels the close, to simulate a
+refusing app deterministically rather than relying on mocked test doubles
+for that guarantee.
+
 ## Never test "app blocking" with a real running application's process name
 During the milestone 13 end-to-end pass, `steam.exe` was added to the
 blocked-apps list as test data without checking whether Steam was actually

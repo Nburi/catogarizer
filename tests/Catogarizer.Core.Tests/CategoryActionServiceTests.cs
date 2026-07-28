@@ -97,4 +97,40 @@ public class CategoryActionServiceTests
         var minimizeCall = Assert.Single(windowManager.MinimizeCalls);
         Assert.Equal((nint)321, minimizeCall);
     }
+
+    [Fact]
+    public async Task CloseAsync_RecordsFailure_WhenWindowNeverActuallyCloses()
+    {
+        var launcher = new FakeProcessLauncher();
+        var app = new AppEntry { Name = "TrayApp", ExecutablePath = "tray.exe" };
+        launcher.RunningApps[app.Id] = new LaunchedApp(1, 555, app.ExecutablePath);
+        var windowManager = new FakeWindowManager { CloseSucceeds = false };
+        var service = new CategoryActionService(launcher, windowManager);
+        var category = new Category { Apps = { app } };
+
+        var result = await service.CloseAsync(category);
+
+        Assert.False(result.AllSucceeded);
+        var outcome = Assert.Single(result.Outcomes);
+        Assert.False(outcome.Success);
+        Assert.Contains("TrayApp", outcome.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task MinimizeAsync_RecordsFailure_WhenWindowNeverActuallyMinimizes()
+    {
+        var launcher = new FakeProcessLauncher();
+        var app = new AppEntry { Name = "Stubborn", ExecutablePath = "stubborn.exe" };
+        launcher.RunningApps[app.Id] = new LaunchedApp(1, 321, app.ExecutablePath);
+        var windowManager = new FakeWindowManager { MinimizeSucceeds = false };
+        var service = new CategoryActionService(launcher, windowManager);
+        var category = new Category { Apps = { app } };
+
+        var result = await service.MinimizeAsync(category);
+
+        Assert.False(result.AllSucceeded);
+        var outcome = Assert.Single(result.Outcomes);
+        Assert.False(outcome.Success);
+        Assert.Contains("Stubborn", outcome.ErrorMessage);
+    }
 }

@@ -51,12 +51,16 @@ public sealed class CategoryActionService : ICategoryActionService
     }
 
     public Task<CategoryActionResult> CloseAsync(Category category, CancellationToken cancellationToken = default)
-        => ApplyToRunningApps(category, _windowManager.Close);
+        => ApplyToRunningApps(category, _windowManager.CloseAsync, "close", cancellationToken);
 
     public Task<CategoryActionResult> MinimizeAsync(Category category, CancellationToken cancellationToken = default)
-        => ApplyToRunningApps(category, _windowManager.Minimize);
+        => ApplyToRunningApps(category, _windowManager.MinimizeAsync, "minimize", cancellationToken);
 
-    private Task<CategoryActionResult> ApplyToRunningApps(Category category, Action<nint> action)
+    private async Task<CategoryActionResult> ApplyToRunningApps(
+        Category category,
+        Func<nint, CancellationToken, Task<bool>> action,
+        string verb,
+        CancellationToken cancellationToken)
     {
         var outcomes = new List<AppActionOutcome>();
 
@@ -67,8 +71,10 @@ public sealed class CategoryActionService : ICategoryActionService
                 var running = _launcher.FindRunning(app);
                 if (running is { MainWindowHandle: not 0 })
                 {
-                    action(running.MainWindowHandle);
-                    outcomes.Add(new AppActionOutcome(app.Id, app.Name, true, null));
+                    var confirmed = await action(running.MainWindowHandle, cancellationToken);
+                    outcomes.Add(confirmed
+                        ? new AppActionOutcome(app.Id, app.Name, true, null)
+                        : new AppActionOutcome(app.Id, app.Name, false, $"{app.Name} didn't {verb} - it may be waiting on a dialog or ignoring the request."));
                 }
                 else
                 {
@@ -81,7 +87,7 @@ public sealed class CategoryActionService : ICategoryActionService
             }
         }
 
-        return Task.FromResult(new CategoryActionResult(outcomes));
+        return new CategoryActionResult(outcomes);
     }
 
     private static string DescribeError(Exception ex, AppEntry app) => ex switch
