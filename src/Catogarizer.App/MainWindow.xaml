@@ -1,14 +1,9 @@
 <Window x:Class="Catogarizer.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:conv="clr-namespace:Catogarizer.App.Converters"
         Title="Catogarizer" Height="720" Width="1080"
         Background="{StaticResource BgBrush}"
         FontFamily="{StaticResource UiFont}">
-    <Window.Resources>
-        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis"/>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-    </Window.Resources>
 
     <Grid Margin="28">
         <Grid.RowDefinitions>
@@ -16,40 +11,129 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
-            <Border Width="26" Height="26" CornerRadius="7" Background="{StaticResource AccentBrush}" Margin="0,0,10,0"/>
-            <TextBlock Text="Catogarizer" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
-                       VerticalAlignment="Center"/>
-        </StackPanel>
-
-        <Grid Grid.Row="1">
-            <!-- Empty state: no categories yet -->
-            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                        Visibility="{Binding HasCategories, Converter={StaticResource InverseBoolToVis}}">
-                <TextBlock Text="No categories yet" FontSize="17" FontWeight="SemiBold"
-                           Foreground="{StaticResource InkBrush}" HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                <TextBlock Text="Categories you add will show up here as cards you can open with one click."
-                           Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Center"/>
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <Border Width="26" Height="26" CornerRadius="7" Background="{StaticResource AccentBrush}" Margin="0,0,10,0"/>
+                <TextBlock Text="Catogarizer" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
+                           VerticalAlignment="Center"/>
             </StackPanel>
-
-            <!-- Populated state: category cards -->
-            <ItemsControl ItemsSource="{Binding Categories}"
-                          Visibility="{Binding HasCategories, Converter={StaticResource BoolToVis}}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush2}"
-                                BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,0,14,14" Width="230">
-                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
-                                       Foreground="{StaticResource InkBrush}"/>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <Button Grid.Column="1" Content="+ New category" Style="{StaticResource PrimaryButtonStyle}"
+                    Command="{Binding AddCategoryCommand}"
+                    Visibility="{Binding HasCategories, Converter={StaticResource BoolToVis}}"/>
         </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+
+                <!-- Empty state -->
+                <StackPanel Margin="0,80,0,0" HorizontalAlignment="Center"
+                            Visibility="{Binding HasCategories, Converter={StaticResource InverseBoolToVis}}">
+                    <TextBlock Text="No categories yet" FontSize="17" FontWeight="SemiBold"
+                               Foreground="{StaticResource InkBrush}" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                    <TextBlock Text="Group the apps you use together into a category you can open with one click."
+                               Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                    <Button Content="+ New category" Style="{StaticResource PrimaryButtonStyle}"
+                            Command="{Binding AddCategoryCommand}" HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Category cards -->
+                <ItemsControl ItemsSource="{Binding Categories}"
+                              Visibility="{Binding HasCategories, Converter={StaticResource BoolToVis}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush2}"
+                                    BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,0,14,14" Width="230"
+                                    AutomationProperties.Name="{Binding Name}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0" Style="{StaticResource GhostRowButtonStyle}" HorizontalAlignment="Left"
+                                                Command="{Binding DataContext.SelectCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
+                                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource InkBrush}" VerticalAlignment="Center"/>
+                                        </Button>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button Content="✎" Style="{StaticResource GhostIconButtonStyle}"
+                                                    Command="{Binding DataContext.RenameCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}" ToolTip="Rename"/>
+                                            <Button Content="✕" Style="{StaticResource GhostIconButtonStyle}"
+                                                    Command="{Binding DataContext.DeleteCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}" ToolTip="Delete"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Text="{Binding AppIds.Count, StringFormat={}{0} apps}"
+                                               Style="{StaticResource MutedTextStyle}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Selected category detail -->
+                <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource AccentBrush}"
+                        BorderThickness="1" CornerRadius="14" Padding="20" Margin="0,10,0,0"
+                        Visibility="{Binding HasSelectedCategory, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding SelectedCategory.Name}" FontSize="16" FontWeight="SemiBold"
+                                       Foreground="{StaticResource InkBrush}" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Content="+ Add app" Style="{StaticResource SecondaryButtonStyle}"
+                                    Command="{Binding AddAppToCategoryCommand}"/>
+                        </Grid>
+
+                        <TextBlock Text="No apps in this category yet." Style="{StaticResource MutedTextStyle}"
+                                   Visibility="{Binding SelectedCategoryApps.Count, Converter={StaticResource ZeroToVisibleConverter}}"/>
+
+                        <ItemsControl ItemsSource="{Binding SelectedCategoryApps}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}"
+                                            BorderThickness="1" CornerRadius="9" Padding="10,8" Margin="0,0,0,6"
+                                            AutomationProperties.Name="{Binding Name}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource InkBrush}"/>
+                                                <TextBlock Text="{Binding ExecutablePath}" Style="{StaticResource MutedTextStyle}" FontSize="11"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <Button Content="✎" Style="{StaticResource GhostIconButtonStyle}"
+                                                        Command="{Binding DataContext.EditAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}" ToolTip="Edit"/>
+                                                <Button Content="✕" Style="{StaticResource GhostIconButtonStyle}"
+                                                        Command="{Binding DataContext.RemoveAppFromCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}" ToolTip="Remove from category"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>

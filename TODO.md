@@ -43,11 +43,16 @@ Built directly from the prototype findings in `STACK.md`.
       added in Phase 5 as `CategoryActionService` needs them.
 
 ## Phase 3 — Category & app CRUD
-- [ ] Add/edit/remove/reorder categories and apps; themed dialogs, inline
-      validation (duplicate names, invalid paths) next to the field.
-- [ ] App search picker: enumerate Start Menu `.lnk` shortcuts (user + all
-      users) plus registry Uninstall keys; type-ahead search.
-- [ ] Manual `.exe` path entry fallback, with existence/executable
+- [x] Add/edit/remove categories and apps; themed dialogs, inline validation
+      (duplicate names, invalid paths) next to the field.
+- [ ] Reorder categories/apps - `LibraryService.ReorderCategories` exists
+      and is tested, but no drag-drop (or other) UI calls it yet. Deferred;
+      not blocking since apps/categories are still fully usable unordered
+      beyond creation order.
+- [x] App search picker: enumerate Start Menu `.lnk` shortcuts (user + all
+      users) plus registry Uninstall keys (honoring the `SystemComponent`
+      flag and filtering uninstaller executables out); type-ahead search.
+- [x] Manual `.exe` path entry fallback, with existence/executable
       validation.
 
 ## Phase 4 — Window placement setup ("grab, don't type")

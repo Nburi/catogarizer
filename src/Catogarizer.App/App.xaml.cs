@@ -2,7 +2,10 @@ using System.IO;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
+using Catogarizer.App.Services;
 using Catogarizer.Core.Persistence;
+using Catogarizer.Core.Services;
+using Catogarizer.Win32;
 
 namespace Catogarizer.App;
 
@@ -34,7 +37,11 @@ public partial class App : Application
         DispatcherUnhandledException += OnDispatcherUnhandledException;
 
         var configStore = new JsonConfigStore(ConfigFilePath());
-        var mainWindow = new MainWindow(configStore);
+        var library = new LibraryService(configStore);
+        var installedAppFinder = new InstalledAppFinder();
+        var dialogService = new DialogService();
+
+        var mainWindow = new MainWindow(library, installedAppFinder, dialogService);
         mainWindow.Show();
     }
 
