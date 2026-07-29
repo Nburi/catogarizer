@@ -123,10 +123,39 @@ the named mutex, not on every instance that references it by name) - fixed
 by tracking ownership explicitly and only releasing when true.
 
 ## Phase 8 — App blocking
-- [ ] WMI `Win32_ProcessStartTrace` watcher; per-category blocklist
-      enforced only while that category is active.
-- [ ] Non-native toast/notification when a blocked app is closed out from
-      under the user.
+- [x] Process watcher; per-category blocklist enforced only while that
+      category is active (activated right before a category opens so it
+      catches side-effect launches too, deactivated after it closes;
+      multiple simultaneously-open categories' blocklists union together
+      rather than assuming only one category is ever "active"). **Not**
+      WMI `Win32_ProcessStartTrace` as originally planned in STACK.md -
+      verified directly that subscribing to it throws Access Denied
+      without administrator privileges, which would have broken the
+      no-admin-required soft-block decision from CONCEPT.md. Switched to
+      polling `Process.GetProcesses()` every ~350ms instead, diffing
+      against the previous snapshot for newly-appeared PIDs - keeps the
+      no-admin promise at the cost of a small, already-accepted detection
+      delay rather than instant notification.
+- [x] Non-native toast/notification (`TaskbarIcon.ShowNotification`) when
+      a blocked app is closed out from under the user - a real system
+      toast is the *correct* choice here, not a compromise against the
+      "no native dialogs" rule, since the user is very likely in a
+      different app when it fires and wouldn't see a themed in-app one.
+- [x] UI for managing a category's blocklist (add/remove) - reused the
+      app-picker dialog (search installed apps or manual entry) rather
+      than building a separate one; caught and fixed a real validation
+      mismatch doing this - the dialog's manual-entry mode required a
+      real, existing `.exe` (right for adding a launchable app, wrong for
+      blocking, where you might want to block something not currently
+      installed by bare process name) - added a relaxed-validation mode
+      so the two reuses of the dialog each enforce what they actually need.
+
+Verified for real, not just fakes: blocked "notepad" via manual entry
+(bare process name, no path - confirming the relaxed-validation fix
+actually works), opened the category to activate blocking, launched a
+real notepad.exe, and confirmed via an unambiguous before/after process
+count that it was running immediately after launch and gone ~900ms
+later (poll interval is 350ms).
 
 ## Phase 9 — Settings + polish pass
 - [ ] Settings page: autostart, hotkey rebind, start-minimized, etc.

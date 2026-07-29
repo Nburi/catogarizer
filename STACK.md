@@ -50,8 +50,15 @@ Apps`, already on `%PATH%`) expects.
     narrower than that will get clamped; not a bug to work around.
 - **Global hotkey**: `RegisterHotKey`/`UnregisterHotKey` via a hidden
   message-only window (`HwndSource`).
-- **App blocking watcher**: WMI `Win32_ProcessStartTrace` eventing (reacts
-  near-instantly vs. polling `Process.GetProcesses()`).
+- **App blocking watcher**: polling `Process.GetProcesses()` (~350ms
+  interval), diffing against the previous snapshot for newly-appeared
+  PIDs. Originally planned as WMI `Win32_ProcessStartTrace` eventing for
+  near-instant detection, but that requires administrator privileges
+  (verified directly: subscribing from a non-elevated process throws
+  `ManagementException: Access denied`) - which would have broken the
+  "soft block, no admin rights" decision from CONCEPT.md. Polling keeps
+  that promise at the cost of a small, already-accepted detection delay
+  instead of true instant detection.
 - **Autostart**: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` (no
   elevation needed).
 - **App search picker**: Start Menu `.lnk` shortcuts (both per-user and

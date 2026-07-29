@@ -20,16 +20,18 @@ public sealed class TrayIconController : IDisposable
 {
     private readonly LibraryService _library;
     private readonly ICategoryActionService _categoryActionService;
+    private readonly IAppBlockingService _appBlockingService;
     private readonly IAutostartService _autostartService;
     private readonly Window _mainWindow;
     private readonly TaskbarIcon _icon;
     private bool _isExiting;
 
     public TrayIconController(LibraryService library, ICategoryActionService categoryActionService,
-        IAutostartService autostartService, Window mainWindow)
+        IAppBlockingService appBlockingService, IAutostartService autostartService, Window mainWindow)
     {
         _library = library;
         _categoryActionService = categoryActionService;
+        _appBlockingService = appBlockingService;
         _autostartService = autostartService;
         _mainWindow = mainWindow;
 
@@ -40,6 +42,17 @@ public sealed class TrayIconController : IDisposable
         };
         _icon.TrayLeftMouseUp += (_, _) => ShowMainWindow();
         _icon.TrayContextMenuOpen += (_, _) => _icon.ContextMenu = BuildMenu();
+
+        // A system toast, not a themed in-app dialog, is the right call here: the user is
+        // very likely in a *different* app when a blocked one gets closed out from under
+        // them, so a notification tied to Catogarizer's own (possibly hidden) window
+        // wouldn't even be seen.
+        // AppBlocked fires from the process watcher's background polling thread, not the
+        // UI thread - ShowNotification needs to run on the dispatcher.
+        _appBlockingService.AppBlocked += appName => _mainWindow.Dispatcher.Invoke(() => _icon.ShowNotification(
+            "App blocked",
+            $"\"{appName}\" was closed - blocked while this category is active.",
+            H.NotifyIcon.Core.NotificationIcon.Warning));
 
         _mainWindow.Closing += MainWindow_Closing;
         _mainWindow.StateChanged += MainWindow_StateChanged;
@@ -76,6 +89,7 @@ public sealed class TrayIconController : IDisposable
             item.Click += (_, _) =>
             {
                 var apps = ResolveApps(category);
+                _appBlockingService.ActivateCategory(category.Id, ResolveBlockedApps(category));
                 _ = Task.Run(() => _categoryActionService.Open(apps));
             };
             menu.Items.Add(item);
@@ -114,6 +128,13 @@ public sealed class TrayIconController : IDisposable
             .Select(id => _library.Apps.FirstOrDefault(a => a.Id == id))
             .Where(a => a is not null)
             .Cast<AppEntry>()
+            .ToList();
+
+    private List<BlockedApp> ResolveBlockedApps(Category category) =>
+        category.BlockedAppIds
+            .Select(id => _library.BlockedApps.FirstOrDefault(b => b.Id == id))
+            .Where(b => b is not null)
+            .Cast<BlockedApp>()
             .ToList();
 
     public void Dispose() => _icon.Dispose();

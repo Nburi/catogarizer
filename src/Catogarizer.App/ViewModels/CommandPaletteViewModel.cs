@@ -16,6 +16,7 @@ public partial class CommandPaletteViewModel : ObservableObject
 {
     private readonly LibraryService _library;
     private readonly ICategoryActionService _categoryActionService;
+    private readonly IAppBlockingService _appBlockingService;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -27,10 +28,11 @@ public partial class CommandPaletteViewModel : ObservableObject
 
     public event EventHandler? RequestClose;
 
-    public CommandPaletteViewModel(LibraryService library, ICategoryActionService categoryActionService)
+    public CommandPaletteViewModel(LibraryService library, ICategoryActionService categoryActionService, IAppBlockingService appBlockingService)
     {
         _library = library;
         _categoryActionService = categoryActionService;
+        _appBlockingService = appBlockingService;
         UpdateResults();
     }
 
@@ -48,13 +50,21 @@ public partial class CommandPaletteViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private Task Open(Category category) => RunActionAsync(category, _categoryActionService.Open);
+    private Task Open(Category category)
+    {
+        _appBlockingService.ActivateCategory(category.Id, ResolveBlockedApps(category));
+        return RunActionAsync(category, _categoryActionService.Open);
+    }
 
     [RelayCommand]
     private Task Minimize(Category category) => RunActionAsync(category, _categoryActionService.Minimize);
 
     [RelayCommand]
-    private Task CloseCategory(Category category) => RunActionAsync(category, _categoryActionService.Close);
+    private async Task CloseCategory(Category category)
+    {
+        await RunActionAsync(category, _categoryActionService.Close);
+        _appBlockingService.DeactivateCategory(category.Id);
+    }
 
     [RelayCommand]
     private void Close() => RequestClose?.Invoke(this, EventArgs.Empty);
@@ -78,4 +88,11 @@ public partial class CommandPaletteViewModel : ObservableObject
         }
         Close();
     }
+
+    private List<BlockedApp> ResolveBlockedApps(Category category) =>
+        category.BlockedAppIds
+            .Select(id => _library.BlockedApps.FirstOrDefault(b => b.Id == id))
+            .Where(b => b is not null)
+            .Cast<BlockedApp>()
+            .ToList();
 }

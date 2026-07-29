@@ -19,9 +19,11 @@ public partial class MainViewModel : ObservableObject
     private readonly IWindowManager _windowManager;
     private readonly IMonitorService _monitorService;
     private readonly ICategoryActionService _categoryActionService;
+    private readonly IAppBlockingService _appBlockingService;
 
     public ObservableCollection<Category> Categories { get; } = new();
     public ObservableCollection<AppEntry> SelectedCategoryApps { get; } = new();
+    public ObservableCollection<BlockedApp> SelectedCategoryBlockedApps { get; } = new();
 
     public bool HasCategories => Categories.Count > 0;
 
@@ -45,7 +47,7 @@ public partial class MainViewModel : ObservableObject
 
     public MainViewModel(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService,
         IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager,
-        IMonitorService monitorService, ICategoryActionService categoryActionService)
+        IMonitorService monitorService, ICategoryActionService categoryActionService, IAppBlockingService appBlockingService)
     {
         _library = library;
         _installedAppFinder = installedAppFinder;
@@ -55,6 +57,7 @@ public partial class MainViewModel : ObservableObject
         _windowManager = windowManager;
         _monitorService = monitorService;
         _categoryActionService = categoryActionService;
+        _appBlockingService = appBlockingService;
         RefreshCategories();
     }
 
@@ -74,6 +77,7 @@ public partial class MainViewModel : ObservableObject
         // picks up the new value even when SelectedCategory is reference-equal to before.
         OnPropertyChanged(nameof(SelectedCategory));
         RefreshSelectedCategoryApps();
+        RefreshSelectedCategoryBlockedApps();
     }
 
     private void RefreshSelectedCategoryApps()
@@ -87,6 +91,14 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    private void RefreshSelectedCategoryBlockedApps()
+    {
+        SelectedCategoryBlockedApps.Clear();
+        if (SelectedCategory is null) return;
+        foreach (var blocked in ResolveBlockedApps(SelectedCategory))
+            SelectedCategoryBlockedApps.Add(blocked);
+    }
+
     private List<AppEntry> ResolveApps(Category category) =>
         category.AppIds
             .Select(id => _library.Apps.FirstOrDefault(a => a.Id == id))
@@ -94,11 +106,19 @@ public partial class MainViewModel : ObservableObject
             .Cast<AppEntry>()
             .ToList();
 
+    private List<BlockedApp> ResolveBlockedApps(Category category) =>
+        category.BlockedAppIds
+            .Select(id => _library.BlockedApps.FirstOrDefault(b => b.Id == id))
+            .Where(b => b is not null)
+            .Cast<BlockedApp>()
+            .ToList();
+
     [RelayCommand]
     private void SelectCategory(Category category)
     {
         SelectedCategory = category;
         RefreshSelectedCategoryApps();
+        RefreshSelectedCategoryBlockedApps();
     }
 
     [RelayCommand]
@@ -170,6 +190,28 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void AddBlockedAppToCategory()
+    {
+        if (SelectedCategory is null) return;
+
+        var vm = new AppEditDialogViewModel(_installedAppFinder, headingOverride: "Block app", relaxedValidation: true);
+        var result = _dialogService.ShowAppEdit(vm);
+        if (result is null) return;
+
+        var blocked = _library.AddOrReuseBlockedApp(result.Value.Name, result.Value.ExecutablePath);
+        _library.AddBlockedAppToCategory(SelectedCategory.Id, blocked.Id);
+        RefreshSelectedCategoryBlockedApps();
+    }
+
+    [RelayCommand]
+    private void RemoveBlockedAppFromCategory(BlockedApp blocked)
+    {
+        if (SelectedCategory is null) return;
+        _library.RemoveBlockedAppFromCategory(SelectedCategory.Id, blocked.Id);
+        RefreshSelectedCategoryBlockedApps();
+    }
+
+    [RelayCommand]
     private void SetPlacement(AppEntry app)
     {
         var vm = new PlacementDialogViewModel(app, _processLauncher, _windowFinder, _windowManager, _monitorService);
@@ -181,16 +223,24 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private Task OpenCategoryAsync(Category category) =>
-        RunBusyAsync($"Opening \"{category.Name}\"...", () => _categoryActionService.Open(ResolveApps(category)));
+    private Task OpenCategoryAsync(Category category)
+    {
+        // Active before launching, not after, so anything the category's own apps
+        // trigger as a side effect is caught too.
+        _appBlockingService.ActivateCategory(category.Id, ResolveBlockedApps(category));
+        return RunBusyAsync($"Opening \"{category.Name}\"...", () => _categoryActionService.Open(ResolveApps(category)));
+    }
 
     [RelayCommand]
     private Task MinimizeCategoryAsync(Category category) =>
         RunBusyAsync($"Minimizing \"{category.Name}\"...", () => _categoryActionService.Minimize(ResolveApps(category)));
 
     [RelayCommand]
-    private Task CloseCategoryAsync(Category category) =>
-        RunBusyAsync($"Closing \"{category.Name}\"...", () => _categoryActionService.Close(ResolveApps(category)));
+    private async Task CloseCategoryAsync(Category category)
+    {
+        await RunBusyAsync($"Closing \"{category.Name}\"...", () => _categoryActionService.Close(ResolveApps(category)));
+        _appBlockingService.DeactivateCategory(category.Id);
+    }
 
     [RelayCommand]
     private Task OpenAppAsync(AppEntry app) =>

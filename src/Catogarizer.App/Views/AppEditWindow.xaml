@@ -53,7 +53,7 @@
             <TextBlock Text="{Binding NameError}" Style="{StaticResource ErrorTextStyle}"
                        Visibility="{Binding NameError, Converter={StaticResource NullToCollapsedConverter}}"/>
 
-            <TextBlock Text="Executable path" Style="{StaticResource FieldLabelStyle}" Margin="0,14,0,5"/>
+            <TextBlock Text="{Binding PathFieldLabel}" Style="{StaticResource FieldLabelStyle}" Margin="0,14,0,5"/>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>

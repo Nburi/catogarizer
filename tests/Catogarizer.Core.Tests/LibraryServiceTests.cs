@@ -154,4 +154,62 @@ public sealed class LibraryServiceTests
 
         Assert.Null(_service.Apps.Single().Placement);
     }
+
+    [Fact]
+    public void AddBlockedApp_AddsAndPersists()
+    {
+        var blocked = _service.AddBlockedApp("Discord", "discord");
+
+        Assert.Single(_service.BlockedApps);
+        Assert.Equal("Discord", blocked.Name);
+    }
+
+    [Fact]
+    public void AddOrReuseBlockedApp_ReusesExistingEntryForSameValue()
+    {
+        var first = _service.AddBlockedApp("Discord", "discord");
+
+        var second = _service.AddOrReuseBlockedApp("Discord (renamed)", "discord");
+
+        Assert.Equal(first.Id, second.Id);
+        Assert.Single(_service.BlockedApps);
+    }
+
+    [Fact]
+    public void DeleteBlockedApp_RemovesItFromEveryCategoryItWasIn()
+    {
+        var blocked = _service.AddBlockedApp("Discord", "discord");
+        var category = _service.AddCategory("Deep Work");
+        _service.AddBlockedAppToCategory(category.Id, blocked.Id);
+
+        _service.DeleteBlockedApp(blocked.Id);
+
+        Assert.Empty(_service.BlockedApps);
+        Assert.DoesNotContain(blocked.Id, _service.Categories.Single().BlockedAppIds);
+    }
+
+    [Fact]
+    public void AddBlockedAppToCategory_IsIdempotent()
+    {
+        var blocked = _service.AddBlockedApp("Discord", "discord");
+        var category = _service.AddCategory("Deep Work");
+
+        _service.AddBlockedAppToCategory(category.Id, blocked.Id);
+        _service.AddBlockedAppToCategory(category.Id, blocked.Id);
+
+        Assert.Single(_service.Categories.Single().BlockedAppIds);
+    }
+
+    [Fact]
+    public void RemoveBlockedAppFromCategory_UnlinksButKeepsEntryInLibrary()
+    {
+        var blocked = _service.AddBlockedApp("Discord", "discord");
+        var category = _service.AddCategory("Deep Work");
+        _service.AddBlockedAppToCategory(category.Id, blocked.Id);
+
+        _service.RemoveBlockedAppFromCategory(category.Id, blocked.Id);
+
+        Assert.Empty(_service.Categories.Single().BlockedAppIds);
+        Assert.Single(_service.BlockedApps);
+    }
 }

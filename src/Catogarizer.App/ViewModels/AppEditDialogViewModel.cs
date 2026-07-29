@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using Catogarizer.Core;
 using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -19,6 +20,8 @@ public partial class AppEditDialogViewModel : ObservableObject
 {
     private readonly IInstalledAppFinder? _installedAppFinder;
     private readonly IReadOnlyList<InstalledApp> _allInstalledApps;
+    private readonly string? _headingOverride;
+    private readonly bool _relaxedValidation;
 
     [ObservableProperty]
     private bool _isManualMode;
@@ -48,17 +51,29 @@ public partial class AppEditDialogViewModel : ObservableObject
     [ObservableProperty]
     private string? _pathError;
 
-    public string HeadingText => IsEditing ? "Edit app" : "Add app";
+    public string HeadingText => _headingOverride ?? (IsEditing ? "Edit app" : "Add app");
+
+    /// <summary>
+    /// Blocked-app entries don't need a real, existing .exe (you might want to
+    /// block something not currently installed) - just a non-empty name or path.
+    /// </summary>
+    public string PathFieldLabel => _relaxedValidation ? "Process name or path" : "Executable path";
 
     public (string Name, string ExecutablePath, string? Arguments)? Result { get; private set; }
 
     public event EventHandler? RequestClose;
 
-    /// <summary>Add-flow constructor: starts in search mode.</summary>
-    public AppEditDialogViewModel(IInstalledAppFinder installedAppFinder)
+    /// <summary>
+    /// Add-flow constructor: starts in search mode. Set <paramref name="relaxedValidation"/>
+    /// for the "block an app" reuse of this dialog, where the manual-entry path doesn't need
+    /// to be a real, currently-existing .exe.
+    /// </summary>
+    public AppEditDialogViewModel(IInstalledAppFinder installedAppFinder, string? headingOverride = null, bool relaxedValidation = false)
     {
         _installedAppFinder = installedAppFinder;
         _allInstalledApps = installedAppFinder.FindInstalledApps();
+        _headingOverride = headingOverride;
+        _relaxedValidation = relaxedValidation;
         UpdateFilteredApps();
     }
 
@@ -115,7 +130,7 @@ public partial class AppEditDialogViewModel : ObservableObject
         NameError = AppEntryValidator.ValidateName(value) is { IsValid: false } r && value.Length > 0 ? r.ErrorMessage : null;
 
     partial void OnManualPathChanged(string value) =>
-        PathError = AppEntryValidator.ValidateExecutablePath(value, File.Exists) is { IsValid: false } r && value.Length > 0 ? r.ErrorMessage : null;
+        PathError = ValidatePath(value) is { IsValid: false } r && value.Length > 0 ? r.ErrorMessage : null;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private void Save()
@@ -126,5 +141,8 @@ public partial class AppEditDialogViewModel : ObservableObject
 
     private bool CanSave() =>
         AppEntryValidator.ValidateName(ManualName).IsValid &&
-        AppEntryValidator.ValidateExecutablePath(ManualPath, File.Exists).IsValid;
+        ValidatePath(ManualPath).IsValid;
+
+    private ValidationResult ValidatePath(string value) =>
+        _relaxedValidation ? BlockedAppValidator.ValidateProcessNameOrPath(value) : AppEntryValidator.ValidateExecutablePath(value, File.Exists);
 }

@@ -25,6 +25,7 @@ public sealed class LibraryService
 
     public IReadOnlyList<Category> Categories => _config.Categories;
     public IReadOnlyList<AppEntry> Apps => _config.Apps;
+    public IReadOnlyList<BlockedApp> BlockedApps => _config.BlockedApps;
 
     public void Reload() => _config = _configStore.Load();
 
@@ -121,6 +122,37 @@ public sealed class LibraryService
         Save();
     }
 
+    // ---------------- Blocked apps ----------------
+
+    public BlockedApp AddBlockedApp(string name, string processNameOrPath)
+    {
+        var nameValidation = BlockedAppValidator.ValidateName(name);
+        if (!nameValidation.IsValid) throw new ArgumentException(nameValidation.ErrorMessage, nameof(name));
+        var valueValidation = BlockedAppValidator.ValidateProcessNameOrPath(processNameOrPath);
+        if (!valueValidation.IsValid) throw new ArgumentException(valueValidation.ErrorMessage, nameof(processNameOrPath));
+
+        var blocked = new BlockedApp { Name = name.Trim(), ProcessNameOrPath = processNameOrPath };
+        _config.BlockedApps.Add(blocked);
+        Save();
+        return blocked;
+    }
+
+    /// <summary>Returns an existing blocked-app entry for this value if one exists, otherwise adds a new one.</summary>
+    public BlockedApp AddOrReuseBlockedApp(string name, string processNameOrPath)
+    {
+        var existing = _config.BlockedApps.FirstOrDefault(b => string.Equals(b.ProcessNameOrPath, processNameOrPath, StringComparison.OrdinalIgnoreCase));
+        return existing ?? AddBlockedApp(name, processNameOrPath);
+    }
+
+    public void DeleteBlockedApp(Guid blockedAppId)
+    {
+        var blocked = GetBlockedAppOrThrow(blockedAppId);
+        foreach (var category in _config.Categories)
+            category.BlockedAppIds.Remove(blockedAppId);
+        _config.BlockedApps.Remove(blocked);
+        Save();
+    }
+
     // ---------------- Category <-> App links ----------------
 
     public void AddAppToCategory(Guid categoryId, Guid appId)
@@ -139,6 +171,24 @@ public sealed class LibraryService
         Save();
     }
 
+    // ---------------- Category <-> BlockedApp links ----------------
+
+    public void AddBlockedAppToCategory(Guid categoryId, Guid blockedAppId)
+    {
+        var category = GetCategoryOrThrow(categoryId);
+        GetBlockedAppOrThrow(blockedAppId);
+        if (!category.BlockedAppIds.Contains(blockedAppId))
+            category.BlockedAppIds.Add(blockedAppId);
+        Save();
+    }
+
+    public void RemoveBlockedAppFromCategory(Guid categoryId, Guid blockedAppId)
+    {
+        var category = GetCategoryOrThrow(categoryId);
+        category.BlockedAppIds.Remove(blockedAppId);
+        Save();
+    }
+
     private Category GetCategoryOrThrow(Guid categoryId) =>
         _config.Categories.FirstOrDefault(c => c.Id == categoryId)
         ?? throw new InvalidOperationException($"No category with id {categoryId}.");
@@ -146,6 +196,10 @@ public sealed class LibraryService
     private AppEntry GetAppOrThrow(Guid appId) =>
         _config.Apps.FirstOrDefault(a => a.Id == appId)
         ?? throw new InvalidOperationException($"No app with id {appId}.");
+
+    private BlockedApp GetBlockedAppOrThrow(Guid blockedAppId) =>
+        _config.BlockedApps.FirstOrDefault(b => b.Id == blockedAppId)
+        ?? throw new InvalidOperationException($"No blocked app with id {blockedAppId}.");
 
     private void Save() => _configStore.Save(_config);
 }

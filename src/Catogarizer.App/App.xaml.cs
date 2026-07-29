@@ -23,6 +23,7 @@ public partial class App : Application
     private TrayIconController? _trayIconController;
     private LibraryService? _library;
     private ICategoryActionService? _categoryActionService;
+    private IAppBlockingService? _appBlockingService;
     private CommandPaletteWindow? _paletteWindow;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -70,14 +71,18 @@ public partial class App : Application
         var monitorService = new MonitorService();
         var categoryActionService = new CategoryActionService(processLauncher, windowFinder, windowManager, monitorService, new SystemDelay());
         var autostartService = new AutostartService();
+        var processWatcher = new ProcessWatcher();
+        var appBlockingService = new AppBlockingService(processWatcher);
+        appBlockingService.Start();
         _library = library;
         _categoryActionService = categoryActionService;
+        _appBlockingService = appBlockingService;
 
         var mainWindow = new MainWindow(library, installedAppFinder, dialogService, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService);
+            windowManager, monitorService, categoryActionService, appBlockingService);
         mainWindow.Show();
 
-        _trayIconController = new TrayIconController(library, categoryActionService, autostartService, mainWindow);
+        _trayIconController = new TrayIconController(library, categoryActionService, appBlockingService, autostartService, mainWindow);
 
         RegisterGlobalHotkey(configStore.Load().Settings.CommandPaletteHotkey);
         ListenForShowSignal();
@@ -121,7 +126,7 @@ public partial class App : Application
             return;
         }
 
-        var vm = new CommandPaletteViewModel(_library!, _categoryActionService!);
+        var vm = new CommandPaletteViewModel(_library!, _categoryActionService!, _appBlockingService!);
         _paletteWindow = new CommandPaletteWindow(vm);
         _paletteWindow.Show();
         _paletteWindow.Activate();
@@ -131,6 +136,7 @@ public partial class App : Application
     {
         _hotkeyService?.Dispose();
         _trayIconController?.Dispose();
+        (_appBlockingService as IDisposable)?.Dispose();
         if (_ownsSingleInstanceMutex) _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
         base.OnExit(e);
