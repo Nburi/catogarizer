@@ -44,8 +44,10 @@ public partial class App : Application
         var windowFinder = new WindowFinder();
         var windowManager = new WindowManager();
         var monitorService = new MonitorService();
+        var categoryActionService = new CategoryActionService(processLauncher, windowFinder, windowManager, monitorService, new SystemDelay());
 
-        var mainWindow = new MainWindow(library, installedAppFinder, dialogService, processLauncher, windowFinder, windowManager, monitorService);
+        var mainWindow = new MainWindow(library, installedAppFinder, dialogService, processLauncher, windowFinder,
+            windowManager, monitorService, categoryActionService);
         mainWindow.Show();
     }
 

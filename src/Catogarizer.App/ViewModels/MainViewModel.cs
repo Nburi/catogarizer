@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using Catogarizer.App.Services;
 using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
@@ -17,6 +18,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IWindowFinder _windowFinder;
     private readonly IWindowManager _windowManager;
     private readonly IMonitorService _monitorService;
+    private readonly ICategoryActionService _categoryActionService;
 
     public ObservableCollection<Category> Categories { get; } = new();
     public ObservableCollection<AppEntry> SelectedCategoryApps { get; } = new();
@@ -29,8 +31,21 @@ public partial class MainViewModel : ObservableObject
 
     public bool HasSelectedCategory => SelectedCategory is not null;
 
+    [ObservableProperty]
+    private bool _isBusy;
+
+    [ObservableProperty]
+    private string? _busyMessage;
+
+    [ObservableProperty]
+    private string? _notice;
+
+    [ObservableProperty]
+    private bool _noticeIsError;
+
     public MainViewModel(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService,
-        IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager, IMonitorService monitorService)
+        IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager,
+        IMonitorService monitorService, ICategoryActionService categoryActionService)
     {
         _library = library;
         _installedAppFinder = installedAppFinder;
@@ -39,6 +54,7 @@ public partial class MainViewModel : ObservableObject
         _windowFinder = windowFinder;
         _windowManager = windowManager;
         _monitorService = monitorService;
+        _categoryActionService = categoryActionService;
         RefreshCategories();
     }
 
@@ -70,6 +86,13 @@ public partial class MainViewModel : ObservableObject
             if (app is not null) SelectedCategoryApps.Add(app);
         }
     }
+
+    private List<AppEntry> ResolveApps(Category category) =>
+        category.AppIds
+            .Select(id => _library.Apps.FirstOrDefault(a => a.Id == id))
+            .Where(a => a is not null)
+            .Cast<AppEntry>()
+            .ToList();
 
     [RelayCommand]
     private void SelectCategory(Category category)
@@ -155,5 +178,55 @@ public partial class MainViewModel : ObservableObject
 
         _library.SetAppPlacement(app.Id, placement);
         RefreshCategories();
+    }
+
+    [RelayCommand]
+    private Task OpenCategoryAsync(Category category) =>
+        RunBusyAsync($"Opening \"{category.Name}\"...", () => _categoryActionService.Open(ResolveApps(category)));
+
+    [RelayCommand]
+    private Task MinimizeCategoryAsync(Category category) =>
+        RunBusyAsync($"Minimizing \"{category.Name}\"...", () => _categoryActionService.Minimize(ResolveApps(category)));
+
+    [RelayCommand]
+    private Task CloseCategoryAsync(Category category) =>
+        RunBusyAsync($"Closing \"{category.Name}\"...", () => _categoryActionService.Close(ResolveApps(category)));
+
+    [RelayCommand]
+    private Task OpenAppAsync(AppEntry app) =>
+        RunBusyAsync($"Opening \"{app.Name}\"...", () => new CategoryActionResult([_categoryActionService.OpenApp(app)]));
+
+    [RelayCommand]
+    private Task MinimizeAppAsync(AppEntry app) =>
+        RunBusyAsync($"Minimizing \"{app.Name}\"...", () => new CategoryActionResult([_categoryActionService.MinimizeApp(app)]));
+
+    [RelayCommand]
+    private Task CloseAppAsync(AppEntry app) =>
+        RunBusyAsync($"Closing \"{app.Name}\"...", () => new CategoryActionResult([_categoryActionService.CloseApp(app)]));
+
+    [RelayCommand]
+    private void DismissNotice() => Notice = null;
+
+    private async Task RunBusyAsync(string busyMessage, Func<CategoryActionResult> action)
+    {
+        IsBusy = true;
+        BusyMessage = busyMessage;
+        Notice = null;
+        try
+        {
+            var result = await Task.Run(action);
+            if (result.Failures.Count > 0)
+            {
+                Notice = result.Failures.Count == 1
+                    ? result.Failures[0].ErrorMessage
+                    : $"{result.Failures.Count} apps had a problem: {string.Join(" ", result.Failures.Select(f => f.ErrorMessage))}";
+                NoticeIsError = true;
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+            BusyMessage = null;
+        }
     }
 }

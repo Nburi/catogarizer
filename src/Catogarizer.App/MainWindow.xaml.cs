@@ -8,9 +8,11 @@ namespace Catogarizer.App;
 public partial class MainWindow : Window
 {
     public MainWindow(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService,
-        IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager, IMonitorService monitorService)
+        IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager,
+        IMonitorService monitorService, ICategoryActionService categoryActionService)
     {
         InitializeComponent();
-        DataContext = new MainViewModel(library, installedAppFinder, dialogService, processLauncher, windowFinder, windowManager, monitorService);
+        DataContext = new MainViewModel(library, installedAppFinder, dialogService, processLauncher, windowFinder,
+            windowManager, monitorService, categoryActionService);
     }
 }

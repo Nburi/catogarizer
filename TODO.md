@@ -66,11 +66,16 @@ Built directly from the prototype findings in `STACK.md`.
       the window's center point and offsets from its origin.
 
 ## Phase 5 — One-click category actions
-- [ ] Open/Close/Minimize per category and per app, wired through Phase 2.
-- [ ] Loading state while a category opens (apps launch with visible
-      progress, not a frozen UI).
-- [ ] Specific, readable errors for launch failures (missing/moved exe,
-      etc.), never a raw exception.
+- [x] Open/Close/Minimize per category and per app, wired through Phase 2 -
+      `CategoryActionService` (launch-or-adopt-already-running, position if
+      captured, graceful close falling back to force-kill after a 2s grace
+      period). Verified end-to-end against real VS Code, not just fakes:
+      "Open" launched the real process, "Close all" actually terminated it.
+- [x] Loading state while a category opens - actions run on a background
+      thread via `Task.Run` with an `IsBusy`/`BusyMessage`-driven overlay,
+      not a frozen UI thread.
+- [x] Specific, readable errors for launch failures (missing/moved exe,
+      etc.) surfaced in a dismissible banner, never a raw exception.
 
 ## Phase 6 — Command palette + global hotkey
 - [ ] Global hotkey registration (`RegisterHotKey` via a hidden
