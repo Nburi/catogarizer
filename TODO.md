@@ -6,18 +6,19 @@ deferred to the end), plus a manual pass in the running app. Checked off as
 work lands; this file is the between-session source of truth for progress.
 
 ## Phase 1 — Foundation
-- [ ] Solution + projects: `Catogarizer.App` (WPF), `Catogarizer.Core`
+- [x] Solution + projects: `Catogarizer.App` (WPF), `Catogarizer.Core`
       (models/services/interfaces, no Win32 dependency), `Catogarizer.Win32`
       (P/Invoke implementations), `Catogarizer.Core.Tests` (xUnit).
-- [ ] Core models: `Category`, `AppEntry`, `WindowRect` (X/Y/W/H + monitor),
+- [x] Core models: `Category`, `AppEntry`, `WindowRect` (X/Y/W/H + monitor),
       `AppSettings`, `BlockedApp`.
-- [ ] JSON persistence (`IConfigStore`/`JsonConfigStore`) with a specific,
+- [x] JSON persistence (`IConfigStore`/`JsonConfigStore`) with a specific,
       readable error on a corrupt config file (never a raw exception/crash).
-- [ ] App shell: Dashboard Home layout + Daylight Studio theme (base
+- [x] App shell: Dashboard Home layout + Daylight Studio theme (base
       styles/ControlTemplates, no native dialogs), empty state for zero
       categories.
-- [ ] Single-instance enforcement (a second launch focuses the existing
-      window/tray instead of opening twice).
+- [x] Single-instance enforcement — currently a native message + exit on a
+      second launch, not yet "focus the existing window" (no tray/IPC to
+      target until Phase 7); revisit then.
 
 ## Phase 2 — Win32 interop layer
 Built directly from the prototype findings in `STACK.md`.
