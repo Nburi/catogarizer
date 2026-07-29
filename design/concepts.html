@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catogarizer — Design Exploration</title>
+<style>
+  :root {
+    --z-dropdown: 10;
+    --z-sticky: 20;
+    --z-overlay: 30;
+    --z-popup: 40;
+    --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: #0b0b0c;
+  }
+
+  body {
+    font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #e8e8ea;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 { text-wrap: balance; }
+
+  button { font: inherit; cursor: pointer; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  /* ---------- Chrome (this exploration tool itself, not a theme) ---------- */
+
+  .toolshell {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .toolhead {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid #232326;
+    background: #101012;
+  }
+
+  .toolhead-eyebrow {
+    font-size: 12.5px;
+    color: #86868c;
+    margin-bottom: 6px;
+  }
+
+  .toolhead h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+
+  .toolhead p {
+    color: #a3a3aa;
+    font-size: 14px;
+    max-width: 70ch;
+  }
+
+  .controlbar {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    background: #101012ee;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #232326;
+    padding: 16px 32px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: flex-start;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .control-group-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #6f6f76;
+  }
+
+  .pillrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .pill {
+    appearance: none;
+    border: 1px solid #2c2c30;
+    background: #17171a;
+    color: #c7c7cd;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 160ms var(--ease-out-quart), border-color 160ms var(--ease-out-quart), color 160ms var(--ease-out-quart);
+  }
+
+  .pill:hover { background: #1e1e22; color: #f0f0f2; }
+
+  .pill[aria-pressed="true"] {
+    background: #3d6bff;
+    border-color: #3d6bff;
+    color: #fff;
+  }
+
+  .theme-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.15);
+    flex-shrink: 0;
+  }
+
+  .scenecard {
+    margin-left: auto;
+    max-width: 340px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: #9a9aa1;
+    padding: 10px 14px;
+    border: 1px solid #232326;
+    border-radius: 10px;
+    background: #131315;
+  }
+
+  .scenecard strong {
+    display: block;
+    color: #e8e8ea;
+    font-size: 13px;
+    margin-bottom: 3px;
+  }
+
+  .stage {
+    flex: 1;
+    padding: 32px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .layout-frame {
+    width: 100%;
+    max-width: 1180px;
+  }
+
+  .layout-caption {
+    margin-bottom: 14px;
+  }
+
+  .layout-caption h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #f0f0f2;
+    margin-bottom: 3px;
+  }
+
+  .layout-caption p {
+    font-size: 13px;
+    color: #86868c;
+    max-width: 75ch;
+  }
+
+  .frame-shell {
+    border: 1px solid #232326;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset;
+  }
+
+  .layout { display: none; }
+  .layout[data-active="true"] { display: block; }
+
+  /* ================================================================
+     THEMES — applied inside .demo (the simulated app), not the tool
+     chrome above. Each theme is a physical-scene decision, not a
+     default. Six variable sets swapped via [data-theme] on .demo.
+  =================================================================== */
+
+  .demo {
+    font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+
+  .demo[data-theme="daylight"] {
+    --bg: oklch(98% 0.006 250);
+    --surface: oklch(100% 0 0);
+    --surface-2: oklch(96% 0.007 250);
+    --ink: oklch(22% 0.02 250);
+    --muted: oklch(42% 0.02 250);
+    --border: oklch(89% 0.008 250);
+    --accent: oklch(52% 0.16 260);
+    --accent-ink: oklch(99% 0 0);
+    --danger: oklch(55% 0.18 25);
+    --shadow: 0 1px 2px oklch(22% 0.02 250 / 0.06), 0 8px 20px oklch(22% 0.02 250 / 0.06);
+  }
+
+  .demo[data-theme="nightshift"] {
+    --bg: oklch(19% 0.014 55);
+    --surface: oklch(23% 0.016 55);
+    --surface-2: oklch(27% 0.018 55);
+    --ink: oklch(93% 0.01 55);
+    --muted: oklch(74% 0.02 55);
+    --border: oklch(32% 0.02 55);
+    --accent: oklch(74% 0.15 65);
+    --accent-ink: oklch(18% 0.02 65);
+    --danger: oklch(66% 0.19 25);
+    --shadow: 0 1px 0 oklch(0% 0 0 / 0.3), 0 12px 28px oklch(0% 0 0 / 0.35);
+  }
+
+  .demo[data-theme="terminal"] {
+    --bg: oklch(14% 0 0);
+    --surface: oklch(17% 0 0);
+    --surface-2: oklch(21% 0 0);
+    --ink: oklch(90% 0.01 150);
+    --muted: oklch(66% 0.03 150);
+    --border: oklch(28% 0.02 150);
+    --accent: oklch(78% 0.17 150);
+    --accent-ink: oklch(14% 0.02 150);
+    --danger: oklch(65% 0.2 25);
+    --shadow: 0 1px 0 oklch(0% 0 0 / 0.4), 0 12px 28px oklch(0% 0 0 / 0.5);
+  }
+
+  .demo[data-theme="slate"] {
+    --bg: oklch(28% 0.02 260);
+    --surface: oklch(32% 0.022 260);
+    --surface-2: oklch(36% 0.024 260);
+    --ink: oklch(95% 0.008 260);
+    --muted: oklch(78% 0.016 260);
+    --border: oklch(43% 0.026 260);
+    --accent: oklch(70% 0.14 300);
+    --accent-ink: oklch(15% 0.02 300);
+    --danger: oklch(66% 0.2 25);
+    --shadow: 0 1px 0 oklch(15% 0.02 260 / 0.4), 0 12px 28px oklch(15% 0.02 260 / 0.35);
+  }
+
+  .demo[data-theme="paperink"] {
+    --bg: oklch(99% 0.001 0);
+    --surface: oklch(100% 0 0);
+    --surface-2: oklch(97% 0.002 0);
+    --ink: oklch(18% 0 0);
+    --muted: oklch(40% 0 0);
+    --border: oklch(88% 0.002 0);
+    --accent: oklch(34% 0.13 25);
+    --accent-ink: oklch(98% 0 0);
+    --danger: oklch(52% 0.19 25);
+    --shadow: 0 1px 2px oklch(18% 0 0 / 0.05), 0 8px 20px oklch(18% 0 0 / 0.05);
+  }
+
+  .demo[data-theme="mono"] {
+    --bg: oklch(100% 0 0);
+    --surface: oklch(100% 0 0);
+    --surface-2: oklch(94% 0 0);
+    --ink: oklch(8% 0 0);
+    --muted: oklch(32% 0 0);
+    --border: oklch(78% 0 0);
+    --accent: oklch(48% 0.14 200);
+    --accent-ink: oklch(99% 0 0);
+    --danger: oklch(45% 0.22 25);
+    --shadow: 0 1px 2px oklch(8% 0 0 / 0.08), 0 6px 16px oklch(8% 0 0 / 0.08);
+  }
+
+  /* ---------- shared demo primitives ---------- */
+
+  .demo * { box-sizing: border-box; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink);
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: transform 140ms var(--ease-out-quart), background 140ms var(--ease-out-quart), border-color 140ms var(--ease-out-quart);
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn:active { transform: scale(0.97); }
+  .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+  .btn-primary:hover { filter: brightness(1.06); }
+
+  .btn-icon {
+    padding: 7px;
+    border-radius: 8px;
+  }
+
+  .icon-badge {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    letter-spacing: -0.02em;
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 9px;
+    padding: 8px 12px;
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+  .field svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  .badge-blocked {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--danger);
+    background: color-mix(in oklch, var(--danger) 14%, var(--surface));
+    border-radius: 999px;
+    padding: 2px 7px 2px 6px;
+  }
+  .badge-blocked svg { width: 10px; height: 10px; }
+
+  .app-row-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 140ms var(--ease-out-quart);
+  }
+  .app-row:hover .app-row-actions,
+  .app-tile:hover .app-row-actions { opacity: 1; }
+
+  .ghost-icon-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 120ms var(--ease-out-quart), color 120ms var(--ease-out-quart);
+  }
+  .ghost-icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+  .ghost-icon-btn svg { width: 14px; height: 14px; }
+
+  /* ================= 1. SIDEBAR + GRID ================= */
+  .lo-sidebar { display: flex; min-height: 560px; background: var(--bg); }
+  .lo-sidebar .rail {
+    width: 232px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .rail-brand { display: flex; align-items: center; gap: 9px; padding: 0 4px; }
+  .rail-brand-mark {
+    width: 24px; height: 24px; border-radius: 7px;
+    background: var(--accent);
+  }
+  .rail-brand span { font-weight: 600; font-size: 14px; }
+  .rail-list { display: flex; flex-direction: column; gap: 2px; }
+  .rail-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 10px; border-radius: 8px; font-size: 13.5px; color: var(--muted);
+    transition: background 140ms var(--ease-out-quart), color 140ms var(--ease-out-quart);
+  }
+  .rail-item:hover { background: var(--surface-2); color: var(--ink); }
+  .rail-item.active { background: var(--surface-2); color: var(--ink); font-weight: 600; }
+  .rail-item .count { font-size: 11px; color: var(--muted); }
+  .rail-new {
+    margin-top: auto; display: flex; align-items: center; gap: 6px;
+    color: var(--muted); font-size: 13px; padding: 9px 10px; border-radius: 8px;
+  }
+  .rail-new:hover { background: var(--surface-2); color: var(--ink); }
+  .rail-new svg { width: 14px; height: 14px; }
+
+  .lo-sidebar .main { flex: 1; padding: 22px 26px; min-width: 0; }
+  .main-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 18px; flex-wrap: wrap; gap: 12px;
+  }
+  .main-header h3 { font-size: 18px; font-weight: 600; }
+  .main-header .sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .action-cluster { display: flex; gap: 8px; }
+
+  .tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .app-tile {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    transition: border-color 140ms var(--ease-out-quart), transform 140ms var(--ease-out-quart);
+  }
+  .app-tile:hover { border-color: color-mix(in oklch, var(--accent) 40%, var(--border)); }
+  .app-tile-top { display: flex; align-items: flex-start; justify-content: space-between; }
+  .app-tile .name { font-size: 13.5px; font-weight: 600; margin-top: 2px; }
+  .app-tile .meta { font-size: 11.5px; color: var(--muted); }
+
+  /* ================= 2. TOP TABS + CARDS ================= */
+  .lo-tabs { min-height: 560px; background: var(--bg); }
+  .tabs-top {
+    display: flex; align-items: center; gap: 18px; padding: 14px 24px;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+    flex-wrap: wrap;
+  }
+  .tabs-brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+  .tabs-brand .rail-brand-mark { width: 20px; height: 20px; }
+  .tabrow { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+  .tabitem {
+    padding: 8px 14px; border-radius: 999px; font-size: 13px; color: var(--muted);
+    border: 1px solid transparent;
+    transition: background 140ms var(--ease-out-quart), color 140ms var(--ease-out-quart);
+  }
+  .tabitem:hover { background: var(--surface-2); color: var(--ink); }
+  .tabitem.active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+  .tabs-body { padding: 22px 24px; }
+  .card-row { display: flex; flex-wrap: wrap; gap: 12px; }
+  .app-card {
+    width: 168px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; display: flex; flex-direction: column;
+    align-items: center; text-align: center; gap: 10px;
+    transition: transform 160ms var(--ease-out-quart);
+  }
+  .app-card:hover { transform: translateY(-2px); }
+  .app-card .icon-badge { width: 40px; height: 40px; border-radius: 11px; font-size: 14px; }
+  .app-card .name { font-size: 13px; font-weight: 600; }
+  .app-card .row-actions-static { display: flex; gap: 4px; }
+
+  /* ================= 3. COMMAND PALETTE / LIST ================= */
+  .lo-palette { min-height: 560px; background: var(--bg); display: flex; justify-content: center; padding: 40px 24px; }
+  .palette-col { width: 100%; max-width: 560px; }
+  .palette-search {
+    display: flex; align-items: center; gap: 10px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 12px; padding: 13px 16px;
+    box-shadow: var(--shadow); margin-bottom: 18px;
+  }
+  .palette-search svg { width: 17px; height: 17px; color: var(--muted); flex-shrink: 0; }
+  .palette-search input {
+    border: none; outline: none; background: transparent; color: var(--ink);
+    font-size: 14.5px; width: 100%; font-family: inherit;
+  }
+  .palette-search input::placeholder { color: var(--muted); }
+  .palette-kbd {
+    font-size: 11px; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1px 6px;
+  }
+
+  .palette-group { margin-bottom: 4px; }
+  .palette-group-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--muted); padding: 10px 6px 6px;
+  }
+  .palette-row {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px;
+    transition: background 120ms var(--ease-out-quart);
+  }
+  .palette-row:hover { background: var(--surface-2); }
+  .palette-row .icon-badge { width: 26px; height: 26px; border-radius: 7px; font-size: 10.5px; }
+  .palette-row .name { font-size: 13.5px; flex: 1; }
+  .palette-row .app-row-actions { opacity: 1; }
+  .palette-cat-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--border); margin-bottom: 8px;
+  }
+  .palette-cat-row .name { font-weight: 600; font-size: 13.5px; flex: 1; }
+  .palette-cat-row .count { font-size: 12px; color: var(--muted); }
+
+  /* ================= 4. KANBAN BOARD ================= */
+  .lo-board { min-height: 560px; background: var(--bg); padding: 20px; overflow-x: auto; }
+  .board-row { display: flex; gap: 14px; align-items: flex-start; }
+  .board-col {
+    width: 240px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .board-col-head { display: flex; align-items: center; justify-content: space-between; }
+  .board-col-head .name { font-weight: 600; font-size: 13.5px; }
+  .board-col-head .action-cluster .ghost-icon-btn { width: 24px; height: 24px; }
+  .board-col-head .action-cluster .ghost-icon-btn svg { width: 12.5px; height: 12.5px; }
+  .board-app-row {
+    display: flex; align-items: center; gap: 8px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 9px; padding: 7px 8px;
+  }
+  .board-app-row .icon-badge { width: 24px; height: 24px; border-radius: 6px; font-size: 10px; }
+  .board-app-row .name { font-size: 12.5px; flex: 1; }
+  .board-blocklist {
+    margin-top: 4px; border-top: 1px solid var(--border); padding-top: 8px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .board-blocklist-label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .board-add-col {
+    width: 240px; flex-shrink: 0; border: 1px dashed var(--border); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    color: var(--muted); font-size: 13px; min-height: 64px;
+  }
+
+  /* ================= 5. DASHBOARD HOME ================= */
+  .lo-home { min-height: 560px; background: var(--bg); padding: 26px; }
+  .home-head { margin-bottom: 20px; }
+  .home-head h3 { font-size: 19px; font-weight: 600; }
+  .home-head p { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .home-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px;
+  }
+  .home-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; display: flex; flex-direction: column; gap: 14px;
+    transition: border-color 160ms var(--ease-out-quart);
+  }
+  .home-card.selected { border-color: var(--accent); }
+  .home-card-top { display: flex; align-items: center; justify-content: space-between; }
+  .home-card .name { font-size: 15px; font-weight: 600; }
+  .home-card .count { font-size: 12px; color: var(--muted); }
+  .avatar-stack { display: flex; }
+  .avatar-stack .icon-badge {
+    width: 28px; height: 28px; border-radius: 8px; font-size: 10.5px;
+    border: 2px solid var(--surface); margin-left: -8px;
+  }
+  .avatar-stack .icon-badge:first-child { margin-left: 0; }
+
+  .home-detail {
+    margin-top: 20px; background: var(--surface); border: 1px solid var(--accent);
+    border-radius: 14px; padding: 18px;
+  }
+  .home-detail-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .home-detail-head h4 { font-size: 15px; font-weight: 600; }
+  .home-detail .app-row-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .app-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+    border-radius: 9px; background: var(--bg); border: 1px solid var(--border);
+  }
+  .app-row .icon-badge { width: 26px; height: 26px; border-radius: 7px; font-size: 10.5px; }
+  .app-row .name { font-size: 13px; flex: 1; }
+
+  /* ================= 6. TRAY QUICK-SWITCHER ================= */
+  .lo-popup {
+    min-height: 560px; background: #05070c;
+    display: flex; align-items: flex-end; justify-content: flex-end;
+    padding: 0; position: relative; overflow: hidden;
+  }
+  .fake-desktop-note {
+    position: absolute; top: 18px; left: 22px; font-size: 12px; color: #676b78;
+    max-width: 320px; line-height: 1.5;
+  }
+  .fake-taskbar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 46px;
+    background: #101318ee; backdrop-filter: blur(6px);
+    display: flex; align-items: center; padding: 0 12px; gap: 10px;
+    border-top: 1px solid #22252c;
+  }
+  .fake-taskbar .tray-mark {
+    width: 26px; height: 26px; border-radius: 7px; background: var(--accent);
+    margin-left: auto;
+  }
+  .popup-panel {
+    position: absolute; right: 14px; bottom: 58px; width: 320px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 14px; z-index: var(--z-popup);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .popup-panel .field { margin-bottom: 2px; }
+  .popup-cat-row {
+    display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 9px;
+  }
+  .popup-cat-row:hover { background: var(--surface-2); }
+  .popup-cat-row .name { font-size: 13.5px; font-weight: 600; flex: 1; }
+  .popup-cat-row .count { font-size: 11.5px; color: var(--muted); margin-right: 4px; }
+  .popup-footer {
+    border-top: 1px solid var(--border); padding-top: 10px; display: flex;
+    justify-content: space-between; align-items: center;
+  }
+  .popup-footer a, .popup-footer span { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="toolshell">
+
+  <div class="toolhead">
+    <div class="toolhead-eyebrow">Catogarizer — step 2 of 7</div>
+    <h1>Design exploration</h1>
+    <p>Six layout directions and six themes, independent of each other — mix any layout with any theme below. Pick the combination that fits, or call out pieces you like from different ones.</p>
+  </div>
+
+  <div class="controlbar">
+    <div class="control-group">
+      <div class="control-group-label">Layout</div>
+      <div class="pillrow" id="layoutPicker">
+        <button class="pill" data-layout="sidebar" aria-pressed="true">1. Sidebar + Grid</button>
+        <button class="pill" data-layout="tabs" aria-pressed="false">2. Top Tabs + Cards</button>
+        <button class="pill" data-layout="palette" aria-pressed="false">3. Command Palette</button>
+        <button class="pill" data-layout="board" aria-pressed="false">4. Kanban Board</button>
+        <button class="pill" data-layout="home" aria-pressed="false">5. Dashboard Home</button>
+        <button class="pill" data-layout="popup" aria-pressed="false">6. Tray Quick-Switcher</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <div class="control-group-label">Theme</div>
+      <div class="pillrow" id="themePicker">
+        <button class="pill theme-pill" data-theme="daylight" aria-pressed="true"><span class="swatch" style="background:oklch(52% 0.16 260)"></span>Daylight Studio</button>
+        <button class="pill theme-pill" data-theme="nightshift" aria-pressed="false"><span class="swatch" style="background:oklch(74% 0.15 65)"></span>Night Shift</button>
+        <button class="pill theme-pill" data-theme="terminal" aria-pressed="false"><span class="swatch" style="background:oklch(78% 0.17 150)"></span>Terminal Green</button>
+        <button class="pill theme-pill" data-theme="slate" aria-pressed="false"><span class="swatch" style="background:oklch(70% 0.14 300)"></span>Slate Dusk</button>
+        <button class="pill theme-pill" data-theme="paperink" aria-pressed="false"><span class="swatch" style="background:oklch(34% 0.13 25)"></span>Paper &amp; Ink</button>
+        <button class="pill theme-pill" data-theme="mono" aria-pressed="false"><span class="swatch" style="background:oklch(48% 0.14 200)"></span>High-Contrast Mono</button>
+      </div>
+    </div>
+    <div class="scenecard" id="sceneCard">
+      <strong>Daylight Studio</strong>
+      Used at a desk in a bright office during work hours — needs to stay calm and low-glare for hours of glancing at it, not "gaming rig" loud.
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="layout-frame">
+
+      <div class="layout-caption" id="layoutCaption">
+        <h2>1. Sidebar + Grid — "Launcher"</h2>
+        <p>Categories always visible on the left rail; the main pane shows the active category as a tile grid. Familiar, scales well past a dozen categories, closest to how most users already expect a launcher to look.</p>
+      </div>
+
+      <div class="frame-shell">
+        <div class="demo" data-theme="daylight">
+
+          <!-- ============ 1. SIDEBAR + GRID ============ -->
+          <section class="layout lo-sidebar" data-layout-id="sidebar" data-active="true">
+            <aside class="rail">
+              <div class="rail-brand"><span class="rail-brand-mark"></span><span>Catogarizer</span></div>
+              <div class="rail-list">
+                <div class="rail-item active"><span>Deep Work</span><span class="count">4</span></div>
+                <div class="rail-item"><span>Design</span><span class="count">3</span></div>
+                <div class="rail-item"><span>Comms</span><span class="count">3</span></div>
+                <div class="rail-item"><span>Personal</span><span class="count">2</span></div>
+              </div>
+              <div class="rail-new" data-icon="plus-inline">+ New category</div>
+            </aside>
+            <div class="main">
+              <div class="main-header">
+                <div>
+                  <h3>Deep Work</h3>
+                  <div class="sub">4 apps · blocks 2 while open</div>
+                </div>
+                <div class="action-cluster">
+                  <button class="btn"><span data-icon="minimize"></span>Minimize all</button>
+                  <button class="btn"><span data-icon="close"></span>Close all</button>
+                  <button class="btn btn-primary"><span data-icon="open"></span>Open all</button>
+                </div>
+              </div>
+              <div class="tile-grid">
+                <div class="app-tile">
+                  <div class="app-tile-top"><span class="icon-badge" style="background:#2f6fed">VS</span><span class="app-row-actions"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="minimize"></button><button class="ghost-icon-btn" data-icon="close"></button></span></div>
+                  <div><div class="name">VS Code</div><div class="meta">1920×1040 · Monitor 1</div></div>
+                </div>
+                <div class="app-tile">
+                  <div class="app-tile-top"><span class="icon-badge" style="background:#2c2c34">⌘</span><span class="app-row-actions"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="minimize"></button><button class="ghost-icon-btn" data-icon="close"></button></span></div>
+                  <div><div class="name">Terminal</div><div class="meta">960×1040 · Monitor 1</div></div>
+                </div>
+                <div class="app-tile">
+                  <div class="app-tile-top"><span class="icon-badge" style="background:#6b4fd8">No</span><span class="app-row-actions"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="minimize"></button><button class="ghost-icon-btn" data-icon="close"></button></span></div>
+                  <div><div class="name">Notion</div><div class="meta">1280×900 · Monitor 2</div></div>
+                </div>
+                <div class="app-tile">
+                  <div class="app-tile-top"><span class="icon-badge" style="background:#1c8f5a">Ch</span><span class="app-row-actions"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="minimize"></button><button class="ghost-icon-btn" data-icon="close"></button></span></div>
+                  <div><div class="name">Chrome</div><div class="meta">1440×1040 · Monitor 1</div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ 2. TOP TABS + CARDS ============ -->
+          <section class="layout lo-tabs" data-layout-id="tabs">
+            <div class="tabs-top">
+              <div class="tabs-brand"><span class="rail-brand-mark"></span>Catogarizer</div>
+              <div class="tabrow">
+                <div class="tabitem active">Deep Work</div>
+                <div class="tabitem">Design</div>
+                <div class="tabitem">Comms</div>
+                <div class="tabitem">Personal</div>
+              </div>
+              <div class="action-cluster">
+                <button class="ghost-icon-btn" data-icon="minimize"></button>
+                <button class="ghost-icon-btn" data-icon="close"></button>
+                <button class="btn btn-primary"><span data-icon="open"></span>Open all</button>
+              </div>
+            </div>
+            <div class="tabs-body">
+              <div class="card-row">
+                <div class="app-card">
+                  <span class="icon-badge" style="background:#2f6fed">VS</span>
+                  <div class="name">VS Code</div>
+                  <div class="row-actions-static"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="minimize"></button><button class="ghost-icon-btn" data-icon="close"></button></div>
+                </div>
+                <div class="app-card">
+                  <span class="icon-badge" style="background:#2c2c34">⌘</span>
+                  <div class="name">Terminal</div>
+                  <div class="row-actions-static"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="minimize"></button><button class="ghost-icon-btn" data-icon="close"></button></div>
+                </div>
+                <div class="app-card">
+                  <span class="icon-badge" style="background:#6b4fd8">No</span>
+                  <div class="name">Notion</div>
+                  <div class="row-actions-static"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="minimize"></button><button class="ghost-icon-btn" data-icon="close"></button></div>
+                </div>
+                <div class="app-card">
+                  <span class="icon-badge" style="background:#1c8f5a">Ch</span>
+                  <div class="name">Chrome</div>
+                  <div class="row-actions-static"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="minimize"></button><button class="ghost-icon-btn" data-icon="close"></button></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ 3. COMMAND PALETTE ============ -->
+          <section class="layout lo-palette" data-layout-id="palette">
+            <div class="palette-col">
+              <div class="palette-search">
+                <span data-icon="search"></span>
+                <input type="text" placeholder="Jump to a category or app…" readonly>
+                <span class="palette-kbd">Ctrl K</span>
+              </div>
+              <div class="palette-cat-row">
+                <span class="name">Deep Work</span>
+                <span class="count">4 apps</span>
+                <button class="ghost-icon-btn" data-icon="minimize"></button>
+                <button class="ghost-icon-btn" data-icon="close"></button>
+                <button class="btn btn-primary" style="padding:6px 10px;"><span data-icon="open"></span>Open</button>
+              </div>
+              <div class="palette-group">
+                <div class="palette-group-label">Deep Work</div>
+                <div class="palette-row"><span class="icon-badge" style="background:#2f6fed">VS</span><span class="name">VS Code</span><span class="app-row-actions"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="close"></button></span></div>
+                <div class="palette-row"><span class="icon-badge" style="background:#2c2c34">⌘</span><span class="name">Terminal</span><span class="app-row-actions"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="close"></button></span></div>
+                <div class="palette-row"><span class="icon-badge" style="background:#6b4fd8">No</span><span class="name">Notion</span><span class="app-row-actions"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="close"></button></span></div>
+              </div>
+              <div class="palette-group">
+                <div class="palette-group-label">Comms</div>
+                <div class="palette-row"><span class="icon-badge" style="background:#611f69">Sl</span><span class="name">Slack</span><span class="app-row-actions"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="close"></button></span></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ 4. KANBAN BOARD ============ -->
+          <section class="layout lo-board" data-layout-id="board">
+            <div class="board-row">
+              <div class="board-col">
+                <div class="board-col-head">
+                  <span class="name">Deep Work</span>
+                  <span class="action-cluster"><button class="ghost-icon-btn" data-icon="minimize"></button><button class="ghost-icon-btn" data-icon="close"></button><button class="ghost-icon-btn" data-icon="open"></button></span>
+                </div>
+                <div class="board-app-row"><span class="icon-badge" style="background:#2f6fed">VS</span><span class="name">VS Code</span></div>
+                <div class="board-app-row"><span class="icon-badge" style="background:#2c2c34">⌘</span><span class="name">Terminal</span></div>
+                <div class="board-app-row"><span class="icon-badge" style="background:#6b4fd8">No</span><span class="name">Notion</span></div>
+                <div class="board-blocklist">
+                  <div class="board-blocklist-label">Blocked while open</div>
+                  <span class="badge-blocked"><span data-icon="blocked"></span>Discord</span>
+                  <span class="badge-blocked"><span data-icon="blocked"></span>Steam</span>
+                </div>
+              </div>
+              <div class="board-col">
+                <div class="board-col-head">
+                  <span class="name">Design</span>
+                  <span class="action-cluster"><button class="ghost-icon-btn" data-icon="minimize"></button><button class="ghost-icon-btn" data-icon="close"></button><button class="ghost-icon-btn" data-icon="open"></button></span>
+                </div>
+                <div class="board-app-row"><span class="icon-badge" style="background:#e04f8a">Fi</span><span class="name">Figma</span></div>
+                <div class="board-app-row"><span class="icon-badge" style="background:#1c8f5a">Ch</span><span class="name">Chrome</span></div>
+              </div>
+              <div class="board-col">
+                <div class="board-col-head">
+                  <span class="name">Comms</span>
+                  <span class="action-cluster"><button class="ghost-icon-btn" data-icon="minimize"></button><button class="ghost-icon-btn" data-icon="close"></button><button class="ghost-icon-btn" data-icon="open"></button></span>
+                </div>
+                <div class="board-app-row"><span class="icon-badge" style="background:#611f69">Sl</span><span class="name">Slack</span></div>
+                <div class="board-app-row"><span class="icon-badge" style="background:#2564cf">Ou</span><span class="name">Outlook</span></div>
+              </div>
+              <div class="board-add-col"><span data-icon="plus"></span>New category</div>
+            </div>
+          </section>
+
+          <!-- ============ 5. DASHBOARD HOME ============ -->
+          <section class="layout lo-home" data-layout-id="home">
+            <div class="home-head">
+              <h3>Your categories</h3>
+              <p>Click a category to open it, or click its name to see the apps inside.</p>
+            </div>
+            <div class="home-grid">
+              <div class="home-card selected">
+                <div class="home-card-top"><span class="name">Deep Work</span><button class="btn btn-primary" style="padding:6px 10px;"><span data-icon="open"></span>Open</button></div>
+                <div class="avatar-stack">
+                  <span class="icon-badge" style="background:#2f6fed">VS</span>
+                  <span class="icon-badge" style="background:#2c2c34">⌘</span>
+                  <span class="icon-badge" style="background:#6b4fd8">No</span>
+                  <span class="icon-badge" style="background:#1c8f5a">Ch</span>
+                </div>
+                <div class="count">4 apps · blocks 2</div>
+              </div>
+              <div class="home-card">
+                <div class="home-card-top"><span class="name">Design</span><button class="btn" style="padding:6px 10px;"><span data-icon="open"></span>Open</button></div>
+                <div class="avatar-stack">
+                  <span class="icon-badge" style="background:#e04f8a">Fi</span>
+                  <span class="icon-badge" style="background:#1c8f5a">Ch</span>
+                  <span class="icon-badge" style="background:#6b4fd8">No</span>
+                </div>
+                <div class="count">3 apps</div>
+              </div>
+              <div class="home-card">
+                <div class="home-card-top"><span class="name">Comms</span><button class="btn" style="padding:6px 10px;"><span data-icon="open"></span>Open</button></div>
+                <div class="avatar-stack">
+                  <span class="icon-badge" style="background:#611f69">Sl</span>
+                  <span class="icon-badge" style="background:#2564cf">Ou</span>
+                  <span class="icon-badge" style="background:#4a5568">Te</span>
+                </div>
+                <div class="count">3 apps</div>
+              </div>
+            </div>
+            <div class="home-detail">
+              <div class="home-detail-head"><h4>Deep Work</h4>
+                <span class="action-cluster"><button class="btn"><span data-icon="minimize"></span>Minimize all</button><button class="btn"><span data-icon="close"></span>Close all</button></span>
+              </div>
+              <div class="app-row-list">
+                <div class="app-row"><span class="icon-badge" style="background:#2f6fed">VS</span><span class="name">VS Code</span><span class="app-row-actions"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="close"></button></span></div>
+                <div class="app-row"><span class="icon-badge" style="background:#2c2c34">⌘</span><span class="name">Terminal</span><span class="app-row-actions"><button class="ghost-icon-btn" data-icon="open"></button><button class="ghost-icon-btn" data-icon="close"></button></span></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ 6. TRAY QUICK-SWITCHER ============ -->
+          <section class="layout lo-popup" data-layout-id="popup">
+            <div class="fake-desktop-note">Simulated desktop — this popup is what appears when you click the tray icon, without opening the full window.</div>
+            <div class="popup-panel">
+              <div class="field"><span data-icon="search"></span>Search categories…</div>
+              <div class="popup-cat-row"><span class="name">Deep Work</span><span class="count">4</span><button class="btn btn-primary" style="padding:5px 9px;"><span data-icon="open"></span>Open</button></div>
+              <div class="popup-cat-row"><span class="name">Design</span><span class="count">3</span><button class="btn" style="padding:5px 9px;"><span data-icon="open"></span>Open</button></div>
+              <div class="popup-cat-row"><span class="name">Comms</span><span class="count">3</span><button class="btn" style="padding:5px 9px;"><span data-icon="open"></span>Open</button></div>
+              <div class="popup-footer"><span>Deep Work is active</span><a href="#">Open full window ›</a></div>
+            </div>
+            <div class="fake-taskbar"><span class="tray-mark"></span></div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ICONS = {
+    open: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6"/><path d="M9 8H2m0 0 2.5-2.5M2 8l2.5 2.5"/></svg>',
+    minimize: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h10"/></svg>',
+    close: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+    blocked: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><path d="M4.5 4.5l7 7"/></svg>',
+    search: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M13 13l-2.7-2.7"/></svg>',
+    plus: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>'
+  };
+  document.querySelectorAll('[data-icon]').forEach(el => {
+    const key = el.getAttribute('data-icon');
+    if (ICONS[key]) el.innerHTML = ICONS[key];
+  });
+
+  const SCENES = {
+    daylight: { name: 'Daylight Studio', text: 'Used at a desk in a bright office during work hours — needs to stay calm and low-glare for hours of glancing at it, not "gaming rig" loud.' },
+    nightshift: { name: 'Night Shift', text: 'Used late at night in a dim room after hours of screen time — low glare, one warm accent that reads like a desk lamp, not a rave.' },
+    terminal: { name: 'Terminal Green', text: 'A power-user tool meant to sit next to a real terminal window — deliberately geeky and utilitarian, not corporate SaaS.' },
+    slate: { name: 'Slate Dusk', text: 'Used at dusk with the room lights half up — a mid-tone that holds its own against daylight or a dark room, cool and steady.' },
+    paperink: { name: 'Paper & Ink', text: 'Feels like a well-made notebook, not software — near-white, high contrast, one deep ink accent, generous whitespace.' },
+    mono: { name: 'High-Contrast Mono', text: 'Built for maximum legibility above all — low vision, bright sun on a laptop screen, zero patience for decoration.' }
+  };
+
+  const layoutPicker = document.getElementById('layoutPicker');
+  const themePicker = document.getElementById('themePicker');
+  const sceneCard = document.getElementById('sceneCard');
+  const layoutCaption = document.getElementById('layoutCaption');
+  const demo = document.querySelector('.demo');
+
+  const LAYOUT_CAPTIONS = {
+    sidebar: ['1. Sidebar + Grid — "Launcher"', 'Categories always visible on the left rail; the main pane shows the active category as a tile grid. Familiar, scales well past a dozen categories, closest to how most users already expect a launcher to look.'],
+    tabs: ['2. Top Tabs + Cards — "Ribbon"', 'Categories as a tab row across the top, apps as a horizontal card row below. Keeps more vertical space for the app cards; switching categories is one click along the top instead of down a list.'],
+    palette: ['3. Command Palette — "Quick List"', 'A single centered, keyboard-first column: search up top, categories and apps as compact rows below. No sidebar, no chrome — built for someone who wants to type/click fast and get out.'],
+    board: ['4. Kanban Board — "Workspaces Board"', 'Every category visible at once as a column, apps stacked inside each. Best for comparing/organizing across categories (e.g. dragging an app from one to another), at the cost of needing horizontal scroll once you have many categories.'],
+    home: ['5. Dashboard Home — "Overview"', 'A home grid of category cards (with an avatar stack preview of their apps) that you open directly from, or click into for the detail list. Two-level navigation — more clicks to get deep, but the calmest at-a-glance overview.'],
+    popup: ['6. Tray Quick-Switcher — "Popup"', "A compact popup anchored to the tray icon, for switching/opening categories without ever showing the full window. The main window still exists for setup/editing — this is the fast path for the day-to-day click."]
+  };
+
+  layoutPicker.addEventListener('click', e => {
+    const btn = e.target.closest('.pill');
+    if (!btn) return;
+    layoutPicker.querySelectorAll('.pill').forEach(p => p.setAttribute('aria-pressed', 'false'));
+    btn.setAttribute('aria-pressed', 'true');
+    const id = btn.dataset.layout;
+    document.querySelectorAll('.layout').forEach(l => l.removeAttribute('data-active'));
+    document.querySelector(`.layout[data-layout-id="${id}"]`).setAttribute('data-active', 'true');
+    const [title, desc] = LAYOUT_CAPTIONS[id];
+    layoutCaption.querySelector('h2').textContent = title;
+    layoutCaption.querySelector('p').textContent = desc;
+  });
+
+  themePicker.addEventListener('click', e => {
+    const btn = e.target.closest('.pill');
+    if (!btn) return;
+    themePicker.querySelectorAll('.pill').forEach(p => p.setAttribute('aria-pressed', 'false'));
+    btn.setAttribute('aria-pressed', 'true');
+    const id = btn.dataset.theme;
+    demo.setAttribute('data-theme', id);
+    const scene = SCENES[id];
+    sceneCard.innerHTML = `<strong>${scene.name}</strong>${scene.text}`;
+  });
+</script>
+</body>
+</html>
