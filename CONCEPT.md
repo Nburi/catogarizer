@@ -53,7 +53,8 @@ of a flat rule list.
 - Per-app override of the same three actions, for when you don't want the
   whole category.
 - Quick switching between categories from a always-reachable surface (tray
-  and/or main window), not buried in a menu tree.
+  and/or main window), not buried in a menu tree — plus the command palette
+  below, which is the fast path.
 
 ### App blocking
 - A category can carry a blocklist of apps that are not allowed to run
@@ -97,6 +98,24 @@ of a flat rule list.
   automation-rule shape, a pluggable to-do provider interface) without
   wiring up UI or behavior for them now.
 
+## Chosen design
+- **Layout:** Dashboard Home — a grid of category cards (name, app-count,
+  avatar-stack preview of its apps, one-click Open right on the card);
+  clicking a card's name drills into a detail panel listing its apps with
+  per-app Open/Minimize/Close.
+- **Theme:** Daylight Studio — light, low-glare surfaces for daytime desk
+  use, single indigo-blue accent (no gradient/multi-tone accent).
+- **Command palette:** in addition to the Dashboard Home main window, a
+  Spotlight/Ctrl+K-style overlay — opened by a **global, user-configurable
+  keyboard shortcut** (works from anywhere, not just while Catogarizer's
+  window has focus, since the point is switching category without
+  breaking out of whatever app you're in) — for searching and
+  opening/closing/minimizing a category without touching the mouse.
+  Default shortcut assumed as `Ctrl+Alt+Space`, changeable in Settings;
+  flag if a system-wide hotkey wasn't what you meant and you want it
+  in-app-window-only instead.
+- Full layout/theme exploration tool: `design/concepts.html`.
+
 ## Open technical questions (to resolve during stack research, step 3)
 - Exact mechanism for enumerating "installed apps" for the search picker
   (Start Menu shortcut index vs. registry uninstall keys vs. package
@@ -105,3 +124,7 @@ of a flat rule list.
   WMI process-start events) and its resource cost running all day.
 - Whether autostart is implemented via Registry Run key vs. a Startup
   folder shortcut vs. a Scheduled Task.
+- Mechanism for a global keyboard shortcut (system-wide hotkey registration
+  vs. a low-level keyboard hook) for the command palette, and how a
+  borderless overlay window is shown/dismissed/focused on top of whatever
+  app is currently active.
