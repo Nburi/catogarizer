@@ -78,10 +78,21 @@ Built directly from the prototype findings in `STACK.md`.
       etc.) surfaced in a dismissible banner, never a raw exception.
 
 ## Phase 6 — Command palette + global hotkey
-- [ ] Global hotkey registration (`RegisterHotKey` via a hidden
-      message-only window), configurable in Settings.
-- [ ] Borderless topmost overlay, search-as-you-type over
-      categories/apps, same Open/Close/Minimize actions, keyboard-driven.
+- [x] Global hotkey registration - `GlobalHotkeyService` runs a dedicated
+      thread with a hidden `HWND_MESSAGE` window for `RegisterHotKey`/
+      `WM_HOTKEY`, independent of WPF's own message loop. Reads
+      `AppSettings.CommandPaletteHotkey` ("Ctrl+Alt+Space" default) at
+      startup via `HotkeyStringParser`; a Settings UI to change it without
+      editing the config file by hand is still Phase 9's job.
+- [x] Borderless topmost overlay, search-as-you-type over categories
+      (scoped to categories, not individual apps - matches "quickly switch
+      between categories"; per-app actions already live in the main
+      window), same Open/Minimize/Close actions, Enter/Esc/click-outside
+      all keyboard- and mouse-friendly.
+      Verified for real: registered the actual OS hotkey, simulated the
+      physical Ctrl+Alt+Space key combo, confirmed the palette appeared
+      with live category data, clicked Open and confirmed the real app
+      launched and the palette closed itself afterward.
 
 ## Phase 7 — Tray + autostart
 - [ ] Tray icon (`H.NotifyIcon`), minimize/close-to-tray, quick category

@@ -3,6 +3,8 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using Catogarizer.App.Services;
+using Catogarizer.App.ViewModels;
+using Catogarizer.App.Views;
 using Catogarizer.Core.Persistence;
 using Catogarizer.Core.Services;
 using Catogarizer.Win32;
@@ -14,6 +16,10 @@ public partial class App : Application
     private const string SingleInstanceMutexName = "Catogarizer.SingleInstance.9F3B2E7A";
 
     private Mutex? _singleInstanceMutex;
+    private GlobalHotkeyService? _hotkeyService;
+    private LibraryService? _library;
+    private ICategoryActionService? _categoryActionService;
+    private CommandPaletteWindow? _paletteWindow;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -45,14 +51,45 @@ public partial class App : Application
         var windowManager = new WindowManager();
         var monitorService = new MonitorService();
         var categoryActionService = new CategoryActionService(processLauncher, windowFinder, windowManager, monitorService, new SystemDelay());
+        _library = library;
+        _categoryActionService = categoryActionService;
 
         var mainWindow = new MainWindow(library, installedAppFinder, dialogService, processLauncher, windowFinder,
             windowManager, monitorService, categoryActionService);
         mainWindow.Show();
+
+        RegisterGlobalHotkey(configStore.Load().Settings.CommandPaletteHotkey);
+    }
+
+    private void RegisterGlobalHotkey(string hotkeyText)
+    {
+        if (!HotkeyStringParser.TryParse(hotkeyText, out var modifiers, out var vk))
+            return; // invalid setting - silently skip rather than block startup over it
+
+        _hotkeyService = new GlobalHotkeyService();
+        _hotkeyService.HotkeyPressed += () => Dispatcher.Invoke(ShowCommandPalette);
+        _hotkeyService.Register(modifiers, vk);
+        // Registration can fail (combo claimed by another app); the app still works fine
+        // without the fast-path palette, so this isn't treated as a startup error.
+    }
+
+    private void ShowCommandPalette()
+    {
+        if (_paletteWindow is { IsVisible: true })
+        {
+            _paletteWindow.Activate();
+            return;
+        }
+
+        var vm = new CommandPaletteViewModel(_library!, _categoryActionService!);
+        _paletteWindow = new CommandPaletteWindow(vm);
+        _paletteWindow.Show();
+        _paletteWindow.Activate();
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _hotkeyService?.Dispose();
         _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
         base.OnExit(e);
