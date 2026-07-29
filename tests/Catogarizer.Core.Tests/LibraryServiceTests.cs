@@ -212,4 +212,16 @@ public sealed class LibraryServiceTests
         Assert.Empty(_service.Categories.Single().BlockedAppIds);
         Assert.Single(_service.BlockedApps);
     }
+
+    [Fact]
+    public void UpdateSettings_UpdatesAndPersists()
+    {
+        var saveCountBefore = _store.SaveCount;
+
+        _service.UpdateSettings(startMinimized: true, commandPaletteHotkey: "Ctrl+Alt+K");
+
+        Assert.True(_service.Settings.StartMinimized);
+        Assert.Equal("Ctrl+Alt+K", _service.Settings.CommandPaletteHotkey);
+        Assert.True(_store.SaveCount > saveCountBefore);
+    }
 }

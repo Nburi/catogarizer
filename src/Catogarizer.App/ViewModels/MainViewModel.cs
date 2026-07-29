@@ -20,6 +20,8 @@ public partial class MainViewModel : ObservableObject
     private readonly IMonitorService _monitorService;
     private readonly ICategoryActionService _categoryActionService;
     private readonly IAppBlockingService _appBlockingService;
+    private readonly IAutostartService _autostartService;
+    private readonly Action<string> _onHotkeyChanged;
 
     public ObservableCollection<Category> Categories { get; } = new();
     public ObservableCollection<AppEntry> SelectedCategoryApps { get; } = new();
@@ -47,7 +49,8 @@ public partial class MainViewModel : ObservableObject
 
     public MainViewModel(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService,
         IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager,
-        IMonitorService monitorService, ICategoryActionService categoryActionService, IAppBlockingService appBlockingService)
+        IMonitorService monitorService, ICategoryActionService categoryActionService, IAppBlockingService appBlockingService,
+        IAutostartService autostartService, Action<string> onHotkeyChanged)
     {
         _library = library;
         _installedAppFinder = installedAppFinder;
@@ -58,6 +61,8 @@ public partial class MainViewModel : ObservableObject
         _monitorService = monitorService;
         _categoryActionService = categoryActionService;
         _appBlockingService = appBlockingService;
+        _autostartService = autostartService;
+        _onHotkeyChanged = onHotkeyChanged;
         RefreshCategories();
     }
 
@@ -256,6 +261,15 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void DismissNotice() => Notice = null;
+
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        var vm = new SettingsViewModel(_library, _autostartService);
+        var saved = _dialogService.ShowSettings(vm);
+        if (saved && vm.HotkeyChanged)
+            _onHotkeyChanged(_library.Settings.CommandPaletteHotkey);
+    }
 
     private async Task RunBusyAsync(string busyMessage, Func<CategoryActionResult> action)
     {

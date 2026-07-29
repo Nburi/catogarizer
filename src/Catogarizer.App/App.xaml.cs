@@ -79,12 +79,13 @@ public partial class App : Application
         _appBlockingService = appBlockingService;
 
         var mainWindow = new MainWindow(library, installedAppFinder, dialogService, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService, appBlockingService);
-        mainWindow.Show();
+            windowManager, monitorService, categoryActionService, appBlockingService, autostartService, RegisterGlobalHotkey);
+        if (!library.Settings.StartMinimized)
+            mainWindow.Show();
 
         _trayIconController = new TrayIconController(library, categoryActionService, appBlockingService, autostartService, mainWindow);
 
-        RegisterGlobalHotkey(configStore.Load().Settings.CommandPaletteHotkey);
+        RegisterGlobalHotkey(library.Settings.CommandPaletteHotkey);
         ListenForShowSignal();
     }
 
@@ -106,16 +107,25 @@ public partial class App : Application
         thread.Start();
     }
 
+    /// <summary>
+    /// Called at startup and again whenever Settings saves a changed hotkey - reuses the
+    /// same GlobalHotkeyService and subscribes the handler only once (Register() internally
+    /// unregisters any previous combo), so re-calling this never creates a second background
+    /// thread or double-fires the palette.
+    /// </summary>
     private void RegisterGlobalHotkey(string hotkeyText)
     {
         if (!HotkeyStringParser.TryParse(hotkeyText, out var modifiers, out var vk))
             return; // invalid setting - silently skip rather than block startup over it
 
-        _hotkeyService = new GlobalHotkeyService();
-        _hotkeyService.HotkeyPressed += () => Dispatcher.Invoke(ShowCommandPalette);
+        if (_hotkeyService is null)
+        {
+            _hotkeyService = new GlobalHotkeyService();
+            _hotkeyService.HotkeyPressed += () => Dispatcher.Invoke(ShowCommandPalette);
+        }
         _hotkeyService.Register(modifiers, vk);
         // Registration can fail (combo claimed by another app); the app still works fine
-        // without the fast-path palette, so this isn't treated as a startup error.
+        // without the fast-path palette, so this isn't treated as an error.
     }
 
     private void ShowCommandPalette()

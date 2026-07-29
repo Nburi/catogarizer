@@ -9,10 +9,11 @@ public partial class MainWindow : Window
 {
     public MainWindow(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService,
         IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager,
-        IMonitorService monitorService, ICategoryActionService categoryActionService, IAppBlockingService appBlockingService)
+        IMonitorService monitorService, ICategoryActionService categoryActionService, IAppBlockingService appBlockingService,
+        IAutostartService autostartService, Action<string> onHotkeyChanged)
     {
         InitializeComponent();
         DataContext = new MainViewModel(library, installedAppFinder, dialogService, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService, appBlockingService);
+            windowManager, monitorService, categoryActionService, appBlockingService, autostartService, onHotkeyChanged);
     }
 }

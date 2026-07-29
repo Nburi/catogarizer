@@ -33,4 +33,10 @@ public sealed class DialogService : IDialogService
         var ok = window.ShowDialog();
         return (ok == true, viewModel.Result);
     }
+
+    public bool ShowSettings(SettingsViewModel viewModel)
+    {
+        var window = new SettingsWindow(viewModel) { Owner = Application.Current.MainWindow };
+        return window.ShowDialog() == true;
+    }
 }

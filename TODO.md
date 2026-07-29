@@ -158,14 +158,34 @@ count that it was running immediately after launch and gone ~900ms
 later (poll interval is 350ms).
 
 ## Phase 9 — Settings + polish pass
-- [ ] Settings page: autostart, hotkey rebind, start-minimized, etc.
-- [ ] Full UX pass: empty states, loading states everywhere async,
-      responsive resizing, contrast check against the Daylight Studio
-      palette, motion (ease-out, reduced-motion support).
-- [ ] Automation + to-do integration seams: data model and interface stubs
-      only, per CONCEPT.md - not wired to UI/behavior yet.
-- [ ] App icon/branding asset (placeholder is fine to start; replace before
-      first real deploy).
+- [x] Settings page: autostart (reads live `IAutostartService.IsEnabled`,
+      not a persisted flag, so it can't drift out of sync with the actual
+      Registry state), start-minimized (wired into `App.OnStartup` - skips
+      the initial `mainWindow.Show()`), and hotkey rebind (a capture box:
+      click it, press a combo, `HotkeyStringParser` validates it live).
+      Saving a changed hotkey re-registers it immediately in the running
+      app via a callback into `App.xaml.cs`'s `RegisterGlobalHotkey`,
+      fixed to be safely re-callable (reuses the existing
+      `GlobalHotkeyService`/thread and subscribes the handler only once,
+      rather than leaking a new background thread and double-firing the
+      palette on every hotkey change).
+      Verified for real: launched the app, opened Settings via the new
+      gear icon, confirmed it showed the correct live values (unchecked
+      autostart, "Ctrl+Alt+Space"), saved, confirmed the app stayed
+      responsive and no duplicate-registration bug fired.
+- [ ] Full UX pass: empty states and loading states for category/app
+      actions are done (Phase 5); still open: loading state for the
+      installed-apps search (currently synchronous in the dialog's
+      constructor - fine at ~79 apps/~300ms on this machine, but would
+      block dialog-open on a slower/bigger Start Menu), responsive
+      resizing check, motion/hover transitions (everything currently
+      snaps instantly, zero animation anywhere).
+- [x] Automation + to-do integration seams: `AutomationRule`/
+      `AutomationTriggerType`/`AutomationActionType` and
+      `ITodoIntegrationProvider`/`TodoItem` added to Core - data model/
+      interface only, nothing wired to UI or behavior.
+- [x] App icon/branding asset - done in Phase 7 (placeholder, real
+      branding still needed before shipping).
 
 ## Phase 10 — Tests & packaging
 - [ ] Full xUnit suite green.

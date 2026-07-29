@@ -14,4 +14,7 @@ public interface IDialogService
 
     /// <returns>(true, placement) if saved (placement may itself be null - "cleared"), (false, _) if cancelled.</returns>
     (bool Saved, WindowRect? Placement) ShowPlacement(PlacementDialogViewModel viewModel);
+
+    /// <returns>true if saved, false if cancelled.</returns>
+    bool ShowSettings(SettingsViewModel viewModel);
 }

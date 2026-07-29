@@ -26,8 +26,21 @@ public sealed class LibraryService
     public IReadOnlyList<Category> Categories => _config.Categories;
     public IReadOnlyList<AppEntry> Apps => _config.Apps;
     public IReadOnlyList<BlockedApp> BlockedApps => _config.BlockedApps;
+    public AppSettings Settings => _config.Settings;
 
     public void Reload() => _config = _configStore.Load();
+
+    /// <summary>
+    /// Autostart isn't included here - the Registry Run key (via IAutostartService) is
+    /// the actual source of truth for that, not a persisted setting that could drift out
+    /// of sync with it (e.g. if the user removes it from Windows' own Startup Apps page).
+    /// </summary>
+    public void UpdateSettings(bool startMinimized, string commandPaletteHotkey)
+    {
+        _config.Settings.StartMinimized = startMinimized;
+        _config.Settings.CommandPaletteHotkey = commandPaletteHotkey;
+        Save();
+    }
 
     // ---------------- Categories ----------------
 

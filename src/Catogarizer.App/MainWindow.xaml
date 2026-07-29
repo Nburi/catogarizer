@@ -24,9 +24,14 @@
                     <TextBlock Text="Catogarizer" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
-                <Button Grid.Column="1" Content="+ New category" Style="{StaticResource PrimaryButtonStyle}"
-                        Command="{Binding AddCategoryCommand}"
-                        Visibility="{Binding HasCategories, Converter={StaticResource BoolToVis}}"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="⚙" Style="{StaticResource GhostIconButtonStyle}" Width="36" Height="36" FontSize="15"
+                            Margin="0,0,8,0" Command="{Binding OpenSettingsCommand}" ToolTip="Settings"
+                            AutomationProperties.Name="Settings"/>
+                    <Button Content="+ New category" Style="{StaticResource PrimaryButtonStyle}"
+                            Command="{Binding AddCategoryCommand}"
+                            Visibility="{Binding HasCategories, Converter={StaticResource BoolToVis}}"/>
+                </StackPanel>
             </Grid>
 
             <!-- Notice banner (errors from open/minimize/close) -->
