@@ -13,6 +13,10 @@ public partial class MainViewModel : ObservableObject
     private readonly LibraryService _library;
     private readonly IInstalledAppFinder _installedAppFinder;
     private readonly IDialogService _dialogService;
+    private readonly IProcessLauncher _processLauncher;
+    private readonly IWindowFinder _windowFinder;
+    private readonly IWindowManager _windowManager;
+    private readonly IMonitorService _monitorService;
 
     public ObservableCollection<Category> Categories { get; } = new();
     public ObservableCollection<AppEntry> SelectedCategoryApps { get; } = new();
@@ -25,11 +29,16 @@ public partial class MainViewModel : ObservableObject
 
     public bool HasSelectedCategory => SelectedCategory is not null;
 
-    public MainViewModel(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService)
+    public MainViewModel(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService,
+        IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager, IMonitorService monitorService)
     {
         _library = library;
         _installedAppFinder = installedAppFinder;
         _dialogService = dialogService;
+        _processLauncher = processLauncher;
+        _windowFinder = windowFinder;
+        _windowManager = windowManager;
+        _monitorService = monitorService;
         RefreshCategories();
     }
 
@@ -135,5 +144,16 @@ public partial class MainViewModel : ObservableObject
         if (SelectedCategory is null) return;
         _library.RemoveAppFromCategory(SelectedCategory.Id, app.Id);
         RefreshSelectedCategoryApps();
+    }
+
+    [RelayCommand]
+    private void SetPlacement(AppEntry app)
+    {
+        var vm = new PlacementDialogViewModel(app, _processLauncher, _windowFinder, _windowManager, _monitorService);
+        var (saved, placement) = _dialogService.ShowPlacement(vm);
+        if (!saved) return;
+
+        _library.SetAppPlacement(app.Id, placement);
+        RefreshCategories();
     }
 }

@@ -1,3 +1,4 @@
+using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
 using Catogarizer.Core.Tests.Fakes;
 
@@ -130,5 +131,27 @@ public sealed class LibraryServiceTests
 
         Assert.Empty(_service.Categories.Single().AppIds);
         Assert.Single(_service.Apps);
+    }
+
+    [Fact]
+    public void SetAppPlacement_SavesPlacementOnTheApp()
+    {
+        var app = _service.AddApp("VS Code", @"C:\code.exe");
+        var placement = new WindowRect { OffsetX = 10, OffsetY = 20, Width = 800, Height = 600, MonitorId = "\\\\.\\DISPLAY1" };
+
+        _service.SetAppPlacement(app.Id, placement);
+
+        Assert.Equal(placement, _service.Apps.Single().Placement);
+    }
+
+    [Fact]
+    public void SetAppPlacement_NullClearsIt()
+    {
+        var app = _service.AddApp("VS Code", @"C:\code.exe");
+        _service.SetAppPlacement(app.Id, new WindowRect { Width = 800, Height = 600 });
+
+        _service.SetAppPlacement(app.Id, null);
+
+        Assert.Null(_service.Apps.Single().Placement);
     }
 }

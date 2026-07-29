@@ -1,6 +1,7 @@
 using System.Windows;
 using Catogarizer.App.ViewModels;
 using Catogarizer.App.Views;
+using Catogarizer.Core.Models;
 
 namespace Catogarizer.App.Services;
 
@@ -24,5 +25,12 @@ public sealed class DialogService : IDialogService
     {
         var window = new ConfirmWindow(heading, message, confirmText) { Owner = Application.Current.MainWindow };
         return window.ShowDialog() == true;
+    }
+
+    public (bool Saved, WindowRect? Placement) ShowPlacement(PlacementDialogViewModel viewModel)
+    {
+        var window = new PlacementWindow(viewModel) { Owner = Application.Current.MainWindow };
+        var ok = window.ShowDialog();
+        return (ok == true, viewModel.Result);
     }
 }

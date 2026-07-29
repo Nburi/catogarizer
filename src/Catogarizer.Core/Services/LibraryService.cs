@@ -113,6 +113,14 @@ public sealed class LibraryService
         Save();
     }
 
+    /// <summary>Null clears a captured placement - the app then opens at its own default position.</summary>
+    public void SetAppPlacement(Guid appId, WindowRect? placement)
+    {
+        var app = GetAppOrThrow(appId);
+        app.Placement = placement;
+        Save();
+    }
+
     // ---------------- Category <-> App links ----------------
 
     public void AddAppToCategory(Guid categoryId, Guid appId)

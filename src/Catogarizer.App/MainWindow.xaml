@@ -116,8 +116,13 @@
                                                 <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
                                                            Foreground="{StaticResource InkBrush}"/>
                                                 <TextBlock Text="{Binding ExecutablePath}" Style="{StaticResource MutedTextStyle}" FontSize="11"/>
+                                                <TextBlock Text="{Binding Placement, Converter={StaticResource PlacementStatusConverter}}"
+                                                           Style="{StaticResource MutedTextStyle}" FontSize="11"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <Button Content="⛶" Style="{StaticResource GhostIconButtonStyle}"
+                                                        Command="{Binding DataContext.SetPlacementCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}" ToolTip="Set window position"/>
                                                 <Button Content="✎" Style="{StaticResource GhostIconButtonStyle}"
                                                         Command="{Binding DataContext.EditAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}" ToolTip="Edit"/>

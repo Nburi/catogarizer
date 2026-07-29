@@ -40,8 +40,12 @@ public partial class App : Application
         var library = new LibraryService(configStore);
         var installedAppFinder = new InstalledAppFinder();
         var dialogService = new DialogService();
+        var processLauncher = new ProcessLauncher();
+        var windowFinder = new WindowFinder();
+        var windowManager = new WindowManager();
+        var monitorService = new MonitorService();
 
-        var mainWindow = new MainWindow(library, installedAppFinder, dialogService);
+        var mainWindow = new MainWindow(library, installedAppFinder, dialogService, processLauncher, windowFinder, windowManager, monitorService);
         mainWindow.Show();
     }
 

@@ -56,10 +56,14 @@ Built directly from the prototype findings in `STACK.md`.
       validation.
 
 ## Phase 4 — Window placement setup ("grab, don't type")
-- [ ] Capture flow: launch/select the target app's live window, let the
-      user drag/resize it into place, "Capture" reads the current rect via
-      the Phase 2 layer instead of typing coordinates.
-- [ ] Store placement relative to the chosen monitor (multi-monitor safe).
+- [x] Capture flow: launch the target app's live window, let the user
+      drag/resize it into place, "Capture position" reads the current rect
+      via the Phase 2 layer instead of typing coordinates. A "Clear
+      captured placement" link resets an app back to its own default
+      position.
+- [x] Store placement relative to the chosen monitor (multi-monitor safe) -
+      `WindowPlacementResolver.CaptureFromBounds` identifies the monitor by
+      the window's center point and offsets from its origin.
 
 ## Phase 5 — One-click category actions
 - [ ] Open/Close/Minimize per category and per app, wired through Phase 2.

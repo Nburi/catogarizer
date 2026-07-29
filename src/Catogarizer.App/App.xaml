@@ -12,6 +12,7 @@
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <conv:NullToCollapsedConverter x:Key="NullToCollapsedConverter"/>
             <conv:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter"/>
+            <conv:PlacementStatusConverter x:Key="PlacementStatusConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

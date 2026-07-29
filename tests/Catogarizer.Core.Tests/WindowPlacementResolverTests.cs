@@ -50,4 +50,35 @@ public sealed class WindowPlacementResolverTests
         Assert.Equal(800, width);
         Assert.Equal(600, height);
     }
+
+    [Fact]
+    public void CaptureFromBounds_OnPrimaryMonitor_ComputesOffsetFromItsOrigin()
+    {
+        var placement = WindowPlacementResolver.CaptureFromBounds((100, 100, 900, 650), [Primary, Secondary], Primary);
+
+        Assert.Equal(100, placement.OffsetX);
+        Assert.Equal(100, placement.OffsetY);
+        Assert.Equal(900, placement.Width);
+        Assert.Equal(650, placement.Height);
+        Assert.Equal(Primary.Id, placement.MonitorId);
+    }
+
+    [Fact]
+    public void CaptureFromBounds_OnSecondaryMonitor_IdentifiesItByCenterPointAndOffsetsFromIt()
+    {
+        // Window at (2000,50) 800x600 -> center (2400,350), inside Secondary (1920,0)-(4480,1440).
+        var placement = WindowPlacementResolver.CaptureFromBounds((2000, 50, 800, 600), [Primary, Secondary], Primary);
+
+        Assert.Equal(Secondary.Id, placement.MonitorId);
+        Assert.Equal(80, placement.OffsetX);  // 2000 - 1920
+        Assert.Equal(50, placement.OffsetY);
+    }
+
+    [Fact]
+    public void CaptureFromBounds_WhenCenterIsOutsideAnyMonitor_FallsBackToPrimary()
+    {
+        var placement = WindowPlacementResolver.CaptureFromBounds((-5000, -5000, 800, 600), [Primary, Secondary], Primary);
+
+        Assert.Equal(Primary.Id, placement.MonitorId);
+    }
 }

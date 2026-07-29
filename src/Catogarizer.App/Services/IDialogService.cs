@@ -1,4 +1,5 @@
 using Catogarizer.App.ViewModels;
+using Catogarizer.Core.Models;
 
 namespace Catogarizer.App.Services;
 
@@ -10,4 +11,7 @@ public interface IDialogService
     string? ShowCategoryEdit(CategoryEditDialogViewModel viewModel);
 
     bool ShowConfirm(string heading, string message, string confirmText = "Delete");
+
+    /// <returns>(true, placement) if saved (placement may itself be null - "cleared"), (false, _) if cancelled.</returns>
+    (bool Saved, WindowRect? Placement) ShowPlacement(PlacementDialogViewModel viewModel);
 }
