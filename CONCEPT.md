@@ -116,15 +116,16 @@ of a flat rule list.
   in-app-window-only instead.
 - Full layout/theme exploration tool: `design/concepts.html`.
 
-## Open technical questions (to resolve during stack research, step 3)
-- Exact mechanism for enumerating "installed apps" for the search picker
-  (Start Menu shortcut index vs. registry uninstall keys vs. package
-  manager APIs) — likely a combination.
-- Exact mechanism for the soft-block watcher (poll running processes vs.
-  WMI process-start events) and its resource cost running all day.
-- Whether autostart is implemented via Registry Run key vs. a Startup
-  folder shortcut vs. a Scheduled Task.
-- Mechanism for a global keyboard shortcut (system-wide hotkey registration
-  vs. a low-level keyboard hook) for the command palette, and how a
-  borderless overlay window is shown/dismissed/focused on top of whatever
-  app is currently active.
+## Open technical questions
+Resolved during stack research (step 3) and the window-management prototype
+(step 4) — see `STACK.md` for the specifics: installed-app enumeration,
+soft-block watcher mechanism, autostart mechanism, and window
+open/position/minimize/close (plain Win32 P/Invoke, with restore-then-place
+and settle-and-retry for maximized/async-repositioning apps, and
+localization-aware/host-process-aware window finding).
+
+Still open, to resolve during implementation:
+- Mechanism for the global keyboard shortcut (system-wide hotkey
+  registration vs. a low-level keyboard hook) for the command palette, and
+  how a borderless overlay window is shown/dismissed/focused on top of
+  whatever app is currently active.

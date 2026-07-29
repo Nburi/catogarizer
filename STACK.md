@@ -20,8 +20,34 @@ Apps`, already on `%PATH%`) expects.
   palette overlay, `CommunityToolkit.Mvvm` for MVVM (source-generator based,
   no heavyweight framework).
 - **Tray icon**: `H.NotifyIcon.Wpf`.
-- **Window management**: P/Invoke (`user32.dll`) — see
-  `tools/window-approach-test` findings once run.
+- **Window management**: plain `user32.dll` P/Invoke (`SetWindowPlacement`,
+  `ShowWindow`, `PostMessage(WM_CLOSE)`), chosen over UI Automation after
+  prototyping both against Notepad/Calculator/Edge — identical outcomes in
+  every case, so it wins on being dependency-free, faster (no COM/UIA tree
+  walking), and simpler. A launch-time position hint via `CreateProcess`
+  STARTUPINFO was also tried and dropped — every tested app ignored it.
+  Findings that need to carry into the real implementation:
+  - **Maximized/full-screen windows must be explicitly restored first**
+    (`IsZoomed` + `ShowWindow(SW_RESTORE)`), then positioned via
+    `SetWindowPlacement` (sets `rcNormalPosition` + show state atomically) —
+    plain `SetWindowPos` on a still-maximized window is unreliable.
+  - **Settle-and-retry**: some apps (Edge/Chromium observed) asynchronously
+    re-apply their own remembered window state shortly after launch,
+    clobbering an early positioning call — reposition once, wait ~300ms,
+    verify, and retry once if it didn't stick.
+  - **Window titles are localized** — don't hardcode a single English title
+    substring for the window-finding fallback; keep a small list of
+    candidates per app. Discovered via Calculator: on German Windows its
+    window is titled "Rechner" and owned by `ApplicationFrameHost.exe`, not
+    `calc.exe`/`CalculatorApp.exe` (UWP/packaged apps route through a host
+    process that isn't the process actually launched).
+  - **Category actions must include already-running windows**, not just
+    ones the app itself launched — match by owning-process name first
+    (unambiguous for normal apps), title-substring as fallback (needed for
+    host processes like `ApplicationFrameHost` that can own windows for
+    several different packaged apps at once).
+  - Chromium windows enforce their own minimum width — a saved layout
+    narrower than that will get clamped; not a bug to work around.
 - **Global hotkey**: `RegisterHotKey`/`UnregisterHotKey` via a hidden
   message-only window (`HwndSource`).
 - **App blocking watcher**: WMI `Win32_ProcessStartTrace` eventing (reacts
