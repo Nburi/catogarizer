@@ -14,7 +14,17 @@
             <TextBox x:Name="SearchBox" Style="{StaticResource ThemedTextBoxStyle}"
                      Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
 
-            <ScrollViewer MaxHeight="320" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto">
+            <Border Height="120" Margin="0,10,0,0"
+                    Visibility="{Binding IsSearchingApps, Converter={StaticResource BoolToVis}}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True" Width="180" Height="4" Margin="0,0,0,10"
+                                 Foreground="{StaticResource AccentBrush}" Background="{StaticResource SurfaceAltBrush}" BorderThickness="0"/>
+                    <TextBlock Text="Searching installed apps..." Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <ScrollViewer MaxHeight="320" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto"
+                          Visibility="{Binding IsSearchingApps, Converter={StaticResource InverseBoolToVis}}">
                 <ItemsControl ItemsSource="{Binding FilteredApps}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

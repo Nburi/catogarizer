@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Catogarizer.Core;
 using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
@@ -19,12 +20,15 @@ namespace Catogarizer.App.ViewModels;
 public partial class AppEditDialogViewModel : ObservableObject
 {
     private readonly IInstalledAppFinder? _installedAppFinder;
-    private readonly IReadOnlyList<InstalledApp> _allInstalledApps;
+    private IReadOnlyList<InstalledApp> _allInstalledApps;
     private readonly string? _headingOverride;
     private readonly bool _relaxedValidation;
 
     [ObservableProperty]
     private bool _isManualMode;
+
+    [ObservableProperty]
+    private bool _isSearchingApps;
 
     [ObservableProperty]
     private bool _isEditing;
@@ -71,9 +75,32 @@ public partial class AppEditDialogViewModel : ObservableObject
     public AppEditDialogViewModel(IInstalledAppFinder installedAppFinder, string? headingOverride = null, bool relaxedValidation = false)
     {
         _installedAppFinder = installedAppFinder;
-        _allInstalledApps = installedAppFinder.FindInstalledApps();
+        _allInstalledApps = [];
         _headingOverride = headingOverride;
         _relaxedValidation = relaxedValidation;
+        IsSearchingApps = true;
+        _ = LoadInstalledAppsAsync();
+    }
+
+    /// <summary>
+    /// Start Menu + registry enumeration takes ~300ms on a typical machine, longer on a
+    /// bigger Start Menu - runs off the UI thread so the dialog shows immediately with
+    /// <see cref="IsSearchingApps"/> driving a loading indicator instead of blocking dialog-open.
+    /// </summary>
+    private async Task LoadInstalledAppsAsync()
+    {
+        IReadOnlyList<InstalledApp> apps;
+        try
+        {
+            apps = await Task.Run(() => _installedAppFinder!.FindInstalledApps());
+        }
+        catch
+        {
+            apps = [];
+        }
+
+        _allInstalledApps = apps;
+        IsSearchingApps = false;
         UpdateFilteredApps();
     }
 
