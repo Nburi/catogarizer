@@ -14,9 +14,13 @@ namespace Catogarizer.App;
 public partial class App : Application
 {
     private const string SingleInstanceMutexName = "Catogarizer.SingleInstance.9F3B2E7A";
+    private const string ShowSignalEventName = "Catogarizer.ShowSignal.9F3B2E7A";
 
     private Mutex? _singleInstanceMutex;
+    private bool _ownsSingleInstanceMutex;
+    private EventWaitHandle? _showSignalEvent;
     private GlobalHotkeyService? _hotkeyService;
+    private TrayIconController? _trayIconController;
     private LibraryService? _library;
     private ICategoryActionService? _categoryActionService;
     private CommandPaletteWindow? _paletteWindow;
@@ -26,16 +30,30 @@ public partial class App : Application
         base.OnStartup(e);
 
         _singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out var createdNew);
+        // initiallyOwned only grants ownership when this call is the one that creates the
+        // mutex - a second instance gets a handle to the existing one but never actually
+        // owns it, so it must never call ReleaseMutex (that throws).
+        _ownsSingleInstanceMutex = createdNew;
         if (!createdNew)
         {
-            // Deliberately a native MessageBox, not a themed dialog: this runs before any
-            // themed window exists, and it's the one place a plain, always-works fallback
-            // beats a custom dialog that depends on the app having started up correctly.
-            MessageBox.Show(
-                "Catogarizer is already running. Check your system tray.",
-                "Catogarizer",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            // Another instance is already running - ask it to show itself instead of
+            // starting a second one.
+            try
+            {
+                using var existingSignal = EventWaitHandle.OpenExisting(ShowSignalEventName);
+                existingSignal.Set();
+            }
+            catch (WaitHandleCannotBeOpenedException)
+            {
+                // Deliberately a native MessageBox, not a themed dialog: this runs before any
+                // themed window exists, and it's the one place a plain, always-works fallback
+                // beats a custom dialog that depends on the app having started up correctly.
+                MessageBox.Show(
+                    "Catogarizer is already running. Check your system tray.",
+                    "Catogarizer",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
             Shutdown();
             return;
         }
@@ -51,6 +69,7 @@ public partial class App : Application
         var windowManager = new WindowManager();
         var monitorService = new MonitorService();
         var categoryActionService = new CategoryActionService(processLauncher, windowFinder, windowManager, monitorService, new SystemDelay());
+        var autostartService = new AutostartService();
         _library = library;
         _categoryActionService = categoryActionService;
 
@@ -58,7 +77,28 @@ public partial class App : Application
             windowManager, monitorService, categoryActionService);
         mainWindow.Show();
 
+        _trayIconController = new TrayIconController(library, categoryActionService, autostartService, mainWindow);
+
         RegisterGlobalHotkey(configStore.Load().Settings.CommandPaletteHotkey);
+        ListenForShowSignal();
+    }
+
+    private void ListenForShowSignal()
+    {
+        _showSignalEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowSignalEventName);
+        var thread = new Thread(() =>
+        {
+            while (true)
+            {
+                _showSignalEvent.WaitOne();
+                Dispatcher.Invoke(() => _trayIconController?.ShowMainWindow());
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Catogarizer-ShowSignalListener",
+        };
+        thread.Start();
     }
 
     private void RegisterGlobalHotkey(string hotkeyText)
@@ -90,7 +130,8 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _hotkeyService?.Dispose();
-        _singleInstanceMutex?.ReleaseMutex();
+        _trayIconController?.Dispose();
+        if (_ownsSingleInstanceMutex) _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
         base.OnExit(e);
     }

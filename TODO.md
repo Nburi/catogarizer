@@ -16,9 +16,10 @@ work lands; this file is the between-session source of truth for progress.
 - [x] App shell: Dashboard Home layout + Daylight Studio theme (base
       styles/ControlTemplates, no native dialogs), empty state for zero
       categories.
-- [x] Single-instance enforcement — currently a native message + exit on a
-      second launch, not yet "focus the existing window" (no tray/IPC to
-      target until Phase 7); revisit then.
+- [x] Single-instance enforcement — a second launch now signals the running
+      instance to show itself (a named `EventWaitHandle`) instead of just
+      showing a message and exiting; resolved in Phase 7 once there was a
+      window-to-restore path to target.
 
 ## Phase 2 — Win32 interop layer
 Built directly from the prototype findings in `STACK.md`.
@@ -95,9 +96,31 @@ Built directly from the prototype findings in `STACK.md`.
       launched and the palette closed itself afterward.
 
 ## Phase 7 — Tray + autostart
-- [ ] Tray icon (`H.NotifyIcon`), minimize/close-to-tray, quick category
-      switch from the tray context menu.
-- [ ] Autostart toggle (`HKCU\...\Run` key).
+- [x] Tray icon (`H.NotifyIcon`) with a generated placeholder app icon
+      (`Assets/app.ico` - accent-colored rounded square with a "C", built
+      with proper multi-size BMP-DIB+PNG frames after an all-PNG first
+      attempt failed to load in the legacy GDI Icon loader; replace with
+      real branding before shipping). Minimize/close-to-tray: closing or
+      minimizing the main window hides it instead of exiting
+      (`ShutdownMode=OnExplicitShutdown`, only the tray's own Exit item
+      really shuts down). Quick category switch and a "Start with Windows"
+      toggle live in the tray context menu (rebuilt fresh from current data
+      each time it opens).
+- [x] Autostart toggle (`HKCU\...\Run` key) via `AutostartService`.
+      Verified directly against the real registry (enable → key written →
+      disable → key cleanly removed, no leftover).
+
+Verified for real, not just builds: closed the main window via
+`WindowPattern.Close()` (same path as clicking the title-bar X) and
+confirmed the process stayed alive with the window actually hidden;
+launched a second instance while the first was hidden and confirmed the
+first instance's window reappeared and the second process exited cleanly.
+That second check caught a real bug - the second instance crashed with an
+unhandled `ApplicationException` on shutdown because it called
+`Mutex.ReleaseMutex()` without ever having owned the mutex (`initiallyOwned`
+only grants ownership when the calling instance is the one that creates
+the named mutex, not on every instance that references it by name) - fixed
+by tracking ownership explicitly and only releasing when true.
 
 ## Phase 8 — App blocking
 - [ ] WMI `Win32_ProcessStartTrace` watcher; per-category blocklist
