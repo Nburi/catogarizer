@@ -22,19 +22,25 @@ work lands; this file is the between-session source of truth for progress.
 
 ## Phase 2 — Win32 interop layer
 Built directly from the prototype findings in `STACK.md`.
-- [ ] `IWindowFinder`/`IWindowManager`/`IProcessLauncher` interfaces in
+- [x] `IWindowFinder`/`IWindowManager`/`IProcessLauncher` interfaces in
       Core; Win32 P/Invoke implementations in `Catogarizer.Win32`.
-- [ ] Window finding: process-handle first, title-candidate-list fallback
+- [x] Window finding: process-handle first, title-candidate-list fallback
       (multiple candidates per app for localization + host-process cases).
-- [ ] Positioning: restore-if-maximized + `SetWindowPlacement` +
-      settle-and-retry.
-- [ ] Minimize (`ShowWindow`), graceful close (`WM_CLOSE`), force-kill
-      fallback if a graceful close doesn't take within a timeout.
-- [ ] "Adopt already-running windows" — category actions must find and act
-      on windows the app didn't itself launch, not just ones it did.
-- [ ] Monitor enumeration service for multi-monitor placement.
-- [ ] Fakes for all the above so Core logic is unit-testable without a
-      real desktop.
+- [x] Positioning: restore-if-maximized + `SetWindowPlacement` +
+      settle-and-retry (`WindowPositioningService` in Core, unit-tested
+      against a fake with no real desktop/sleep needed).
+- [x] Minimize (`ShowWindow`), graceful close (`WM_CLOSE`), force-kill via
+      the owning process. (Automatic force-kill-after-timeout-if-graceful-
+      close-doesn't-take is Phase 5's call to make, not this layer's -
+      this layer just exposes the primitive.)
+- [x] "Adopt already-running windows" enabled via
+      `IWindowFinder.FindAllRunningWindows` (process-name match, title
+      fallback) - verified end-to-end against a real Notepad instance.
+      Wiring it into actual category-action tracking state is Phase 5.
+- [x] Monitor enumeration service for multi-monitor placement, using a
+      stable per-monitor device name (not a positional index) as the id.
+- [x] Fakes for the retry policy (`FakeWindowManager`, `FakeDelay`); more
+      added in Phase 5 as `CategoryActionService` needs them.
 
 ## Phase 3 — Category & app CRUD
 - [ ] Add/edit/remove/reorder categories and apps; themed dialogs, inline
