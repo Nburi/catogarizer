@@ -216,13 +216,25 @@ later (poll interval is 350ms).
       branding still needed before shipping).
 
 ## Phase 10 — Tests & packaging
-- [ ] Full xUnit suite green.
-- [ ] Self-contained single-file `win-x64` publish profile.
-- [ ] Manual end-to-end pass in the actual running (published) app, not
-      just tests.
+- [x] Full xUnit suite green - 61/61, re-confirmed after Phase 9 finished.
+- [x] Self-contained single-file `win-x64` publish profile -
+      `src/Catogarizer.App/Properties/PublishProfiles/win-x64-selfcontained.pubxml`,
+      run via `dotnet publish src/Catogarizer.App/Catogarizer.App.csproj
+      -c Release -p:PublishProfile=win-x64-selfcontained`. Isolated to
+      the profile rather than the .csproj directly so plain `dotnet
+      build`/`dotnet run` are unaffected.
+- [x] Manual end-to-end pass in the actual running (published) app, not
+      just tests - launched the published exe fresh and confirmed: WPF
+      theme/resources render correctly (pack:// URIs resolve from the
+      single-file bundle), category/app CRUD works, the enforced
+      MinWidth/MinHeight clamp a too-small resize the same as in debug,
+      clicking Open launches a real process (the riskiest Win32-interop
+      path for a self-contained publish), Settings reads live
+      autostart/hotkey state correctly, closing the main window keeps
+      the process alive in the tray, and a second instance launched
+      while the first was hidden exits via the single-instance mutex
+      while the first instance's window reappears.
 
 ## Known open items (not blocking, revisit if they bite)
 - Edge/Chromium windows enforce their own minimum width — expected, not a
   bug to fix.
-- Global hotkey mechanism itself (`RegisterHotKey` vs. a low-level hook)
-  not yet prototyped — resolve in Phase 6.
