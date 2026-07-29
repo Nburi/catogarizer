@@ -174,12 +174,25 @@ later (poll interval is 350ms).
       autostart, "Ctrl+Alt+Space"), saved, confirmed the app stayed
       responsive and no duplicate-registration bug fired.
 - [ ] Full UX pass: empty states and loading states for category/app
-      actions are done (Phase 5); still open: loading state for the
-      installed-apps search (currently synchronous in the dialog's
-      constructor - fine at ~79 apps/~300ms on this machine, but would
-      block dialog-open on a slower/bigger Start Menu), responsive
-      resizing check, motion/hover transitions (everything currently
-      snaps instantly, zero animation anywhere).
+      actions are done (Phase 5). Loading state for the installed-apps
+      search is now also done - `AppEditDialogViewModel` runs
+      `FindInstalledApps()` on a background thread and shows a
+      "Searching installed apps..." indicator (`IsSearchingApps`) instead
+      of blocking dialog-open; verified for real via UI Automation
+      (dialog appears with the indicator visible, then populates with
+      real installed apps once the scan completes). Responsive resizing
+      is now also done - `MainWindow` has `MinWidth="600"`/
+      `MinHeight="450"` so it can't be squeezed into a state where the
+      category-detail header or app rows have no room to lay out;
+      `TextTrimming="CharacterEllipsis"` added to the category card
+      name, detail heading, and app/blocked-app name/path/placement text
+      so long values truncate with an ellipsis instead of overflowing.
+      Verified for real via UI Automation + screenshots at the enforced
+      minimum width (card name, detail header, and app row all trim
+      correctly, no overlapping controls; a resize request below the
+      minimum gets clamped by Windows itself). Still open: motion/hover
+      transitions (everything currently snaps instantly, zero animation
+      anywhere).
 - [x] Automation + to-do integration seams: `AutomationRule`/
       `AutomationTriggerType`/`AutomationActionType` and
       `ITodoIntegrationProvider`/`TodoItem` added to Core - data model/
