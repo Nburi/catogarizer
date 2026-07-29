@@ -173,7 +173,7 @@ later (poll interval is 350ms).
       gear icon, confirmed it showed the correct live values (unchecked
       autostart, "Ctrl+Alt+Space"), saved, confirmed the app stayed
       responsive and no duplicate-registration bug fired.
-- [ ] Full UX pass: empty states and loading states for category/app
+- [x] Full UX pass: empty states and loading states for category/app
       actions are done (Phase 5). Loading state for the installed-apps
       search is now also done - `AppEditDialogViewModel` runs
       `FindInstalledApps()` on a background thread and shows a
@@ -190,9 +190,24 @@ later (poll interval is 350ms).
       Verified for real via UI Automation + screenshots at the enforced
       minimum width (card name, detail header, and app row all trim
       correctly, no overlapping controls; a resize request below the
-      minimum gets clamped by Windows itself). Still open: motion/hover
-      transitions (everything currently snaps instantly, zero animation
-      anywhere).
+      minimum gets clamped by Windows itself). Motion/hover transitions
+      are now also done - `PrimaryButtonStyle`/`SecondaryButtonStyle`/
+      `GhostIconButtonStyle`/`GhostRowButtonStyle` in
+      `Themes/DaylightStudio.xaml` all animate their hover/press state
+      over ~150ms (80ms for the primary button's press) instead of
+      snapping instantly, via `Trigger.EnterActions`/`ExitActions` +
+      `Storyboard`. Styles that swap a shared `SurfaceAltBrush` on hover
+      use a second overlay `Border` whose own `Opacity` is animated,
+      rather than animating the shared brush's `Color` directly (which
+      would affect every consumer of that brush app-wide). Did not wire
+      up `SystemParameters.ClientAreaAnimation` (OS reduced-motion) -
+      not straightforward per-Trigger in pure XAML; short/subtle
+      durations used as the documented fallback. Verified for real by
+      sampling the actual rendered pixel color (GDI `GetPixel`) at a
+      button before/during/after a simulated hover - confirmed the
+      color reaches an exact match of the intended theme color and
+      reverts correctly for both the direct-opacity and overlay
+      techniques.
 - [x] Automation + to-do integration seams: `AutomationRule`/
       `AutomationTriggerType`/`AutomationActionType` and
       `ITodoIntegrationProvider`/`TodoItem` added to Core - data model/
