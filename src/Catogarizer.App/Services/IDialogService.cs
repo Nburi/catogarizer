@@ -17,4 +17,9 @@ public interface IDialogService
 
     /// <returns>true if saved, false if cancelled.</returns>
     bool ShowSettings(SettingsViewModel viewModel);
+
+    void ShowTriggers(TriggersViewModel viewModel);
+
+    /// <returns>true if saved, false if cancelled.</returns>
+    bool ShowTriggerEdit(TriggerEditDialogViewModel viewModel);
 }

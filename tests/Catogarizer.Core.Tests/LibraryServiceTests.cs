@@ -1,3 +1,4 @@
+using Catogarizer.Core.Automation;
 using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
 using Catogarizer.Core.Tests.Fakes;
@@ -223,5 +224,82 @@ public sealed class LibraryServiceTests
         Assert.True(_service.Settings.StartMinimized);
         Assert.Equal("Ctrl+Alt+K", _service.Settings.CommandPaletteHotkey);
         Assert.True(_store.SaveCount > saveCountBefore);
+    }
+
+    [Fact]
+    public void AddTrigger_AddsAndPersists()
+    {
+        var trigger = _service.AddTrigger("Morning", TriggerType.Startup);
+
+        Assert.Single(_service.Triggers);
+        Assert.Equal("Morning", trigger.Name);
+        Assert.Equal(TriggerType.Startup, trigger.Type);
+        Assert.True(trigger.IsEnabled);
+    }
+
+    [Fact]
+    public void AddTrigger_RejectsDuplicateName()
+    {
+        _service.AddTrigger("Morning", TriggerType.Manual);
+
+        Assert.Throws<ArgumentException>(() => _service.AddTrigger("morning", TriggerType.Manual));
+    }
+
+    [Fact]
+    public void UpdateTrigger_ReplacesNameTypeScheduleAndActions()
+    {
+        var app = _service.AddApp("VS Code", @"C:\code.exe");
+        var trigger = _service.AddTrigger("Morning", TriggerType.Manual);
+        var actions = new List<TriggerAction> { new() { Type = TriggerActionType.OpenApp, AppId = app.Id } };
+
+        _service.UpdateTrigger(trigger.Id, "Evening", TriggerType.Time, "18:00", [DayOfWeek.Monday], actions);
+
+        var updated = _service.Triggers.Single();
+        Assert.Equal("Evening", updated.Name);
+        Assert.Equal(TriggerType.Time, updated.Type);
+        Assert.Equal("18:00", updated.TimeOfDay);
+        Assert.Equal([DayOfWeek.Monday], updated.DaysOfWeek);
+        Assert.Single(updated.Actions);
+    }
+
+    [Fact]
+    public void UpdateTrigger_SwitchingAwayFromTime_ClearsScheduleFields()
+    {
+        var trigger = _service.AddTrigger("Morning", TriggerType.Time);
+        _service.UpdateTrigger(trigger.Id, "Morning", TriggerType.Time, "08:00", [DayOfWeek.Monday], []);
+
+        _service.UpdateTrigger(trigger.Id, "Morning", TriggerType.Manual, null, [], []);
+
+        var updated = _service.Triggers.Single();
+        Assert.Null(updated.TimeOfDay);
+        Assert.Empty(updated.DaysOfWeek);
+    }
+
+    [Fact]
+    public void UpdateTrigger_RejectsInvalidTimeFormat()
+    {
+        var trigger = _service.AddTrigger("Morning", TriggerType.Manual);
+
+        Assert.Throws<ArgumentException>(() => _service.UpdateTrigger(trigger.Id, "Morning", TriggerType.Time, "not a time", [], []));
+    }
+
+    [Fact]
+    public void SetTriggerEnabled_TogglesAndPersists()
+    {
+        var trigger = _service.AddTrigger("Morning", TriggerType.Manual);
+
+        _service.SetTriggerEnabled(trigger.Id, false);
+
+        Assert.False(_service.Triggers.Single().IsEnabled);
+    }
+
+    [Fact]
+    public void DeleteTrigger_RemovesIt()
+    {
+        var trigger = _service.AddTrigger("Morning", TriggerType.Manual);
+
+        _service.DeleteTrigger(trigger.Id);
+
+        Assert.Empty(_service.Triggers);
     }
 }

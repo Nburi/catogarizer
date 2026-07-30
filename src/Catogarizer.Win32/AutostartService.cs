@@ -16,20 +16,35 @@ public sealed class AutostartService : IAutostartService
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath);
             var existing = key?.GetValue(ValueName) as string;
-            return existing is not null && string.Equals(existing.Trim('"'), ExePath, StringComparison.OrdinalIgnoreCase);
+            // Only the path portion is compared (not the full command, "start" and all) so a
+            // Run key written before the "start" arg existed still reads as enabled - it just
+            // gets rewritten with "start" the next time the user (re)toggles this setting.
+            return existing is not null && string.Equals(ExtractPath(existing), ExePath, StringComparison.OrdinalIgnoreCase);
         }
     }
 
     public void Enable()
     {
         using var key = Registry.CurrentUser.CreateSubKey(RunKeyPath);
-        key.SetValue(ValueName, $"\"{ExePath}\"");
+        key.SetValue(ValueName, $"\"{ExePath}\" start");
     }
 
     public void Disable()
     {
         using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
         key?.DeleteValue(ValueName, throwOnMissingValue: false);
+    }
+
+    /// <summary>Strips a trailing " start" (or any other args) off a quoted "&lt;path&gt; [args]" command string.</summary>
+    private static string ExtractPath(string command)
+    {
+        var trimmed = command.Trim();
+        if (trimmed.StartsWith('"'))
+        {
+            var closingQuote = trimmed.IndexOf('"', 1);
+            if (closingQuote > 0) return trimmed[1..closingQuote];
+        }
+        return trimmed;
     }
 
     private static string ExePath =>

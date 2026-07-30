@@ -25,6 +25,12 @@ public partial class SettingsViewModel : ObservableObject
 
     public event EventHandler? RequestClose;
 
+    /// <summary>Raised by the "Automation..." button - handled by MainViewModel, which owns
+    /// the dependencies (LibraryService, TriggerRunner) needed to open the Triggers window.
+    /// Doesn't close this settings dialog; the Triggers window opens as a further nested
+    /// modal on top of it, same owner (MainWindow), which WPF supports fine.</summary>
+    public event EventHandler? RequestOpenTriggers;
+
     public SettingsViewModel(LibraryService library, IAutostartService autostartService)
     {
         _library = library;
@@ -53,6 +59,9 @@ public partial class SettingsViewModel : ObservableObject
 
     [RelayCommand]
     private void Cancel() => RequestClose?.Invoke(this, EventArgs.Empty);
+
+    [RelayCommand]
+    private void OpenTriggers() => RequestOpenTriggers?.Invoke(this, EventArgs.Empty);
 
     private bool CanSave() => !string.IsNullOrWhiteSpace(HotkeyText);
 }

@@ -1,10 +1,15 @@
 using System.IO;
+using System.IO.Pipes;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using Catogarizer.App.Services;
 using Catogarizer.App.ViewModels;
 using Catogarizer.App.Views;
+using Catogarizer.Core.Automation;
+using Catogarizer.Core.Cli;
 using Catogarizer.Core.Persistence;
 using Catogarizer.Core.Services;
 using Catogarizer.Win32;
@@ -15,6 +20,7 @@ public partial class App : Application
 {
     private const string SingleInstanceMutexName = "Catogarizer.SingleInstance.9F3B2E7A";
     private const string ShowSignalEventName = "Catogarizer.ShowSignal.9F3B2E7A";
+    private const string TriggerRunPipeName = "Catogarizer.TriggerRun.9F3B2E7A";
 
     private Mutex? _singleInstanceMutex;
     private bool _ownsSingleInstanceMutex;
@@ -24,11 +30,14 @@ public partial class App : Application
     private LibraryService? _library;
     private ICategoryActionService? _categoryActionService;
     private IAppBlockingService? _appBlockingService;
+    private TriggerSchedulerService? _triggerScheduler;
     private CommandPaletteWindow? _paletteWindow;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        var command = CliCommand.Parse(e.Args);
 
         _singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out var createdNew);
         // initiallyOwned only grants ownership when this call is the one that creates the
@@ -37,23 +46,33 @@ public partial class App : Application
         _ownsSingleInstanceMutex = createdNew;
         if (!createdNew)
         {
-            // Another instance is already running - ask it to show itself instead of
-            // starting a second one.
-            try
+            if (command is CliCommand.Run run)
             {
-                using var existingSignal = EventWaitHandle.OpenExisting(ShowSignalEventName);
-                existingSignal.Set();
+                // "catogarizer run <name>" while the app is already open - relay the request
+                // over the named pipe instead of the show-signal, so this stays headless/
+                // scriptable rather than popping the main window.
+                SendTriggerRunRequest(run.TriggerName);
             }
-            catch (WaitHandleCannotBeOpenedException)
+            else
             {
-                // Deliberately a native MessageBox, not a themed dialog: this runs before any
-                // themed window exists, and it's the one place a plain, always-works fallback
-                // beats a custom dialog that depends on the app having started up correctly.
-                MessageBox.Show(
-                    "Catogarizer is already running. Check your system tray.",
-                    "Catogarizer",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                // Another instance is already running - ask it to show itself instead of
+                // starting a second one.
+                try
+                {
+                    using var existingSignal = EventWaitHandle.OpenExisting(ShowSignalEventName);
+                    existingSignal.Set();
+                }
+                catch (WaitHandleCannotBeOpenedException)
+                {
+                    // Deliberately a native MessageBox, not a themed dialog: this runs before any
+                    // themed window exists, and it's the one place a plain, always-works fallback
+                    // beats a custom dialog that depends on the app having started up correctly.
+                    MessageBox.Show(
+                        "Catogarizer is already running. Check your system tray.",
+                        "Catogarizer",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
             }
             Shutdown();
             return;
@@ -78,15 +97,98 @@ public partial class App : Application
         _categoryActionService = categoryActionService;
         _appBlockingService = appBlockingService;
 
+        var triggerRunner = new TriggerRunner(categoryActionService);
+        var triggerScheduler = new TriggerSchedulerService(new SystemClock(), trigger => Task.Run(() => triggerRunner.Run(trigger, library)));
+        triggerScheduler.Start(() => library.Triggers);
+        _triggerScheduler = triggerScheduler;
+
         var mainWindow = new MainWindow(library, installedAppFinder, dialogService, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService, appBlockingService, autostartService, RegisterGlobalHotkey);
-        if (!library.Settings.StartMinimized)
+            windowManager, monitorService, categoryActionService, appBlockingService, autostartService, triggerRunner, RegisterGlobalHotkey);
+        // An explicit "run <name>" launch stays headless regardless of the StartMinimized
+        // setting - it's a background request (script/hotkey tool), not a user opening the app.
+        if (!library.Settings.StartMinimized && command is not CliCommand.Run)
             mainWindow.Show();
 
         _trayIconController = new TrayIconController(library, categoryActionService, appBlockingService, autostartService, mainWindow);
 
         RegisterGlobalHotkey(library.Settings.CommandPaletteHotkey);
         ListenForShowSignal();
+        ListenForTriggerRunRequests(triggerRunner, library);
+        DispatchCliCommand(command, triggerRunner, library);
+    }
+
+    private static void DispatchCliCommand(CliCommand command, TriggerRunner triggerRunner, LibraryService library)
+    {
+        switch (command)
+        {
+            case CliCommand.Start:
+                Task.Run(() =>
+                {
+                    foreach (var trigger in library.Triggers.Where(t => t.IsEnabled && t.Type == TriggerType.Startup))
+                        triggerRunner.Run(trigger, library);
+                });
+                break;
+            case CliCommand.Run run:
+                Task.Run(() =>
+                {
+                    var trigger = library.Triggers.FirstOrDefault(t => string.Equals(t.Name, run.TriggerName, StringComparison.OrdinalIgnoreCase));
+                    if (trigger is not null) triggerRunner.Run(trigger, library);
+                });
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Background listener for "catogarizer run &lt;name&gt;" requests relayed from a second
+    /// process invocation - mirrors ListenForShowSignal's always-on background thread, but
+    /// carries a payload (the trigger name) so it uses a named pipe instead of a bare event.
+    /// </summary>
+    private void ListenForTriggerRunRequests(TriggerRunner triggerRunner, LibraryService library)
+    {
+        var thread = new Thread(() =>
+        {
+            while (true)
+            {
+                try
+                {
+                    using var server = new NamedPipeServerStream(TriggerRunPipeName, PipeDirection.In);
+                    server.WaitForConnection();
+                    using var reader = new StreamReader(server, Encoding.UTF8);
+                    var triggerName = reader.ReadLine();
+                    if (!string.IsNullOrWhiteSpace(triggerName))
+                    {
+                        var trigger = library.Triggers.FirstOrDefault(t => string.Equals(t.Name, triggerName, StringComparison.OrdinalIgnoreCase));
+                        if (trigger is not null) triggerRunner.Run(trigger, library);
+                    }
+                }
+                catch
+                {
+                    // Client disconnected early or the pipe broke - just loop and accept the
+                    // next connection rather than killing the listener thread over it.
+                }
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Catogarizer-TriggerRunListener",
+        };
+        thread.Start();
+    }
+
+    private static void SendTriggerRunRequest(string triggerName)
+    {
+        try
+        {
+            using var client = new NamedPipeClientStream(".", TriggerRunPipeName, PipeDirection.Out);
+            client.Connect(2000);
+            using var writer = new StreamWriter(client, Encoding.UTF8) { AutoFlush = true };
+            writer.WriteLine(triggerName);
+        }
+        catch
+        {
+            // The running instance's pipe listener isn't up yet, or the connection otherwise
+            // failed - there's no console to report that to, so the request is simply dropped.
+        }
     }
 
     private void ListenForShowSignal()
@@ -146,6 +248,7 @@ public partial class App : Application
     {
         _hotkeyService?.Dispose();
         _trayIconController?.Dispose();
+        _triggerScheduler?.Dispose();
         (_appBlockingService as IDisposable)?.Dispose();
         if (_ownsSingleInstanceMutex) _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();

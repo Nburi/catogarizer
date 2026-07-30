@@ -39,4 +39,16 @@ public sealed class DialogService : IDialogService
         var window = new SettingsWindow(viewModel) { Owner = Application.Current.MainWindow };
         return window.ShowDialog() == true;
     }
+
+    public void ShowTriggers(TriggersViewModel viewModel)
+    {
+        var window = new TriggersWindow(viewModel) { Owner = Application.Current.MainWindow };
+        window.ShowDialog();
+    }
+
+    public bool ShowTriggerEdit(TriggerEditDialogViewModel viewModel)
+    {
+        var window = new TriggerEditWindow(viewModel) { Owner = Application.Current.MainWindow };
+        return window.ShowDialog() == true;
+    }
 }

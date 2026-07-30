@@ -1,3 +1,5 @@
+using Catogarizer.Core.Automation;
+
 namespace Catogarizer.Core.Models;
 
 /// <summary>
@@ -8,5 +10,6 @@ public sealed class AppConfig
     public List<Category> Categories { get; set; } = new();
     public List<AppEntry> Apps { get; set; } = new();
     public List<BlockedApp> BlockedApps { get; set; } = new();
+    public List<Trigger> Triggers { get; set; } = new();
     public AppSettings Settings { get; set; } = new();
 }

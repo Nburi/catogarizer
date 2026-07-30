@@ -1,3 +1,4 @@
+using Catogarizer.Core.Automation;
 using Catogarizer.Core.Models;
 using Catogarizer.Core.Persistence;
 
@@ -26,6 +27,7 @@ public sealed class LibraryService
     public IReadOnlyList<Category> Categories => _config.Categories;
     public IReadOnlyList<AppEntry> Apps => _config.Apps;
     public IReadOnlyList<BlockedApp> BlockedApps => _config.BlockedApps;
+    public IReadOnlyList<Trigger> Triggers => _config.Triggers;
     public AppSettings Settings => _config.Settings;
 
     public void Reload() => _config = _configStore.Load();
@@ -201,6 +203,53 @@ public sealed class LibraryService
         category.BlockedAppIds.Remove(blockedAppId);
         Save();
     }
+
+    // ---------------- Triggers ----------------
+
+    public Trigger AddTrigger(string name, TriggerType type)
+    {
+        var validation = TriggerValidator.ValidateName(name, _config.Triggers);
+        if (!validation.IsValid) throw new ArgumentException(validation.ErrorMessage, nameof(name));
+
+        var trigger = new Trigger { Name = name.Trim(), Type = type };
+        _config.Triggers.Add(trigger);
+        Save();
+        return trigger;
+    }
+
+    public void UpdateTrigger(Guid triggerId, string name, TriggerType type, string? timeOfDay, List<DayOfWeek> daysOfWeek, List<TriggerAction> actions)
+    {
+        var trigger = GetTriggerOrThrow(triggerId);
+        var nameValidation = TriggerValidator.ValidateName(name, _config.Triggers, excludingId: triggerId);
+        if (!nameValidation.IsValid) throw new ArgumentException(nameValidation.ErrorMessage, nameof(name));
+        var timeValidation = TriggerValidator.ValidateTimeOfDay(type, timeOfDay);
+        if (!timeValidation.IsValid) throw new ArgumentException(timeValidation.ErrorMessage, nameof(timeOfDay));
+
+        trigger.Name = name.Trim();
+        trigger.Type = type;
+        trigger.TimeOfDay = type == TriggerType.Time ? timeOfDay : null;
+        trigger.DaysOfWeek = type == TriggerType.Time ? daysOfWeek : new List<DayOfWeek>();
+        trigger.Actions = actions;
+        Save();
+    }
+
+    public void SetTriggerEnabled(Guid triggerId, bool enabled)
+    {
+        var trigger = GetTriggerOrThrow(triggerId);
+        trigger.IsEnabled = enabled;
+        Save();
+    }
+
+    public void DeleteTrigger(Guid triggerId)
+    {
+        var trigger = GetTriggerOrThrow(triggerId);
+        _config.Triggers.Remove(trigger);
+        Save();
+    }
+
+    private Trigger GetTriggerOrThrow(Guid triggerId) =>
+        _config.Triggers.FirstOrDefault(t => t.Id == triggerId)
+        ?? throw new InvalidOperationException($"No trigger with id {triggerId}.");
 
     private Category GetCategoryOrThrow(Guid categoryId) =>
         _config.Categories.FirstOrDefault(c => c.Id == categoryId)

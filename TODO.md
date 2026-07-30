@@ -235,6 +235,35 @@ later (poll interval is 350ms).
       while the first was hidden exits via the single-instance mutex
       while the first instance's window reappears.
 
+## Phase 11 — Trigger/Action automation
+- [x] Replaced the Phase 9 `AutomationRule` data-model-only stub with a real
+      `Trigger`/`TriggerAction` model (`src/Catogarizer.Core/Automation/`):
+      three trigger types (Startup, Time, Manual) each holding an ordered
+      list of actions (OpenCategory, OpenApp, CloseApps). Persisted as
+      `AppConfig.Triggers`, CRUD in `LibraryService` mirroring the existing
+      Category/App/BlockedApp sections exactly.
+- [x] `TriggerRunner` - a thin dispatcher over the existing
+      `ICategoryActionService`, not a reimplementation of process handling.
+      "Open an app at a specific location" reuses `AppEntry.Placement`
+      as-is - no new fields needed.
+- [x] `TriggerSchedulerService` - polls (same "polling over OS eventing"
+      call as `AppBlockingService`, see `STACK.md`) every 20s for Time-type
+      triggers, firing at most once per calendar day, with an optional
+      day-of-week filter.
+- [x] CLI: `catogarizer start` (wired into the autostart Run key, fires
+      enabled Startup triggers) and `catogarizer run "<name>"` (fires one
+      named trigger on demand - relayed over a named pipe to the already-
+      running instance if there is one, so it stays scriptable/headless
+      rather than popping the window).
+- [x] Settings → **Automation...** opens a Triggers management window (add/
+      edit/delete/enable/Run Now), with a dedicated trigger editor
+      (name, type, time+day-of-week when applicable, an ordered action list
+      with up/down reordering - the app's first manual-reorder UI).
+- [x] xUnit coverage: `TriggerRunner` action dispatch (including skipping
+      actions that reference a since-deleted category/app), the scheduler's
+      time/day-of-week/once-per-day logic, `CliCommand` parsing, and
+      `LibraryService` trigger CRUD + validation. 99/99 green.
+
 ## Known open items (not blocking, revisit if they bite)
 - Edge/Chromium windows enforce their own minimum width — expected, not a
   bug to fix.

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Catogarizer.App.Services;
+using Catogarizer.Core.Automation;
 using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -21,6 +22,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ICategoryActionService _categoryActionService;
     private readonly IAppBlockingService _appBlockingService;
     private readonly IAutostartService _autostartService;
+    private readonly TriggerRunner _triggerRunner;
     private readonly Action<string> _onHotkeyChanged;
 
     public ObservableCollection<Category> Categories { get; } = new();
@@ -50,7 +52,7 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService,
         IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager,
         IMonitorService monitorService, ICategoryActionService categoryActionService, IAppBlockingService appBlockingService,
-        IAutostartService autostartService, Action<string> onHotkeyChanged)
+        IAutostartService autostartService, TriggerRunner triggerRunner, Action<string> onHotkeyChanged)
     {
         _library = library;
         _installedAppFinder = installedAppFinder;
@@ -62,6 +64,7 @@ public partial class MainViewModel : ObservableObject
         _categoryActionService = categoryActionService;
         _appBlockingService = appBlockingService;
         _autostartService = autostartService;
+        _triggerRunner = triggerRunner;
         _onHotkeyChanged = onHotkeyChanged;
         RefreshCategories();
     }
@@ -266,9 +269,17 @@ public partial class MainViewModel : ObservableObject
     private void OpenSettings()
     {
         var vm = new SettingsViewModel(_library, _autostartService);
+        vm.RequestOpenTriggers += (_, _) => OpenTriggers();
         var saved = _dialogService.ShowSettings(vm);
         if (saved && vm.HotkeyChanged)
             _onHotkeyChanged(_library.Settings.CommandPaletteHotkey);
+    }
+
+    [RelayCommand]
+    private void OpenTriggers()
+    {
+        var vm = new TriggersViewModel(_library, _dialogService, _triggerRunner);
+        _dialogService.ShowTriggers(vm);
     }
 
     private async Task RunBusyAsync(string busyMessage, Func<CategoryActionResult> action)

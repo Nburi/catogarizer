@@ -1,0 +1,131 @@
+<Window x:Class="Catogarizer.App.Views.TriggerEditWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Catogarizer" Width="540" Height="700"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="{StaticResource BgBrush}" FontFamily="{StaticResource UiFont}">
+    <Grid Margin="22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="{Binding HeadingText}" FontSize="16" FontWeight="SemiBold"
+                   Foreground="{StaticResource InkBrush}" Margin="0,0,0,16"/>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="Name" Style="{StaticResource FieldLabelStyle}"/>
+                <TextBox Style="{StaticResource ThemedTextBoxStyle}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Text="{Binding NameError}" Style="{StaticResource ErrorTextStyle}"
+                           Visibility="{Binding NameError, Converter={StaticResource NullToCollapsedConverter}}"/>
+
+                <TextBlock Text="Trigger type" Style="{StaticResource FieldLabelStyle}" Margin="0,14,0,5"/>
+                <ComboBox Style="{StaticResource ThemedComboBoxStyle}" ItemsSource="{Binding TriggerTypeOptions}"
+                          DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding Type}"/>
+
+                <StackPanel Visibility="{Binding IsTimeType, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="Time (24h, HH:mm)" Style="{StaticResource FieldLabelStyle}" Margin="0,14,0,5"/>
+                    <TextBox Style="{StaticResource ThemedTextBoxStyle}" Width="120" HorizontalAlignment="Left"
+                             Text="{Binding TimeOfDay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Text="{Binding TimeError}" Style="{StaticResource ErrorTextStyle}"
+                               Visibility="{Binding TimeError, Converter={StaticResource NullToCollapsedConverter}}"/>
+
+                    <TextBlock Text="Days" Style="{StaticResource FieldLabelStyle}" Margin="0,12,0,5"/>
+                    <TextBlock Text="Leave all unchecked to run every day." Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,0,0,6"/>
+                    <ItemsControl ItemsSource="{Binding DayOptions}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox Content="{Binding Label}" IsChecked="{Binding IsSelected}" Margin="0,0,14,0"
+                                          Foreground="{StaticResource InkBrush}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <Grid Margin="0,20,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Actions" Style="{StaticResource FieldLabelStyle}" Margin="0" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="+ Add action" Style="{StaticResource SecondaryButtonStyle}" Padding="10,6" FontSize="12"
+                            Command="{Binding AddActionCommand}"/>
+                </Grid>
+                <TextBlock Text="Runs in order, top to bottom." Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,0,0,8"/>
+
+                <TextBlock Text="No actions yet - add at least one." Style="{StaticResource MutedTextStyle}"
+                           Visibility="{Binding Actions.Count, Converter={StaticResource ZeroToVisibleConverter}}" Margin="0,4,0,0"/>
+
+                <ItemsControl ItemsSource="{Binding Actions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush2}"
+                                    BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox Grid.Column="0" Style="{StaticResource ThemedComboBoxStyle}"
+                                                  ItemsSource="{Binding ActionTypeOptions}" DisplayMemberPath="Label"
+                                                  SelectedValuePath="Value" SelectedValue="{Binding Type}" HorizontalAlignment="Left" Width="180"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button Content="&#9650;" Style="{StaticResource GhostIconButtonStyle}" FontSize="10" ToolTip="Move up"
+                                                    Command="{Binding DataContext.MoveActionUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"/>
+                                            <Button Content="&#9660;" Style="{StaticResource GhostIconButtonStyle}" FontSize="10" ToolTip="Move down"
+                                                    Command="{Binding DataContext.MoveActionDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"/>
+                                            <Button Content="✕" Style="{StaticResource GhostIconButtonStyle}" ToolTip="Remove"
+                                                    Command="{Binding DataContext.RemoveActionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <ComboBox Style="{StaticResource ThemedComboBoxStyle}" Margin="0,8,0,0"
+                                              Visibility="{Binding IsOpenCategory, Converter={StaticResource BoolToVis}}"
+                                              ItemsSource="{Binding AvailableCategories}" DisplayMemberPath="Name"
+                                              SelectedItem="{Binding SelectedCategory}"/>
+
+                                    <ComboBox Style="{StaticResource ThemedComboBoxStyle}" Margin="0,8,0,0"
+                                              Visibility="{Binding IsOpenApp, Converter={StaticResource BoolToVis}}"
+                                              ItemsSource="{Binding AvailableApps}" DisplayMemberPath="Name"
+                                              SelectedItem="{Binding SelectedApp}"/>
+
+                                    <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="8" Padding="8" Margin="0,8,0,0"
+                                            Visibility="{Binding IsCloseApps, Converter={StaticResource BoolToVis}}">
+                                        <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding AppSelections}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox Content="{Binding App.Name}" IsChecked="{Binding IsChecked}"
+                                                                  Foreground="{StaticResource InkBrush}" Margin="0,3"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Width="90" Margin="0,0,8,0"
+                    Command="{Binding CancelCommand}"/>
+            <Button Content="Save" Style="{StaticResource PrimaryButtonStyle}" Width="90"
+                    Command="{Binding SaveCommand}" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

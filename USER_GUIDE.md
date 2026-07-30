@@ -81,6 +81,47 @@ can flash open briefly before it's closed, and this doesn't need
 administrator rights. If you have several categories open at once, their
 blocklists all apply together.
 
+## Automation
+
+Settings → **Automation...** opens the Triggers window, where you can set up
+apps to open or close on their own — no click needed.
+
+A **trigger** has a type that decides when it fires automatically:
+
+- **Windows start** — fires when Catogarizer is launched via
+  `catogarizer.exe start`. Turning on **Start with Windows** in Settings
+  already wires this up for you (it writes the Registry Run key to launch
+  with that argument) — you don't need to touch Task Scheduler or the
+  Startup folder yourself.
+- **Time of day** — fires once a day at a time you set (e.g. `08:00`),
+  optionally limited to specific days of the week. Leave every day
+  unchecked to run daily.
+- **Manual only** — never fires on its own; only runs when you trigger it
+  yourself (see below).
+
+Every trigger, regardless of type, also has a **Run Now** button in the
+Triggers list — handy for testing a Startup or Time trigger without waiting
+for it to fire for real.
+
+Each trigger runs an ordered list of **actions**, top to bottom:
+
+- **Open category** — opens every app in a chosen category, same as
+  clicking that category's Open button.
+- **Open app** — opens one specific app. If that app has a captured window
+  placement (see "Setting a window position" above), it opens right there —
+  this is how you "open an app at a specific location."
+- **Close apps** — closes one or more specific apps.
+
+### Running a trigger from the command line
+
+`catogarizer.exe run "<trigger name>"` fires a trigger by name from a
+terminal, script, or hotkey tool — useful for triggers you want to run on
+demand from outside the app. It works whether or not Catogarizer is already
+running: if it's not, this launches it (hidden, staying resident in the
+tray afterward, same as any other launch); if it already is, the request is
+handed off to the running instance and nothing new opens. Either way, this
+never pops the main window — it's meant to run quietly in the background.
+
 ## Settings
 
 The ⚙ icon in the top corner opens Settings:
