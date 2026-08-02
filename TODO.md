@@ -264,6 +264,17 @@ later (poll interval is 350ms).
       time/day-of-week/once-per-day logic, `CliCommand` parsing, and
       `LibraryService` trigger CRUD + validation. 99/99 green.
 
+Verified for real: launched the built debug app and reviewed it live. Caught
+a real gap doing this - the trigger editor's "Open app"/"Close apps"
+pickers only listed apps already in the library (whatever had been added to
+a category before), with no way to reference a new one, so a fresh install
+effectively could only automate 1-2 apps. Fixed by adding a "+ Add app..."
+button to both pickers, reusing the same installed-app-search-or-manual-entry
+flow (`AppEditDialogViewModel`/`IDialogService.ShowAppEdit`) already used
+for adding an app to a category - newly added apps flow into a shared
+`ObservableCollection<AppEntry>` so every action row in the same trigger
+picks it up live, not just the row that added it.
+
 ## Known open items (not blocking, revisit if they bite)
 - Edge/Chromium windows enforce their own minimum width — expected, not a
   bug to fix.

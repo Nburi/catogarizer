@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Linq;
+using Catogarizer.App.Services;
 using Catogarizer.Core.Automation;
+using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,7 +14,11 @@ public sealed record TriggerTypeOption(TriggerType Value, string Label);
 public sealed partial class TriggerEditDialogViewModel : ObservableObject
 {
     private readonly LibraryService _library;
+    private readonly IInstalledAppFinder _installedAppFinder;
+    private readonly IDialogService _dialogService;
     private readonly Trigger? _editing;
+
+    public ObservableCollection<AppEntry> AvailableApps { get; }
 
     // Instance property (not static) - see the same note in TriggerActionEditItem.
     public IReadOnlyList<TriggerTypeOption> TriggerTypeOptions { get; } =
@@ -50,12 +56,15 @@ public sealed partial class TriggerEditDialogViewModel : ObservableObject
 
     public event EventHandler? RequestClose;
 
-    public TriggerEditDialogViewModel(LibraryService library, Trigger? editing = null)
+    public TriggerEditDialogViewModel(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService, Trigger? editing = null)
     {
         _library = library;
+        _installedAppFinder = installedAppFinder;
+        _dialogService = dialogService;
         _editing = editing;
         _type = editing?.Type ?? TriggerType.Manual;
 
+        AvailableApps = new ObservableCollection<AppEntry>(_library.Apps);
         DayOptions = new ObservableCollection<DayOfWeekOption>(
             Enum.GetValues<DayOfWeek>().Select(d => new DayOfWeekOption(d, editing?.DaysOfWeek.Contains(d) ?? false)));
 
@@ -64,11 +73,12 @@ public sealed partial class TriggerEditDialogViewModel : ObservableObject
         _name = editing.Name;
         _timeOfDay = editing.TimeOfDay ?? "08:00";
         foreach (var action in editing.Actions)
-            Actions.Add(new TriggerActionEditItem(_library.Categories, _library.Apps, action));
+            Actions.Add(new TriggerActionEditItem(_library, _installedAppFinder, _dialogService, _library.Categories, AvailableApps, action));
     }
 
     [RelayCommand]
-    private void AddAction() => Actions.Add(new TriggerActionEditItem(_library.Categories, _library.Apps));
+    private void AddAction() =>
+        Actions.Add(new TriggerActionEditItem(_library, _installedAppFinder, _dialogService, _library.Categories, AvailableApps));
 
     [RelayCommand]
     private void RemoveAction(TriggerActionEditItem item) => Actions.Remove(item);

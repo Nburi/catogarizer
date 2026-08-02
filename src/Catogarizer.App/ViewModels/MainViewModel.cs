@@ -278,7 +278,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenTriggers()
     {
-        var vm = new TriggersViewModel(_library, _dialogService, _triggerRunner);
+        var vm = new TriggersViewModel(_library, _dialogService, _installedAppFinder, _triggerRunner);
         _dialogService.ShowTriggers(vm);
     }
 

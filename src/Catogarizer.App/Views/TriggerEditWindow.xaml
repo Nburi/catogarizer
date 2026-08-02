@@ -95,24 +95,34 @@
                                               ItemsSource="{Binding AvailableCategories}" DisplayMemberPath="Name"
                                               SelectedItem="{Binding SelectedCategory}"/>
 
-                                    <ComboBox Style="{StaticResource ThemedComboBoxStyle}" Margin="0,8,0,0"
-                                              Visibility="{Binding IsOpenApp, Converter={StaticResource BoolToVis}}"
-                                              ItemsSource="{Binding AvailableApps}" DisplayMemberPath="Name"
-                                              SelectedItem="{Binding SelectedApp}"/>
+                                    <Grid Margin="0,8,0,0" Visibility="{Binding IsOpenApp, Converter={StaticResource BoolToVis}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox Grid.Column="0" Style="{StaticResource ThemedComboBoxStyle}"
+                                                  ItemsSource="{Binding AvailableApps}" DisplayMemberPath="Name"
+                                                  SelectedItem="{Binding SelectedApp}"/>
+                                        <Button Grid.Column="1" Content="+ Add app..." Style="{StaticResource SecondaryButtonStyle}"
+                                                Padding="10,6" FontSize="11.5" Margin="8,0,0,0" Command="{Binding AddAppCommand}"/>
+                                    </Grid>
 
-                                    <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="8" Padding="8" Margin="0,8,0,0"
-                                            Visibility="{Binding IsCloseApps, Converter={StaticResource BoolToVis}}">
-                                        <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto">
-                                            <ItemsControl ItemsSource="{Binding AppSelections}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <CheckBox Content="{Binding App.Name}" IsChecked="{Binding IsChecked}"
-                                                                  Foreground="{StaticResource InkBrush}" Margin="0,3"/>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </ScrollViewer>
-                                    </Border>
+                                    <StackPanel Margin="0,8,0,0" Visibility="{Binding IsCloseApps, Converter={StaticResource BoolToVis}}">
+                                        <Button Content="+ Add app..." Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left"
+                                                Padding="10,6" FontSize="11.5" Margin="0,0,0,6" Command="{Binding AddAppCommand}"/>
+                                        <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="8" Padding="8">
+                                            <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto">
+                                                <ItemsControl ItemsSource="{Binding AppSelections}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <CheckBox Content="{Binding App.Name}" IsChecked="{Binding IsChecked}"
+                                                                      Foreground="{StaticResource InkBrush}" Margin="0,3"/>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+                                        </Border>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>

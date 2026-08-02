@@ -13,6 +13,7 @@ public sealed partial class TriggersViewModel : ObservableObject
 {
     private readonly LibraryService _library;
     private readonly IDialogService _dialogService;
+    private readonly IInstalledAppFinder _installedAppFinder;
     private readonly TriggerRunner _triggerRunner;
 
     public ObservableCollection<TriggerRowViewModel> Triggers { get; } = new();
@@ -31,10 +32,11 @@ public sealed partial class TriggersViewModel : ObservableObject
     [ObservableProperty]
     private bool _noticeIsError;
 
-    public TriggersViewModel(LibraryService library, IDialogService dialogService, TriggerRunner triggerRunner)
+    public TriggersViewModel(LibraryService library, IDialogService dialogService, IInstalledAppFinder installedAppFinder, TriggerRunner triggerRunner)
     {
         _library = library;
         _dialogService = dialogService;
+        _installedAppFinder = installedAppFinder;
         _triggerRunner = triggerRunner;
         RefreshTriggers();
     }
@@ -50,7 +52,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     [RelayCommand]
     private void AddTrigger()
     {
-        var vm = new TriggerEditDialogViewModel(_library);
+        var vm = new TriggerEditDialogViewModel(_library, _installedAppFinder, _dialogService);
         if (_dialogService.ShowTriggerEdit(vm))
             RefreshTriggers();
     }
@@ -58,7 +60,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     [RelayCommand]
     private void EditTrigger(TriggerRowViewModel row)
     {
-        var vm = new TriggerEditDialogViewModel(_library, row.Trigger);
+        var vm = new TriggerEditDialogViewModel(_library, _installedAppFinder, _dialogService, row.Trigger);
         if (_dialogService.ShowTriggerEdit(vm))
             RefreshTriggers();
     }
