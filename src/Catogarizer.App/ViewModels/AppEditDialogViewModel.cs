@@ -131,7 +131,7 @@ public partial class AppEditDialogViewModel : ObservableObject
     [RelayCommand]
     private void PickInstalledApp(InstalledApp app)
     {
-        Result = (app.Name, app.ExecutablePath, null);
+        Result = (app.Name, app.ExecutablePath, app.Arguments);
         RequestClose?.Invoke(this, EventArgs.Empty);
     }
 

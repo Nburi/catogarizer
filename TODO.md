@@ -275,6 +275,56 @@ for adding an app to a category - newly added apps flow into a shared
 `ObservableCollection<AppEntry>` so every action row in the same trigger
 picks it up live, not just the row that added it.
 
+## Phase 12 — PWA (installed web app) support
+- [x] Search picker now discovers installed PWAs (Edge/Chrome "Install as
+      app") the same way as any other app - `InstalledAppFinder` now reads a
+      Start Menu shortcut's launch arguments (`shortcut.Arguments`), not just
+      its target path, and `InstalledApp`/`AppEditDialogViewModel.PickInstalledApp`
+      carry that through to the saved `AppEntry`. Previously a picked PWA
+      would launch `msedge_proxy.exe`/`chrome_proxy.exe` bare, with no
+      `--app-id` - opening the wrong thing (or nothing) instead of the PWA.
+- [x] De-dup key in `InstalledAppFinder.FindInstalledApps` changed from
+      executable path alone to path+arguments - every PWA installed under
+      one browser/profile shares the identical proxy exe path, differing
+      only by `--app-id`, so the old key silently collapsed every installed
+      PWA down to one entry.
+- [x] `WindowFinder.FindByProcessHandle` now catches the
+      `InvalidOperationException` thrown by polling `MainWindowHandle` on an
+      already-exited process, instead of letting it propagate as a launch
+      failure - needed because a PWA's shortcut launches a short-lived proxy
+      stub that hands off to the real browser and exits before the app ever
+      calls back in. Falls through cleanly to the existing title-substring
+      window search (the same fallback already used for UWP/
+      `ApplicationFrameHost` host-process windows) instead.
+- [x] `CategoryActionService.FindRunningWindows` adds the `_proxy`-stripped
+      process name as a second match candidate (e.g. "msedge_proxy" also
+      matches windows owned by "msedge") for adopt-already-running/Close/
+      Minimize, since the proxy exe never owns the actual window.
+- [x] Picker shows a small "Web App" tag next to detected PWA entries
+      (`InstalledApp.IsPwa`, true when the shortcut's arguments contain
+      `--app-id=`).
+- [x] xUnit: `CategoryActionServiceTests` covers a proxy-path `AppEntry`
+      still matching/minimizing a window owned by the unsuffixed process
+      name. 100/100 green.
+
+No new UI, no new data model fields on `AppEntry` - a picked PWA is a
+completely ordinary `AppEntry`, so placement capture/positioning and the
+Phase 11 trigger/automation system already work for it without further
+changes.
+
+**Not yet verified for real** - this machine had no PWA installed to test
+against when this was built; end-to-end verification (install one, confirm
+picker tagging, Open/Close/Minimize target only that window, captured
+placement re-applies) is pending the user's go-ahead to actually launch/test.
+
 ## Known open items (not blocking, revisit if they bite)
 - Edge/Chromium windows enforce their own minimum width — expected, not a
   bug to fix.
+- PWA window matching (Phase 12) uses process-name-candidates + title-
+  substring, not the window's `System.AppUserModel.ID` - matches this app's
+  established preference for plain P/Invoke over new COM interop (see
+  `STACK.md`), and is the same precision already accepted for UWP host-
+  process windows. A regular browser tab whose title happens to contain a
+  PWA's name could in theory still be misidentified. Revisit with
+  `SHGetPropertyStoreForWindow`-based AUMID matching only if this actually
+  causes a wrong match in practice.

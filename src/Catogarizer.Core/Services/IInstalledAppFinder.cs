@@ -1,6 +1,13 @@
 namespace Catogarizer.Core.Services;
 
-public sealed record InstalledApp(string Name, string ExecutablePath);
+public sealed record InstalledApp(string Name, string ExecutablePath, string? Arguments = null)
+{
+    /// <summary>
+    /// True for an installed PWA (Edge/Chrome "Install as app") shortcut - its
+    /// launch arguments carry a Chromium --app-id, unlike a regular app.
+    /// </summary>
+    public bool IsPwa => Arguments?.Contains("--app-id=", StringComparison.OrdinalIgnoreCase) == true;
+}
 
 public interface IInstalledAppFinder
 {

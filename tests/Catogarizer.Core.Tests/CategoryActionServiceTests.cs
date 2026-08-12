@@ -106,6 +106,22 @@ public sealed class CategoryActionServiceTests
     }
 
     [Fact]
+    public void MinimizeApp_ForProxyLaunchedPwa_MatchesTheRealBrowserProcess()
+    {
+        // A PWA's ExecutablePath is the msedge_proxy.exe/chrome_proxy.exe stub the
+        // shortcut launches, but that stub exits immediately - the actual window is
+        // owned by the plain "msedge"/"chrome" process, which must still match.
+        var service = CreateService();
+        var app = MakeApp(name: "YouTube Music", path: @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge_proxy.exe");
+        _windowFinder.RunningWindows.Add(new OpenWindowInfo(new IntPtr(1), "YouTube Music", "msedge", 1));
+
+        var result = service.MinimizeApp(app);
+
+        Assert.Equal(AppActionOutcome.Minimized, result.Outcome);
+        Assert.Single(_windowManager.MinimizeCalls);
+    }
+
+    [Fact]
     public void CloseApp_WhenGracefulCloseWorks_DoesNotForceKill()
     {
         _windowManager.GracefulCloseWorks = true;

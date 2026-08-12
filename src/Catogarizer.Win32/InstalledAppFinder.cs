@@ -7,18 +7,23 @@ public sealed class InstalledAppFinder : IInstalledAppFinder
 {
     public IReadOnlyList<InstalledApp> FindInstalledApps()
     {
-        var byPath = new Dictionary<string, InstalledApp>(StringComparer.OrdinalIgnoreCase);
+        // Keyed by path+arguments, not path alone - every PWA installed under the same
+        // browser/profile shares one proxy exe path, differing only in its --app-id
+        // argument, so keying on path alone would collapse them into a single entry.
+        var byKey = new Dictionary<string, InstalledApp>(StringComparer.OrdinalIgnoreCase);
 
         // Start Menu shortcuts first - their names are the ones users actually recognize.
         foreach (var app in FindFromStartMenuShortcuts())
-            byPath[app.ExecutablePath] = app;
+            byKey[DedupeKey(app)] = app;
 
         // Registry Uninstall entries fill in anything a shortcut didn't catch.
         foreach (var app in FindFromUninstallRegistry())
-            byPath.TryAdd(app.ExecutablePath, app);
+            byKey.TryAdd(DedupeKey(app), app);
 
-        return byPath.Values.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        return byKey.Values.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
+
+    private static string DedupeKey(InstalledApp app) => $"{app.ExecutablePath}|{app.Arguments}";
 
     private static IEnumerable<InstalledApp> FindFromStartMenuShortcuts()
     {
@@ -39,13 +44,13 @@ public sealed class InstalledAppFinder : IInstalledAppFinder
 
             foreach (var lnk in shortcuts)
             {
-                var target = TryResolveShortcutTarget(shell, lnk);
-                if (target is null) continue;
-                if (!string.Equals(Path.GetExtension(target), ".exe", StringComparison.OrdinalIgnoreCase)) continue;
-                if (!File.Exists(target)) continue;
-                if (LooksLikeUninstaller(target)) continue;
+                var resolved = TryResolveShortcut(shell, lnk);
+                if (resolved is not { } shortcut) continue;
+                if (!string.Equals(Path.GetExtension(shortcut.Target), ".exe", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!File.Exists(shortcut.Target)) continue;
+                if (LooksLikeUninstaller(shortcut.Target)) continue;
 
-                yield return new InstalledApp(Path.GetFileNameWithoutExtension(lnk), target);
+                yield return new InstalledApp(Path.GetFileNameWithoutExtension(lnk), shortcut.Target, shortcut.Arguments);
             }
         }
     }
@@ -71,13 +76,16 @@ public sealed class InstalledAppFinder : IInstalledAppFinder
         }
     }
 
-    private static string? TryResolveShortcutTarget(dynamic shell, string lnkPath)
+    private static (string Target, string? Arguments)? TryResolveShortcut(dynamic shell, string lnkPath)
     {
         try
         {
             dynamic shortcut = shell.CreateShortcut(lnkPath);
             string target = shortcut.TargetPath;
-            return string.IsNullOrWhiteSpace(target) ? null : target;
+            if (string.IsNullOrWhiteSpace(target)) return null;
+
+            string arguments = shortcut.Arguments;
+            return (target, string.IsNullOrWhiteSpace(arguments) ? null : arguments);
         }
         catch
         {

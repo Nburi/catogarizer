@@ -48,8 +48,19 @@ public sealed class WindowFinder : IWindowFinder
         var sw = Stopwatch.StartNew();
         while (sw.Elapsed < timeout)
         {
-            process.Refresh();
-            if (process.MainWindowHandle != IntPtr.Zero) return process.MainWindowHandle;
+            try
+            {
+                process.Refresh();
+                if (process.MainWindowHandle != IntPtr.Zero) return process.MainWindowHandle;
+            }
+            catch (InvalidOperationException)
+            {
+                // The launched process already exited without ever owning a window -
+                // e.g. a PWA shortcut's msedge_proxy.exe/chrome_proxy.exe stub, which
+                // relaunches the real browser and exits. Let the title-substring
+                // fallback in FindMainWindow take over instead of surfacing this.
+                return null;
+            }
             Thread.Sleep(60);
         }
         return null;

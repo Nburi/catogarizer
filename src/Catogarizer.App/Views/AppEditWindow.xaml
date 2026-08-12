@@ -34,8 +34,15 @@
                                     CommandParameter="{Binding}"
                                     AutomationProperties.Name="{Binding Name}">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
-                                               Foreground="{StaticResource InkBrush}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource InkBrush}"/>
+                                        <Border Margin="7,0,0,0" Padding="6,1" CornerRadius="6" VerticalAlignment="Center"
+                                                Background="{StaticResource AccentBrush}"
+                                                Visibility="{Binding IsPwa, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="Web App" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
+                                        </Border>
+                                    </StackPanel>
                                     <TextBlock Text="{Binding ExecutablePath}" Style="{StaticResource MutedTextStyle}" FontSize="11.5"/>
                                 </StackPanel>
                             </Button>
