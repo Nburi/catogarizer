@@ -61,6 +61,14 @@ public partial class PlacementDialogViewModel : ObservableObject
                 StatusMessage = "Couldn't find the app's window. Make sure it opened, then try again.";
                 return;
             }
+            // Some apps (PWAs in particular) reopen minimized if that's how they were
+            // last closed, and Chromium-based apps can asynchronously re-apply their
+            // own remembered window state shortly after launch, clobbering an early
+            // restore (the same race STACK.md documents for positioning) - restore,
+            // let it settle, then restore again before handing control to the user.
+            _windowManager.Restore(hwnd.Value);
+            Thread.Sleep(400);
+            _windowManager.Restore(hwnd.Value);
             _hwnd = hwnd;
             CanCapture = true;
             StatusMessage = "Drag/resize the window where you want it, then click \"Capture position\".";

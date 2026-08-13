@@ -20,6 +20,7 @@ public sealed class FakeWindowManager : IWindowManager
     public bool GracefulCloseWorks { get; set; } = true;
 
     public List<IntPtr> MinimizeCalls { get; } = new();
+    public List<IntPtr> RestoreCalls { get; } = new();
     public List<IntPtr> CloseGracefulCalls { get; } = new();
     public List<IntPtr> ForceKillCalls { get; } = new();
 
@@ -32,6 +33,8 @@ public sealed class FakeWindowManager : IWindowManager
     public (int X, int Y, int Width, int Height) GetBounds(IntPtr handle) => _bounds;
 
     public void Minimize(IntPtr handle) => MinimizeCalls.Add(handle);
+
+    public void Restore(IntPtr handle) => RestoreCalls.Add(handle);
 
     public void CloseGraceful(IntPtr handle)
     {

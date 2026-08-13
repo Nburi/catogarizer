@@ -29,11 +29,25 @@ public sealed class WindowManager : IWindowManager
 
     public (int X, int Y, int Width, int Height) GetBounds(IntPtr handle)
     {
+        // GetWindowRect reports an off-screen sentinel rect (-32000,-32000, tiny
+        // size) for a currently-minimized window. GetWindowPlacement's
+        // rcNormalPosition is defined to hold the real restore-to bounds
+        // regardless of current show state - matches what Position() already
+        // writes into, so this stays symmetric with the write path below.
+        var wp = new WINDOWPLACEMENT { length = System.Runtime.InteropServices.Marshal.SizeOf<WINDOWPLACEMENT>() };
+        if (GetWindowPlacement(handle, ref wp))
+        {
+            var r = wp.rcNormalPosition;
+            return (r.Left, r.Top, r.Width, r.Height);
+        }
+
         GetWindowRect(handle, out var rect);
         return (rect.Left, rect.Top, rect.Width, rect.Height);
     }
 
     public void Minimize(IntPtr handle) => ShowWindow(handle, SW_MINIMIZE);
+
+    public void Restore(IntPtr handle) => ShowWindow(handle, SW_RESTORE);
 
     public void CloseGraceful(IntPtr handle) => PostMessage(handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
 

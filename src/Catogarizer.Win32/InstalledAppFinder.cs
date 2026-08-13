@@ -45,12 +45,12 @@ public sealed class InstalledAppFinder : IInstalledAppFinder
             foreach (var lnk in shortcuts)
             {
                 var resolved = TryResolveShortcut(shell, lnk);
-                if (resolved is not { } shortcut) continue;
-                if (!string.Equals(Path.GetExtension(shortcut.Target), ".exe", StringComparison.OrdinalIgnoreCase)) continue;
-                if (!File.Exists(shortcut.Target)) continue;
-                if (LooksLikeUninstaller(shortcut.Target)) continue;
+                if (resolved is null) continue;
+                if (!string.Equals(Path.GetExtension(resolved.Target), ".exe", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!File.Exists(resolved.Target)) continue;
+                if (LooksLikeUninstaller(resolved.Target)) continue;
 
-                yield return new InstalledApp(Path.GetFileNameWithoutExtension(lnk), shortcut.Target, shortcut.Arguments);
+                yield return new InstalledApp(Path.GetFileNameWithoutExtension(lnk), resolved.Target, resolved.Arguments);
             }
         }
     }
@@ -76,7 +76,13 @@ public sealed class InstalledAppFinder : IInstalledAppFinder
         }
     }
 
-    private static (string Target, string? Arguments)? TryResolveShortcut(dynamic shell, string lnkPath)
+    // A record, not a value tuple - dynamic member access (needed for the COM shortcut
+    // object) erases value-tuple element names at runtime (it only sees Item1/Item2),
+    // throwing a RuntimeBinderException on .Target/.Arguments. A record's properties are
+    // real runtime members, so they survive crossing the dynamic boundary at the call site.
+    private sealed record ResolvedShortcut(string Target, string? Arguments);
+
+    private static ResolvedShortcut? TryResolveShortcut(dynamic shell, string lnkPath)
     {
         try
         {
@@ -85,7 +91,7 @@ public sealed class InstalledAppFinder : IInstalledAppFinder
             if (string.IsNullOrWhiteSpace(target)) return null;
 
             string arguments = shortcut.Arguments;
-            return (target, string.IsNullOrWhiteSpace(arguments) ? null : arguments);
+            return new ResolvedShortcut(target, string.IsNullOrWhiteSpace(arguments) ? null : arguments);
         }
         catch
         {

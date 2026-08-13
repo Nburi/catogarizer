@@ -312,14 +312,56 @@ completely ordinary `AppEntry`, so placement capture/positioning and the
 Phase 11 trigger/automation system already work for it without further
 changes.
 
-**Not yet verified for real** - this machine had no PWA installed to test
-against when this was built; end-to-end verification (install one, confirm
-picker tagging, Open/Close/Minimize target only that window, captured
-placement re-applies) is pending the user's go-ahead to actually launch/test.
+**Verified for real** against a genuine installed PWA ("nothing-to-do", an
+Edge-installed to-do app) once the user installed one and gave the go-ahead
+to test. Live testing surfaced and fixed three real bugs the unit suite
+couldn't catch (all in Win32/App-layer glue outside its scope):
+- `InstalledAppFinder` crashed silently on every single shortcut: mixing a
+  `dynamic` COM parameter with a named value-tuple return type erases the
+  tuple's field names at runtime (the DLR only sees `Item1`/`Item2`, not
+  `Target`/`Arguments`), throwing `RuntimeBinderException` on every access -
+  caught by the picker's own broad `catch { apps = []; }`, so the whole
+  search silently came up empty instead of surfacing an error. Fixed by
+  returning a small `ResolvedShortcut` record instead of a tuple - a
+  record's properties are real runtime members, unaffected by this. Confirmed
+  via a standalone harness that bypassed the swallowing catch: 95 apps
+  found, "nothing-to-do" correctly resolved with `IsPwa=True` and its real
+  `--app-id`.
+- Search picker tagging, Open (launched the PWA's real content window, not a
+  blank browser - confirmed via its window title), Minimize (`IsIconic`
+  confirmed true afterward), and Close (process confirmed gone afterward)
+  all individually verified against the real running window.
+- `WindowManager.GetBounds` used `GetWindowRect`, which reports an
+  off-screen sentinel rect (-32000,-32000, near-zero size) for a window
+  that's minimized at query time - a PWA last closed while minimized
+  reopens minimized (Chromium remembers this per-profile), so placement
+  capture could silently save that garbage. Fixed to read
+  `GetWindowPlacement().rcNormalPosition` instead, which holds the real
+  restore-to bounds regardless of current show state - already how
+  `Position()` writes placements, so this makes the read path symmetric
+  with the write path. `PlacementDialogViewModel.OpenApp` also now
+  explicitly restores (twice, settle-and-retry - the same Chromium
+  async-reapply race `STACK.md` already documents for positioning) after
+  finding the window, so the user can actually see it to drag/resize.
+
+**Still open**: even with the fix above, one placement capture on this
+machine's two-monitor, mixed-DPI setup (built-in display at 200% scaling,
+external "TC242W" at 100%) captured an implausibly large size
+(4830×1830) - traced partway to DPI virtualization (a DPI-unaware caller
+and a DPI-aware one legitimately see different numbers for the same
+window) but not fully root-caused before the screen went dark mid-
+investigation. Not urgent for Open/Close/Minimize (plain Win32-handle
+operations, unaffected) - only the number placement capture writes down is
+suspect. Needs a fresh, isolated repro on this same dual-monitor setup
+before trusting placement capture here; see "Known open items" below.
 
 ## Known open items (not blocking, revisit if they bite)
 - Edge/Chromium windows enforce their own minimum width — expected, not a
   bug to fix.
+- Placement capture may record an oversized rect on this machine's
+  dual-monitor, mixed-DPI setup (see Phase 12) - not yet root-caused, only
+  reproduced once. Re-test placement capture (any app, not just PWAs) here
+  before relying on it; likely DPI-virtualization-related, not PWA-specific.
 - PWA window matching (Phase 12) uses process-name-candidates + title-
   substring, not the window's `System.AppUserModel.ID` - matches this app's
   established preference for plain P/Invoke over new COM interop (see

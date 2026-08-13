@@ -19,6 +19,14 @@ public interface IWindowManager
 
     void Minimize(IntPtr handle);
 
+    /// <summary>
+    /// Restores a minimized (or maximized) window to normal. A minimized
+    /// window's reported bounds are Windows' off-screen sentinel rect, not
+    /// its real position - callers that read bounds (the placement-capture
+    /// flow) need this first or they capture garbage.
+    /// </summary>
+    void Restore(IntPtr handle);
+
     /// <summary>Sends WM_CLOSE - the same message a title-bar X button sends.</summary>
     void CloseGraceful(IntPtr handle);
 
