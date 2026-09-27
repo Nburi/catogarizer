@@ -46,15 +46,35 @@ of a flat rule list.
 - Multi-monitor aware: placement is stored relative to the chosen monitor so
   it's still correct if the primary monitor changes.
 
-### One-click category actions
-- Per category: **Open** (launch/restore+position every app in it),
-  **Close** (close every window belonging to its apps), **Minimize**
-  (minimize every window belonging to its apps).
-- Per-app override of the same three actions, for when you don't want the
-  whole category.
-- Quick switching between categories from a always-reachable surface (tray
+### Category switching & sessions (v2 — replaces the old Open/Close/Minimize model)
+- The core interaction is **switching**, not launching: at any moment
+  exactly one category is "active" (including an implicit **Sonstiges**
+  category for whatever's open that isn't assigned anywhere — see below).
+  There's no "nothing active" state.
+- Switching to category B: every top-level window currently attributed to
+  the active category A is hidden (not closed) and that exact window set is
+  remembered as A's **session**. Category B's session is restored if it has
+  one from before (windows re-shown as they were); otherwise B's saved
+  **template** is opened fresh.
+- Window attribution is per **window**, not per process — e.g. a browser
+  open in two categories at once is two separately tracked windows, so
+  switching away from one doesn't hide the other's browser window too.
+- Any window the user opens ad-hoc while a category is active gets
+  auto-attributed to that category's session, just by appearing while it's
+  active — no manual "add to category" step. It's **session-only**: it does
+  not get added to the category's permanent template, so templates don't
+  accumulate one-off clutter over time.
+- **Sonstiges** (Uncategorized) is a real, always-present pseudo-category
+  covering whatever's open before/outside any real category — the same
+  hide/restore rules apply to it. Whether a given app gets hidden when its
+  category (including Sonstiges) goes inactive is configurable per app:
+  most apps hide by default, but specific apps (e.g. Spotify, WhatsApp) can
+  be **pinned** to stay visible across every category switch.
+- Per-app manual Open/Close/Minimize still exist as an override for a
+  single app, independent of the category-level switch.
+- Quick switching between categories from an always-reachable surface (tray
   and/or main window), not buried in a menu tree — plus the command palette
-  below, which is the fast path.
+  below, which is the primary, most-used path (see "Chosen design").
 
 ### App blocking
 - A category can carry a blocklist of apps that are not allowed to run
@@ -98,23 +118,31 @@ of a flat rule list.
   automation-rule shape, a pluggable to-do provider interface) without
   wiring up UI or behavior for them now.
 
-## Chosen design
-- **Layout:** Dashboard Home — a grid of category cards (name, app-count,
-  avatar-stack preview of its apps, one-click Open right on the card);
-  clicking a card's name drills into a detail panel listing its apps with
-  per-app Open/Minimize/Close.
-- **Theme:** Daylight Studio — light, low-glare surfaces for daytime desk
-  use, single indigo-blue accent (no gradient/multi-tone accent).
-- **Command palette:** in addition to the Dashboard Home main window, a
-  Spotlight/Ctrl+K-style overlay — opened by a **global, user-configurable
-  keyboard shortcut** (works from anywhere, not just while Catogarizer's
-  window has focus, since the point is switching category without
-  breaking out of whatever app you're in) — for searching and
-  opening/closing/minimizing a category without touching the mouse.
-  Default shortcut assumed as `Ctrl+Alt+Space`, changeable in Settings;
-  flag if a system-wide hotkey wasn't what you meant and you want it
-  in-app-window-only instead.
-- Full layout/theme exploration tool: `design/concepts.html`.
+## Chosen design (v2 UI rebuild — backend/window-management layer below is retained as-is)
+- **Scope of the rebuild:** the Win32 window-management, blocking,
+  autostart, search-picker, and automation layers (see `STACK.md`/
+  `TODO.md`, Phases 2–12) are proven and stay. What's being redesigned from
+  scratch is the UI layer and the category-action model it drives (see
+  "Category switching & sessions" above) — the old
+  Open/Close/Minimize-buttons-per-card interaction is gone, replaced by
+  switching.
+- **Primary surface: command palette.** Switching is now the main, frequent
+  action (used constantly, not an occasional "open my workspace" click), so
+  the palette is the everyday tool, not a secondary shortcut to the
+  dashboard. Global, user-configurable keyboard shortcut (already built —
+  `GlobalHotkeyService`, default `Ctrl+Alt+Space`), works from anywhere.
+  Palette scope extends from "search/switch category" to also surfacing the
+  live session state (what's parked where) where useful.
+- **Secondary surface: a minimalist dashboard/overview window** — for
+  editing templates/pinned apps/settings, and for a quick visual overview
+  with click-to-switch (clicking a card = switch to that category, not a
+  separate Open button). Category cards stay simple: name, avatar-stack of
+  its apps, a small "N windows parked" count. Deliberately no thumbnails or
+  live previews — an overview to glance at, not a console to live in.
+- **Theme:** Daylight Studio direction carries over as a starting point,
+  open to revisiting alongside the UI rebuild.
+- Full layout/theme exploration tool: `design/concepts.html` (pre-pivot;
+  needs a v2 pass once the new layout is sketched).
 
 ## Open technical questions
 Resolved during stack research (step 3) and the window-management prototype
@@ -124,8 +152,19 @@ open/position/minimize/close (plain Win32 P/Invoke, with restore-then-place
 and settle-and-retry for maximized/async-repositioning apps, and
 localization-aware/host-process-aware window finding).
 
-Still open, to resolve during implementation:
-- Mechanism for the global keyboard shortcut (system-wide hotkey
-  registration vs. a low-level keyboard hook) for the command palette, and
-  how a borderless overlay window is shown/dismissed/focused on top of
-  whatever app is currently active.
+Global hotkey mechanism and borderless overlay behavior: resolved and built
+(`GlobalHotkeyService`, Phase 6 in `TODO.md`).
+
+Still open, to resolve for the v2 session-switching pivot — planned as a
+small prototype/spike before real implementation, same approach as the
+original Phase 2 Win32 spike:
+- **Hide/show reliability**: does `SW_HIDE`/`SW_SHOW` behave predictably
+  across the same tricky app categories already identified for
+  minimize/restore (fullscreen-exclusive apps, Chromium's async
+  re-apply-on-launch behavior, UWP/`ApplicationFrameHost` host-process
+  windows) — or does hiding introduce new failure modes minimizing didn't
+  have?
+- **New-window detection**: how to reliably notice a new top-level window
+  appearing so it can be auto-attributed to the active category's session —
+  polling (same pattern as the existing blocking watcher) vs.
+  `SetWinEventHook` (`EVENT_OBJECT_CREATE`/`EVENT_SYSTEM_FOREGROUND`).
