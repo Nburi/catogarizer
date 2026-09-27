@@ -33,4 +33,21 @@ public interface IWindowManager
     void ForceKill(IntPtr handle);
 
     bool IsWindowOpen(IntPtr handle);
+
+    /// <summary>
+    /// Hides a window without closing it (SW_HIDE) - the primitive behind
+    /// category switching's "park this session" behavior. Unlike minimize,
+    /// a hidden window doesn't appear in Alt-Tab/taskbar at all.
+    /// </summary>
+    void Hide(IntPtr handle);
+
+    /// <summary>
+    /// Re-shows a window hidden via <see cref="Hide"/>, in its current size/
+    /// position/state (SW_SHOW) - doesn't force it to normal/restored the
+    /// way <see cref="Restore"/> does, so a window that was maximized before
+    /// being hidden comes back maximized.
+    /// </summary>
+    void Show(IntPtr handle);
+
+    bool IsWindowVisible(IntPtr handle);
 }

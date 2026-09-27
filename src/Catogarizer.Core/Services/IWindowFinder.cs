@@ -19,4 +19,11 @@ public interface IWindowFinder
     /// different packaged apps at once).
     /// </summary>
     IReadOnlyList<OpenWindowInfo> FindAllRunningWindows(IReadOnlyList<string> processNameCandidates, IReadOnlyList<string> titleCandidates);
+
+    /// <summary>
+    /// Every currently visible top-level window with a non-empty title, no
+    /// filtering - the raw snapshot <see cref="IWindowWatcher"/> diffs
+    /// against itself over time to notice new windows appearing.
+    /// </summary>
+    IReadOnlyList<OpenWindowInfo> FindAllVisibleWindows();
 }

@@ -370,3 +370,56 @@ before trusting placement capture here; see "Known open items" below.
   PWA's name could in theory still be misidentified. Revisit with
   `SHGetPropertyStoreForWindow`-based AUMID matching only if this actually
   causes a wrong match in practice.
+
+## Phase 13 — Session-based category switching (v2 pivot) — planned
+Concept updated in `CONCEPT.md` ("Category switching & sessions" /
+"Chosen design"): the category action model moves from per-category
+Open/Close/Minimize buttons to always-active **switching**, with a saved
+per-category window session (hide-on-leave, restore-on-return), an implicit
+"Sonstiges" bucket for unassigned windows, and pinned always-visible apps.
+Backend layers from Phases 2–12 (window management, blocking, autostart,
+search picker, automation) are retained; the UI layer is being rebuilt
+around a command-palette-first interaction, per the updated CONCEPT.md.
+
+- [x] **Spike first** (not full UI), same approach as the original Phase 2
+      Win32 prototype - validate before building on top of it:
+  - [x] `SW_HIDE`/`SW_SHOW` reliability - added `Hide`/`Show`/
+        `IsWindowVisible` to `IWindowManager`/`WindowManager`
+        (`src/Catogarizer.Win32/WindowManager.cs`) and a throwaway
+        `tools/HideShowSpike` console harness (`hide-show <substring>` /
+        `watch` modes). Verified for real against Notepad (throwaway),
+        Arc/Chromium, Spotify (actively playing), and the Realtek Audio
+        Console UWP app - hide then show left bounds, `IsWindowOpen`, and
+        `IsWindowVisible` exactly as expected in every case, no drift, no
+        Chromium async-reflow clobbering observed. Real finding: the
+        Realtek UWP app exposes **two separate top-level windows**
+        (`RtkUWP` + `ApplicationFrameHost`, different bounds) for what's
+        conceptually one app - not a problem for the session model since
+        tracking stays per-window anyway, both just end up as two entries
+        in the same session. User-verified separately against a real
+        fullscreen-exclusive game: disappeared from Alt-Tab/taskbar while
+        hidden, reappeared correctly on show - the one remaining risk from
+        `STACK.md` didn't materialize.
+  - [x] New-window detection - went with polling (matches the existing
+        `AppBlockingService`/`ProcessWatcher` pattern) over
+        `SetWinEventHook`, for consistency with the rest of the codebase
+        and to avoid a new interop surface. Added `IWindowFinder.
+        FindAllVisibleWindows`, `IWindowWatcher`/`WindowWatcher`
+        (`src/Catogarizer.Win32/WindowWatcher.cs`, diffs snapshots by
+        handle, 350ms interval) plus `FakeWindowWatcher`/
+        `FakeWindowFinder.FindAllVisibleWindows` for future consumer
+        tests. Verified for real via the harness's `watch` mode: opening
+        Calculator was detected within one poll tick, correctly reporting
+        the localized title ("Rechner") and `ApplicationFrameHost` as
+        owner - same UWP host-process shape already known from `STACK.md`.
+- [ ] Session/window-attribution data model (per-window, not per-process;
+      session vs. template distinction) in `Catogarizer.Core`.
+- [ ] "Sonstiges" implicit category + per-app pinned/always-visible flag.
+- [ ] Category-switch service wired through the (spike-validated) hide/show
+      + new-window-detection primitives, replacing the Phase 5
+      `CategoryActionService` category-level Open/Close/Minimize as the
+      primary action (per-app manual Open/Close/Minimize stays as an
+      override).
+- [ ] New UI: command palette as primary surface, minimalist dashboard as
+      secondary overview + click-to-switch (no thumbnails/previews).
+- [ ] `design/concepts.html` v2 pass once the new layout is sketched.

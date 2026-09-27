@@ -23,6 +23,9 @@ public sealed class FakeWindowManager : IWindowManager
     public List<IntPtr> RestoreCalls { get; } = new();
     public List<IntPtr> CloseGracefulCalls { get; } = new();
     public List<IntPtr> ForceKillCalls { get; } = new();
+    public List<IntPtr> HideCalls { get; } = new();
+    public List<IntPtr> ShowCalls { get; } = new();
+    private readonly HashSet<IntPtr> _hiddenWindows = new();
 
     public void Position(IntPtr handle, int x, int y, int width, int height)
     {
@@ -49,4 +52,21 @@ public sealed class FakeWindowManager : IWindowManager
     }
 
     public bool IsWindowOpen(IntPtr handle) => !_closedWindows.Contains(handle);
+
+    public void Hide(IntPtr handle)
+    {
+        HideCalls.Add(handle);
+        _hiddenWindows.Add(handle);
+    }
+
+    public void Show(IntPtr handle)
+    {
+        ShowCalls.Add(handle);
+        _hiddenWindows.Remove(handle);
+    }
+
+    public bool IsWindowVisible(IntPtr handle) => !_hiddenWindows.Contains(handle);
+
+    /// <summary>Test hook: simulates the user closing a window directly (not via this manager).</summary>
+    public void SimulateClosedExternally(IntPtr handle) => _closedWindows.Add(handle);
 }

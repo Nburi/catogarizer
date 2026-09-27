@@ -59,4 +59,10 @@ public sealed class WindowManager : IWindowManager
     }
 
     public bool IsWindowOpen(IntPtr handle) => IsWindow(handle);
+
+    public void Hide(IntPtr handle) => ShowWindow(handle, SW_HIDE);
+
+    public void Show(IntPtr handle) => ShowWindow(handle, SW_SHOW);
+
+    public bool IsWindowVisible(IntPtr handle) => NativeMethods.IsWindowVisible(handle);
 }

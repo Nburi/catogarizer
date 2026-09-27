@@ -39,6 +39,22 @@ public sealed class WindowFinder : IWindowFinder
         return results;
     }
 
+    public IReadOnlyList<OpenWindowInfo> FindAllVisibleWindows()
+    {
+        var results = new List<OpenWindowInfo>();
+        EnumWindows((hWnd, _) =>
+        {
+            if (!IsWindowVisible(hWnd)) return true;
+            var title = GetTitle(hWnd);
+            if (title.Length == 0) return true;
+
+            GetWindowThreadProcessId(hWnd, out var pid);
+            results.Add(new OpenWindowInfo(hWnd, title, TryGetProcessName(pid), pid));
+            return true;
+        }, IntPtr.Zero);
+        return results;
+    }
+
     private static IntPtr? FindByProcessHandle(int processId, TimeSpan timeout)
     {
         Process process;
