@@ -412,14 +412,20 @@ around a command-palette-first interaction, per the updated CONCEPT.md.
         Calculator was detected within one poll tick, correctly reporting
         the localized title ("Rechner") and `ApplicationFrameHost` as
         owner - same UWP host-process shape already known from `STACK.md`.
-- [ ] Session/window-attribution data model (per-window, not per-process;
-      session vs. template distinction) in `Catogarizer.Core`.
-- [ ] "Sonstiges" implicit category + per-app pinned/always-visible flag.
-- [ ] Category-switch service wired through the (spike-validated) hide/show
-      + new-window-detection primitives, replacing the Phase 5
-      `CategoryActionService` category-level Open/Close/Minimize as the
-      primary action (per-app manual Open/Close/Minimize stays as an
-      override).
+- [x] Session/window-attribution data model (per-window, not per-process;
+      session vs. template distinction) - `CategorySwitchService`/
+      `ICategorySwitchService` in `Catogarizer.Core`, built directly on the
+      spike-validated `Hide`/`Show`/`IWindowWatcher` primitives. 10 unit
+      tests against `FakeWindowManager`/`FakeWindowFinder`/
+      `FakeWindowWatcher`/`FakeCategoryActionService`.
+- [x] "Sonstiges" implicit category + per-app pinned/always-visible flag -
+      `CategorySwitchService.Uncategorized` (`Guid.Empty`, no CRUD/UI needed
+      since it's implicit) + `PinnedApp` model/`AppConfig.PinnedApps`.
+- [ ] Wire `CategorySwitchService` into the actual running app/CLI as the
+      primary action, replacing the Phase 5 `CategoryActionService`
+      category-level Open/Close/Minimize (per-app manual Open/Close/Minimize
+      stays as an override). Not done yet - the service exists and is
+      tested in isolation, but nothing in `Catogarizer.App`/the CLI calls it.
 - [ ] New UI: command palette as primary surface, minimalist dashboard as
       secondary overview + click-to-switch (no thumbnails/previews).
 - [ ] `design/concepts.html` v2 pass once the new layout is sketched.
