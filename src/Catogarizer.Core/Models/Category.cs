@@ -14,4 +14,7 @@ public sealed class Category
     public int SortOrder { get; set; }
     public List<Guid> AppIds { get; set; } = new();
     public List<Guid> BlockedAppIds { get; set; } = new();
+
+    /// <summary>OKLCH hue in degrees; the active theme decides lightness and chroma. Null only in configs saved before colors existed.</summary>
+    public double? Hue { get; set; }
 }

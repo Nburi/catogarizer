@@ -509,8 +509,20 @@ categories with charmap/msinfo32, Claude pinned; config restored afterwards):
       CheckBox style, square even on round themes), WPF's dotted focus
       rectangle (themed accent focus ring on all buttons), a truncated theme
       description. Still placeholder: blue app/tray icon (branding task).
-- [ ] 5. Category color (`Category.Hue`, additive) + real app icons
-      (`SHGetFileInfo`, cached, letter tile fallback).
+- [x] 5. Category color + real app icons. `Category.Hue` (OKLCH hue; the theme
+      sets lightness/chroma so colors stay readable in every theme). New
+      categories get the palette hue farthest from those in use
+      (`CategoryHues.Next`); configs from before colors existed get hues
+      assigned once at load (additive, saved once); `SetCategoryHue` for the
+      editor. Pill now uses the real category color. Icons: `ShellIcons`
+      (Win32, `PrivateExtractIcons` at 64 px for sharp 200 % DPI, shell icon
+      fallback, exe path of a running process via
+      `QueryFullProcessImageName` - works for elevated ones too),
+      `AppIconCache` (background load, cached per exe/pid), `AppIconView`
+      control (neutral letter tile at once, real icon fades in; cached icons
+      appear without fade). Known limit: a PWA shows its browser's icon (the
+      PWA's own icon lives in its Start Menu shortcut, which `AppEntry`
+      doesn't keep). Verified live together with step 6.
 - [ ] 6. New "Now + Shelf" home + separate category editor window; empty,
       first-launch and error states.
 - [ ] 7. Palette v2 (preview shown to the user before building).

@@ -5,7 +5,9 @@ namespace Catogarizer.Core.Tests.Fakes;
 
 public sealed class FakeConfigStore : IConfigStore
 {
-    private AppConfig _config = new();
+    private AppConfig _config;
+
+    public FakeConfigStore(AppConfig? initial = null) => _config = initial ?? new AppConfig();
 
     public int SaveCount { get; private set; }
 

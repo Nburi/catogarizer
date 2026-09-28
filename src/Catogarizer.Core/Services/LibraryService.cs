@@ -22,6 +22,17 @@ public sealed class LibraryService
         _configStore = configStore;
         _fileExists = fileExists ?? File.Exists;
         _config = configStore.Load();
+        AssignMissingHues();
+    }
+
+    /// <summary>Configs from before category colors existed get a color per category once, in their order.</summary>
+    private void AssignMissingHues()
+    {
+        var missing = _config.Categories.Where(c => c.Hue is null).OrderBy(c => c.SortOrder).ToList();
+        if (missing.Count == 0) return;
+        foreach (var category in missing)
+            category.Hue = Theming.CategoryHues.Next(_config.Categories.Where(c => c.Hue is not null).Select(c => c.Hue!.Value));
+        Save();
     }
 
     public IReadOnlyList<Category> Categories => _config.Categories;
@@ -67,7 +78,12 @@ public sealed class LibraryService
         var validation = CategoryValidator.ValidateName(name, _config.Categories);
         if (!validation.IsValid) throw new ArgumentException(validation.ErrorMessage, nameof(name));
 
-        var category = new Category { Name = name.Trim(), SortOrder = _config.Categories.Count };
+        var category = new Category
+        {
+            Name = name.Trim(),
+            SortOrder = _config.Categories.Count,
+            Hue = Theming.CategoryHues.Next(_config.Categories.Select(c => c.Hue).OfType<double>()),
+        };
         _config.Categories.Add(category);
         Save();
         return category;
@@ -80,6 +96,13 @@ public sealed class LibraryService
         if (!validation.IsValid) throw new ArgumentException(validation.ErrorMessage, nameof(newName));
 
         category.Name = newName.Trim();
+        Save();
+    }
+
+    public void SetCategoryHue(Guid categoryId, double hue)
+    {
+        var category = GetCategoryOrThrow(categoryId);
+        category.Hue = ((hue % 360) + 360) % 360;
         Save();
     }
 

@@ -35,6 +35,7 @@ public partial class App : Application
     private CategorySwitcher? _switcher;
     private CommandPaletteWindow? _paletteWindow;
     private SwitchPillWindow? _pill;
+    private ThemeService? _themeService;
     private readonly DoubleTapDetector _doubleTap = new();
     private bool _handlingHotkey;
 
@@ -90,6 +91,7 @@ public partial class App : Application
         var library = new LibraryService(configStore);
         var themeService = new ThemeService(Resources);
         themeService.Apply(library.Settings.Theme);
+        _themeService = themeService;
         var installedAppFinder = new InstalledAppFinder();
         var dialogService = new DialogService();
         var processLauncher = new ProcessLauncher();
@@ -334,7 +336,9 @@ public partial class App : Application
         _library!.Categories.FirstOrDefault(c => c.Id == id)?.Name ?? CategorySwitchService.UncategorizedName;
 
     private Color? CategoryColor(Guid id) =>
-        id == CategorySwitchService.Uncategorized ? (Color)FindResource("MutedColor") : (Color)FindResource("AccentColor");
+        _library!.Categories.FirstOrDefault(c => c.Id == id)?.Hue is { } hue
+            ? _themeService!.CategoryColor(hue)
+            : (Color)FindResource("MutedColor");
 
     /// <summary>Never leave a window hidden behind when Catogarizer stops (PRINCIPLES.md, value 1).</summary>
     private void RestoreHiddenWindows()
