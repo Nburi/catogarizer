@@ -20,7 +20,10 @@ public sealed partial class PaletteEntry : ObservableObject
     public required string StateText { get; init; }
     public required bool IsActive { get; init; }
     public required bool IsPrevious { get; init; }
+    public required bool HasMissingApp { get; init; }
     public required IReadOnlyList<TemplateIcon> Icons { get; init; }
+
+    public string PreviousLabel => IsPrevious ? "   last used" : "";
 
     [ObservableProperty] private bool _isSelected;
 
@@ -76,16 +79,19 @@ public partial class CommandPaletteViewModel : ObservableObject
         PaletteEntry Entry(Guid id, string name, string? key, Color color, IReadOnlyList<AppEntry> template)
         {
             var parked = sessions.TryGetValue(id, out var w) ? w.Count : 0;
+            // Same wording as the home's tiles.
+            var missing = id == active || parked > 0 ? 0 : template.Count(a => !System.IO.File.Exists(a.ExecutablePath));
             var state = id == active ? "You're here"
                 : parked > 0 ? $"{parked} parked"
                 : id == CategorySwitchService.Uncategorized ? "Nothing parked"
-                : template.Count > 0 ? "Starts fresh" : "Empty";
+                : missing > 0 ? (missing == 1 ? "1 app not found" : $"{missing} apps not found")
+                : template.Count switch { 0 => "Empty", 1 => "Opens 1 app", var n => $"Opens {n} apps" };
             var brush = new SolidColorBrush(color);
             brush.Freeze();
             return new PaletteEntry
             {
                 Id = id, Name = name, KeyText = key, Color = brush, StateText = state,
-                IsActive = id == active, IsPrevious = id == previous,
+                IsActive = id == active, IsPrevious = id == previous, HasMissingApp = missing > 0,
                 Icons = template.Take(MaxIcons).Select(a => new TemplateIcon(a.Name, a.ExecutablePath)).ToList(),
             };
         }

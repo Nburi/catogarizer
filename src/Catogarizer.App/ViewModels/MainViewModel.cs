@@ -175,7 +175,13 @@ public partial class MainViewModel : ObservableObject
         BackTitle = $"Back to {previous?.Name ?? CategorySwitchService.UncategorizedName}";
         BackHint = $"or press {_library.Settings.CommandPaletteHotkey} twice";
         var parked = sessions.TryGetValue(previousId!.Value, out var w) ? w.Count : 0;
-        BackDetail = parked switch { 0 => "Opens fresh", 1 => "1 window parked", var n => $"{n} windows parked" };
+        var templateCount = previous is null ? 0 : _library.AppsOf(previous).Count;
+        BackDetail = parked switch
+        {
+            1 => "1 window parked",
+            > 1 => $"{parked} windows parked",
+            _ => templateCount switch { 0 => "Nothing parked", 1 => "Opens 1 app", var n => $"Opens {n} apps" },
+        };
         BackColor = Frozen(new SolidColorBrush(ColorOf(previous)));
     }
 

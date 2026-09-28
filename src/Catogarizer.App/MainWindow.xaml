@@ -302,13 +302,13 @@
                                         <TextBlock Text="&#x2190;" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                                    VerticalAlignment="Center" Margin="0,-2,10,0"/>
                                         <Ellipse Grid.Column="1" Width="9" Height="9" Fill="{Binding BackColor}" VerticalAlignment="Center" Margin="0,0,9,0"/>
-                                        <StackPanel Grid.Column="2">
+                                        <StackPanel Grid.Column="2" Grid.ColumnSpan="2">
                                             <TextBlock Text="{Binding BackTitle}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                                        TextTrimming="CharacterEllipsis"/>
                                             <TextBlock Text="{Binding BackDetail}" Style="{StaticResource MutedTextStyle}" FontSize="11.5"/>
+                                            <TextBlock Text="{Binding BackHint}" Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,2,0,0"
+                                                       TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
-                                        <TextBlock Grid.Column="3" Text="{Binding BackHint}" Style="{StaticResource MutedTextStyle}" FontSize="11"
-                                                   VerticalAlignment="Center" TextAlignment="Right" TextWrapping="Wrap" MaxWidth="110" Margin="8,0,0,0"/>
                                     </Grid>
                                 </Border>
                             </Button>

@@ -53,6 +53,7 @@ public partial class CategoryEditorViewModel : ObservableObject
     [ObservableProperty] private bool _showOpenApps;
     [ObservableProperty] private bool _isLoadingOpenApps;
     [ObservableProperty] private string? _notice;
+    [ObservableProperty] private string? _lastAddedText;
 
     public ObservableCollection<HueOption> Hues { get; } = new();
     public ObservableCollection<AppEntry> Apps { get; } = new();
@@ -189,6 +190,8 @@ public partial class CategoryEditorViewModel : ObservableObject
         _library.AddAppToCategory(CategoryId, app.Id);
         OpenApps.Remove(suggestion);
         RefreshLists();
+        // The new row lands below this panel, often out of sight - say it worked, right here.
+        LastAddedText = $"Added {app.Name}. It's listed below and opens with this category.";
     }
 
     [RelayCommand]

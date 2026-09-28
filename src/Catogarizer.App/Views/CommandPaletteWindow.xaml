@@ -89,16 +89,11 @@
                                                Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                 </Border>
                                 <Ellipse Grid.Column="1" Width="9" Height="9" Fill="{Binding Color}" VerticalAlignment="Center" Margin="4,0,10,0"/>
-                                <Grid Grid.Column="2" VerticalAlignment="Center">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MaxWidth="330"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip="{Binding Name}"/>
-                                    <TextBlock Grid.Column="1" Text="  last used" Style="{StaticResource MutedTextStyle}" FontSize="11.5" VerticalAlignment="Center"
-                                               Visibility="{Binding IsPrevious, Converter={StaticResource BoolToVis}}"/>
-                                </Grid>
+                                <!-- One TextBlock, so a long name and "last used" trim together with an ellipsis. -->
+                                <TextBlock Grid.Column="2" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}">
+                                    <Run Text="{Binding Name, Mode=OneWay}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/><Run
+                                         Text="{Binding PreviousLabel, Mode=OneWay}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}"/>
+                                </TextBlock>
                                 <ItemsControl Grid.Column="3" ItemsSource="{Binding Icons}" Focusable="False" VerticalAlignment="Center" Margin="10,0,12,0">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
@@ -111,8 +106,18 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Grid.Column="4" Text="{Binding StateText}" Style="{StaticResource MutedTextStyle}" FontSize="12"
-                                           VerticalAlignment="Center" MinWidth="86" TextAlignment="Right"/>
+                                <TextBlock Grid.Column="4" Text="{Binding StateText}" FontSize="12"
+                                           VerticalAlignment="Center" MinWidth="86" TextAlignment="Right">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource MutedTextStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasMissingApp}" Value="True">
+                                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </Grid>
                         </Button>
                     </DataTemplate>
