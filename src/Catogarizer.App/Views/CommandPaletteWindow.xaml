@@ -16,43 +16,33 @@
             <TextBox x:Name="SearchBox" Style="{StaticResource ThemedTextBoxStyle}" FontSize="15" Padding="12,10"
                      Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
 
-            <TextBlock Text="No categories yet - add one from the main window."
+            <TextBlock Text="Nothing matches. Try a shorter name."
                        Style="{StaticResource MutedTextStyle}" Margin="6,14,6,4"
                        Visibility="{Binding Results.Count, Converter={StaticResource ZeroToVisibleConverter}}"/>
 
             <ItemsControl ItemsSource="{Binding Results}" Margin="0,8,0,0" MaxHeight="360">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Grid Margin="0,0,0,4" AutomationProperties.Name="{Binding Name}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Style="{StaticResource GhostRowButtonStyle}" HorizontalAlignment="Stretch"
-                                    Padding="10,9" AutomationProperties.Name="{Binding Name}"
-                                    Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                    CommandParameter="{Binding}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
-                                               Foreground="{StaticResource InkBrush}"/>
-                                    <TextBlock Text="{Binding AppIds.Count, StringFormat={} ({0} apps)}"
-                                               Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button Content="—" Style="{StaticResource GhostIconButtonStyle}" ToolTip="Minimize"
-                                        Command="{Binding DataContext.MinimizeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                        CommandParameter="{Binding}"/>
-                                <Button Content="⏹" Style="{StaticResource GhostIconButtonStyle}" ToolTip="Close"
-                                        Command="{Binding DataContext.CloseCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                        CommandParameter="{Binding}"/>
-                            </StackPanel>
-                        </Grid>
+                        <Button Style="{StaticResource GhostRowButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                Padding="10,9" Margin="0,0,0,4" AutomationProperties.Name="{Binding Name}"
+                                Command="{Binding DataContext.SwitchToCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                CommandParameter="{Binding}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
+                                           Foreground="{StaticResource InkBrush}" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Detail}" Style="{StaticResource MutedTextStyle}"
+                                           VerticalAlignment="Center" Margin="12,0,0,0"/>
+                            </Grid>
+                        </Button>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <TextBlock Text="Enter opens the first match · Esc closes" Style="{StaticResource MutedTextStyle}"
+            <TextBlock Text="Enter switches to the first match · Esc closes" Style="{StaticResource MutedTextStyle}"
                        FontSize="11" Margin="6,10,6,2"/>
         </StackPanel>
     </Border>

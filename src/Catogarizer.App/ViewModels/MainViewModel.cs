@@ -20,7 +20,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IWindowManager _windowManager;
     private readonly IMonitorService _monitorService;
     private readonly ICategoryActionService _categoryActionService;
-    private readonly IAppBlockingService _appBlockingService;
+    private readonly CategorySwitcher _switcher;
     private readonly IAutostartService _autostartService;
     private readonly TriggerRunner _triggerRunner;
     private readonly Action<string> _onHotkeyChanged;
@@ -51,7 +51,7 @@ public partial class MainViewModel : ObservableObject
 
     public MainViewModel(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService,
         IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager,
-        IMonitorService monitorService, ICategoryActionService categoryActionService, IAppBlockingService appBlockingService,
+        IMonitorService monitorService, ICategoryActionService categoryActionService, CategorySwitcher switcher,
         IAutostartService autostartService, TriggerRunner triggerRunner, Action<string> onHotkeyChanged)
     {
         _library = library;
@@ -62,7 +62,7 @@ public partial class MainViewModel : ObservableObject
         _windowManager = windowManager;
         _monitorService = monitorService;
         _categoryActionService = categoryActionService;
-        _appBlockingService = appBlockingService;
+        _switcher = switcher;
         _autostartService = autostartService;
         _triggerRunner = triggerRunner;
         _onHotkeyChanged = onHotkeyChanged;
@@ -103,23 +103,9 @@ public partial class MainViewModel : ObservableObject
     {
         SelectedCategoryBlockedApps.Clear();
         if (SelectedCategory is null) return;
-        foreach (var blocked in ResolveBlockedApps(SelectedCategory))
+        foreach (var blocked in _library.BlockedAppsOf(SelectedCategory))
             SelectedCategoryBlockedApps.Add(blocked);
     }
-
-    private List<AppEntry> ResolveApps(Category category) =>
-        category.AppIds
-            .Select(id => _library.Apps.FirstOrDefault(a => a.Id == id))
-            .Where(a => a is not null)
-            .Cast<AppEntry>()
-            .ToList();
-
-    private List<BlockedApp> ResolveBlockedApps(Category category) =>
-        category.BlockedAppIds
-            .Select(id => _library.BlockedApps.FirstOrDefault(b => b.Id == id))
-            .Where(b => b is not null)
-            .Cast<BlockedApp>()
-            .ToList();
 
     [RelayCommand]
     private void SelectCategory(Category category)
@@ -157,10 +143,10 @@ public partial class MainViewModel : ObservableObject
     {
         var confirmed = _dialogService.ShowConfirm(
             "Delete category?",
-            $"\"{category.Name}\" will be removed. Its apps stay in your library and can be added to another category.");
+            $"\"{category.Name}\" will be removed. Its open windows move to Unsorted, and its apps stay in your library for other categories.");
         if (!confirmed) return;
 
-        _library.DeleteCategory(category.Id);
+        _switcher.DeleteCategory(category.Id);
         RefreshCategories();
     }
 
@@ -208,6 +194,7 @@ public partial class MainViewModel : ObservableObject
 
         var blocked = _library.AddOrReuseBlockedApp(result.Value.Name, result.Value.ExecutablePath);
         _library.AddBlockedAppToCategory(SelectedCategory.Id, blocked.Id);
+        _switcher.RefreshBlocking();
         RefreshSelectedCategoryBlockedApps();
     }
 
@@ -216,6 +203,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (SelectedCategory is null) return;
         _library.RemoveBlockedAppFromCategory(SelectedCategory.Id, blocked.Id);
+        _switcher.RefreshBlocking();
         RefreshSelectedCategoryBlockedApps();
     }
 
@@ -230,24 +218,17 @@ public partial class MainViewModel : ObservableObject
         RefreshCategories();
     }
 
+    /// <summary>No busy overlay: a switch that restores a session must feel instant (PRINCIPLES.md, value 2).</summary>
     [RelayCommand]
-    private Task OpenCategoryAsync(Category category)
+    private async Task SwitchToCategoryAsync(Category category)
     {
-        // Active before launching, not after, so anything the category's own apps
-        // trigger as a side effect is caught too.
-        _appBlockingService.ActivateCategory(category.Id, ResolveBlockedApps(category));
-        return RunBusyAsync($"Opening \"{category.Name}\"...", () => _categoryActionService.Open(ResolveApps(category)));
-    }
-
-    [RelayCommand]
-    private Task MinimizeCategoryAsync(Category category) =>
-        RunBusyAsync($"Minimizing \"{category.Name}\"...", () => _categoryActionService.Minimize(ResolveApps(category)));
-
-    [RelayCommand]
-    private async Task CloseCategoryAsync(Category category)
-    {
-        await RunBusyAsync($"Closing \"{category.Name}\"...", () => _categoryActionService.Close(ResolveApps(category)));
-        _appBlockingService.DeactivateCategory(category.Id);
+        Notice = null;
+        var result = await Task.Run(() => _switcher.SwitchTo(category.Id));
+        if (result is { Failures.Count: > 0 })
+        {
+            Notice = DescribeFailures(result.Failures);
+            NoticeIsError = true;
+        }
     }
 
     [RelayCommand]
@@ -292,9 +273,7 @@ public partial class MainViewModel : ObservableObject
             var result = await Task.Run(action);
             if (result.Failures.Count > 0)
             {
-                Notice = result.Failures.Count == 1
-                    ? result.Failures[0].ErrorMessage
-                    : $"{result.Failures.Count} apps had a problem: {string.Join(" ", result.Failures.Select(f => f.ErrorMessage))}";
+                Notice = DescribeFailures(result.Failures);
                 NoticeIsError = true;
             }
         }
@@ -304,4 +283,11 @@ public partial class MainViewModel : ObservableObject
             BusyMessage = null;
         }
     }
+
+    public static string? DescribeFailures(IReadOnlyList<AppActionResult> failures) => failures.Count switch
+    {
+        0 => null,
+        1 => failures[0].ErrorMessage,
+        _ => $"{failures.Count} apps had a problem: {string.Join(" ", failures.Select(f => f.ErrorMessage))}",
+    };
 }

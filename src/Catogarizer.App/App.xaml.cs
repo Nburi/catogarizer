@@ -20,7 +20,7 @@ public partial class App : Application
 {
     private const string SingleInstanceMutexName = "Catogarizer.SingleInstance.9F3B2E7A";
     private const string ShowSignalEventName = "Catogarizer.ShowSignal.9F3B2E7A";
-    private const string TriggerRunPipeName = "Catogarizer.TriggerRun.9F3B2E7A";
+    private const string CliPipeName = "Catogarizer.Cli.9F3B2E7A";
 
     private Mutex? _singleInstanceMutex;
     private bool _ownsSingleInstanceMutex;
@@ -28,9 +28,10 @@ public partial class App : Application
     private GlobalHotkeyService? _hotkeyService;
     private TrayIconController? _trayIconController;
     private LibraryService? _library;
-    private ICategoryActionService? _categoryActionService;
     private IAppBlockingService? _appBlockingService;
     private TriggerSchedulerService? _triggerScheduler;
+    private CategorySwitchService? _switchService;
+    private CategorySwitcher? _switcher;
     private CommandPaletteWindow? _paletteWindow;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -46,12 +47,12 @@ public partial class App : Application
         _ownsSingleInstanceMutex = createdNew;
         if (!createdNew)
         {
-            if (command is CliCommand.Run run)
+            if (command.IsRelayed)
             {
-                // "catogarizer run <name>" while the app is already open - relay the request
-                // over the named pipe instead of the show-signal, so this stays headless/
-                // scriptable rather than popping the main window.
-                SendTriggerRunRequest(run.TriggerName);
+                // "catogarizer switch/run/back" while the app is already open - relay it over the
+                // named pipe instead of the show-signal, so this stays headless/scriptable rather
+                // than popping the main window.
+                SendCliRequest(command);
             }
             else
             {
@@ -79,8 +80,9 @@ public partial class App : Application
         }
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += (_, _) => RestoreHiddenWindows();
 
-        var configStore = new JsonConfigStore(ConfigFilePath());
+        var configStore = new JsonConfigStore(DataFilePath("config.json"));
         var library = new LibraryService(configStore);
         var installedAppFinder = new InstalledAppFinder();
         var dialogService = new DialogService();
@@ -94,56 +96,88 @@ public partial class App : Application
         var appBlockingService = new AppBlockingService(processWatcher);
         appBlockingService.Start();
         _library = library;
-        _categoryActionService = categoryActionService;
         _appBlockingService = appBlockingService;
 
-        var triggerRunner = new TriggerRunner(categoryActionService);
-        var triggerScheduler = new TriggerSchedulerService(new SystemClock(), trigger => Task.Run(() => triggerRunner.Run(trigger, library)));
+        // Before anything can hide a window: shows whatever a crashed run left hidden, then
+        // snapshots what's open into Unsorted.
+        var switchService = new CategorySwitchService(windowManager, windowFinder, new WindowWatcher(windowFinder),
+            categoryActionService, () => library.PinnedApps, new SystemClock(), new JsonHiddenWindowStore(DataFilePath("hidden.json")));
+        switchService.Initialize();
+        var switcher = new CategorySwitcher(library, switchService, appBlockingService);
+        _switchService = switchService;
+        _switcher = switcher;
+
+        var triggerRunner = new TriggerRunner(categoryActionService, switcher.SwitchTo);
+        var triggerScheduler = new TriggerSchedulerService(new SystemClock(),
+            trigger => Task.Run(() => ReportFailures(trigger.Name, triggerRunner.Run(trigger, library))));
         triggerScheduler.Start(() => library.Triggers);
         _triggerScheduler = triggerScheduler;
 
         var mainWindow = new MainWindow(library, installedAppFinder, dialogService, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService, appBlockingService, autostartService, triggerRunner, RegisterGlobalHotkey);
-        // An explicit "run <name>" launch stays headless regardless of the StartMinimized
+            windowManager, monitorService, categoryActionService, switcher, autostartService, triggerRunner, RegisterGlobalHotkey);
+        // A relayed command (switch/run/back) stays headless regardless of the StartMinimized
         // setting - it's a background request (script/hotkey tool), not a user opening the app.
-        if (!library.Settings.StartMinimized && command is not CliCommand.Run)
+        if (!library.Settings.StartMinimized && !command.IsRelayed)
             mainWindow.Show();
 
-        _trayIconController = new TrayIconController(library, categoryActionService, appBlockingService, autostartService, mainWindow);
+        _trayIconController = new TrayIconController(library, switcher, appBlockingService, autostartService, mainWindow, OnSwitched);
 
         RegisterGlobalHotkey(library.Settings.CommandPaletteHotkey);
         ListenForShowSignal();
-        ListenForTriggerRunRequests(triggerRunner, library);
-        DispatchCliCommand(command, triggerRunner, library);
+        ListenForCliRequests(triggerRunner);
+        Task.Run(() => ExecuteCliCommand(command, triggerRunner));
     }
 
-    private static void DispatchCliCommand(CliCommand command, TriggerRunner triggerRunner, LibraryService library)
+    private void ExecuteCliCommand(CliCommand command, TriggerRunner triggerRunner)
     {
+        var library = _library!;
+        var switcher = _switcher!;
         switch (command)
         {
             case CliCommand.Start:
-                Task.Run(() =>
-                {
-                    foreach (var trigger in library.Triggers.Where(t => t.IsEnabled && t.Type == TriggerType.Startup))
-                        triggerRunner.Run(trigger, library);
-                });
+                foreach (var trigger in library.Triggers.Where(t => t.IsEnabled && t.Type == TriggerType.Startup))
+                    ReportFailures(trigger.Name, triggerRunner.Run(trigger, library));
                 break;
             case CliCommand.Run run:
-                Task.Run(() =>
-                {
-                    var trigger = library.Triggers.FirstOrDefault(t => string.Equals(t.Name, run.TriggerName, StringComparison.OrdinalIgnoreCase));
-                    if (trigger is not null) triggerRunner.Run(trigger, library);
-                });
+                var named = library.Triggers.FirstOrDefault(t => string.Equals(t.Name, run.TriggerName, StringComparison.OrdinalIgnoreCase));
+                if (named is null) ShowProblem("Trigger not found", $"There is no trigger named \"{run.TriggerName}\".");
+                else ReportFailures(named.Name, triggerRunner.Run(named, library));
+                break;
+            case CliCommand.Switch s:
+                var result = switcher.SwitchByName(s.CategoryName);
+                if (result is null) ShowProblem("Category not found", $"There is no category named \"{s.CategoryName}\".");
+                else OnSwitched(result);
+                break;
+            case CliCommand.Back:
+                if (switcher.SwitchBack() is { } back) OnSwitched(back);
                 break;
         }
     }
 
+    /// <summary>Launch problems from a switch the user started outside the main window.</summary>
+    private void OnSwitched(SwitchResult result)
+    {
+        if (result.Failures.Count == 0) return;
+        var name = _library!.Categories.FirstOrDefault(c => c.Id == result.CategoryId)?.Name ?? CategorySwitchService.UncategorizedName;
+        ShowProblem($"{name}: not everything opened", MainViewModel.DescribeFailures(result.Failures)!);
+    }
+
+    private void ReportFailures(string triggerName, IReadOnlyList<AppActionResult> results)
+    {
+        var failures = results.Where(r => r.Outcome == AppActionOutcome.Failed).ToList();
+        if (failures.Count > 0)
+            ShowProblem($"Trigger \"{triggerName}\" had a problem", MainViewModel.DescribeFailures(failures)!);
+    }
+
+    private void ShowProblem(string title, string message) =>
+        Dispatcher.BeginInvoke(() => _trayIconController?.ShowProblem(title, message));
+
     /// <summary>
-    /// Background listener for "catogarizer run &lt;name&gt;" requests relayed from a second
+    /// Background listener for "catogarizer switch/run/back" requests relayed from a second
     /// process invocation - mirrors ListenForShowSignal's always-on background thread, but
-    /// carries a payload (the trigger name) so it uses a named pipe instead of a bare event.
+    /// carries a payload so it uses a named pipe instead of a bare event.
     /// </summary>
-    private void ListenForTriggerRunRequests(TriggerRunner triggerRunner, LibraryService library)
+    private void ListenForCliRequests(TriggerRunner triggerRunner)
     {
         var thread = new Thread(() =>
         {
@@ -151,15 +185,11 @@ public partial class App : Application
             {
                 try
                 {
-                    using var server = new NamedPipeServerStream(TriggerRunPipeName, PipeDirection.In);
+                    using var server = new NamedPipeServerStream(CliPipeName, PipeDirection.In);
                     server.WaitForConnection();
                     using var reader = new StreamReader(server, Encoding.UTF8);
-                    var triggerName = reader.ReadLine();
-                    if (!string.IsNullOrWhiteSpace(triggerName))
-                    {
-                        var trigger = library.Triggers.FirstOrDefault(t => string.Equals(t.Name, triggerName, StringComparison.OrdinalIgnoreCase));
-                        if (trigger is not null) triggerRunner.Run(trigger, library);
-                    }
+                    var command = CliCommand.FromPipeMessage(reader.ReadLine());
+                    if (command.IsRelayed) ExecuteCliCommand(command, triggerRunner);
                 }
                 catch
                 {
@@ -170,19 +200,19 @@ public partial class App : Application
         })
         {
             IsBackground = true,
-            Name = "Catogarizer-TriggerRunListener",
+            Name = "Catogarizer-CliListener",
         };
         thread.Start();
     }
 
-    private static void SendTriggerRunRequest(string triggerName)
+    private static void SendCliRequest(CliCommand command)
     {
         try
         {
-            using var client = new NamedPipeClientStream(".", TriggerRunPipeName, PipeDirection.Out);
+            using var client = new NamedPipeClientStream(".", CliPipeName, PipeDirection.Out);
             client.Connect(2000);
             using var writer = new StreamWriter(client, Encoding.UTF8) { AutoFlush = true };
-            writer.WriteLine(triggerName);
+            writer.WriteLine(command.ToPipeMessage());
         }
         catch
         {
@@ -238,14 +268,23 @@ public partial class App : Application
             return;
         }
 
-        var vm = new CommandPaletteViewModel(_library!, _categoryActionService!, _appBlockingService!);
+        var vm = new CommandPaletteViewModel(_library!, _switcher!, OnSwitched);
         _paletteWindow = new CommandPaletteWindow(vm);
         _paletteWindow.Show();
         _paletteWindow.Activate();
     }
 
+    /// <summary>Never leave a window hidden behind when Catogarizer stops (PRINCIPLES.md, value 1).</summary>
+    private void RestoreHiddenWindows()
+    {
+        try { _switcher?.ShowAllAndReset(); }
+        catch { /* shutting down anyway; hidden.json lets the next start finish the job */ }
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
+        RestoreHiddenWindows();
+        _switchService?.Dispose();
         _hotkeyService?.Dispose();
         _trayIconController?.Dispose();
         _triggerScheduler?.Dispose();
@@ -255,18 +294,19 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    private static string ConfigFilePath()
+    private static string DataFilePath(string fileName)
     {
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Catogarizer");
-        return Path.Combine(dir, "config.json");
+        return Path.Combine(dir, fileName);
     }
 
-    private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
+        RestoreHiddenWindows();
         // Same reasoning as above: last-resort safety net, kept deliberately native/simple
         // rather than routed through the app's own (possibly-broken) UI.
         MessageBox.Show(
-            $"Catogarizer ran into a problem and needs to close:\n\n{e.Exception.Message}",
+            $"Catogarizer ran into a problem and needs to close. All windows it had hidden are visible again.\n\n{e.Exception.Message}",
             "Catogarizer",
             MessageBoxButton.OK,
             MessageBoxImage.Error);

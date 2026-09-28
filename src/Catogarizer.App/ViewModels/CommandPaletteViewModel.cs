@@ -1,22 +1,23 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Catogarizer.App.ViewModels;
 
+public sealed record PaletteEntry(Guid Id, string Name, string Detail, bool IsActive);
+
 /// <summary>
-/// The fast path: search-as-you-type over categories, opened via a global
-/// hotkey from anywhere, so switching category doesn't need the main window.
+/// The fast path: search-as-you-type over categories (and Unsorted), opened via a global
+/// hotkey from anywhere. Enter or a click switches.
 /// </summary>
 public partial class CommandPaletteViewModel : ObservableObject
 {
     private readonly LibraryService _library;
-    private readonly ICategoryActionService _categoryActionService;
-    private readonly IAppBlockingService _appBlockingService;
+    private readonly CategorySwitcher _switcher;
+    private readonly Action<SwitchResult> _onSwitched;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -24,15 +25,15 @@ public partial class CommandPaletteViewModel : ObservableObject
     [ObservableProperty]
     private bool _isBusy;
 
-    public ObservableCollection<Category> Results { get; } = new();
+    public ObservableCollection<PaletteEntry> Results { get; } = new();
 
     public event EventHandler? RequestClose;
 
-    public CommandPaletteViewModel(LibraryService library, ICategoryActionService categoryActionService, IAppBlockingService appBlockingService)
+    public CommandPaletteViewModel(LibraryService library, CategorySwitcher switcher, Action<SwitchResult> onSwitched)
     {
         _library = library;
-        _categoryActionService = categoryActionService;
-        _appBlockingService = appBlockingService;
+        _switcher = switcher;
+        _onSwitched = onSwitched;
         UpdateResults();
     }
 
@@ -40,59 +41,38 @@ public partial class CommandPaletteViewModel : ObservableObject
 
     private void UpdateResults()
     {
-        Results.Clear();
+        var active = _switcher.ActiveCategoryId;
+        var entries = _library.Categories
+            .OrderBy(c => c.SortOrder)
+            .Select(c => new PaletteEntry(c.Id, c.Name, c.Id == active ? "Active" : $"{c.AppIds.Count} apps", c.Id == active))
+            .Append(new PaletteEntry(CategorySwitchService.Uncategorized, CategorySwitchService.UncategorizedName,
+                active == CategorySwitchService.Uncategorized ? "Active" : "Windows outside any category",
+                active == CategorySwitchService.Uncategorized));
+
         var query = SearchText.Trim();
-        var matches = query.Length == 0
-            ? _library.Categories.AsEnumerable()
-            : _library.Categories.Where(c => c.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
-        foreach (var category in matches.OrderBy(c => c.SortOrder))
-            Results.Add(category);
+        Results.Clear();
+        foreach (var entry in entries.Where(e => query.Length == 0 || e.Name.Contains(query, StringComparison.OrdinalIgnoreCase)))
+            Results.Add(entry);
     }
 
     [RelayCommand]
-    private Task Open(Category category)
+    private async Task SwitchTo(PaletteEntry entry)
     {
-        _appBlockingService.ActivateCategory(category.Id, ResolveBlockedApps(category));
-        return RunActionAsync(category, _categoryActionService.Open);
-    }
-
-    [RelayCommand]
-    private Task Minimize(Category category) => RunActionAsync(category, _categoryActionService.Minimize);
-
-    [RelayCommand]
-    private async Task CloseCategory(Category category)
-    {
-        await RunActionAsync(category, _categoryActionService.Close);
-        _appBlockingService.DeactivateCategory(category.Id);
-    }
-
-    [RelayCommand]
-    private void Close() => RequestClose?.Invoke(this, EventArgs.Empty);
-
-    private async Task RunActionAsync(Category category, Func<IReadOnlyList<AppEntry>, CategoryActionResult> action)
-    {
-        var apps = category.AppIds
-            .Select(id => _library.Apps.FirstOrDefault(a => a.Id == id))
-            .Where(a => a is not null)
-            .Cast<AppEntry>()
-            .ToList();
-
+        if (IsBusy) return;
         IsBusy = true;
+        SwitchResult? result;
         try
         {
-            await Task.Run(() => action(apps));
+            result = await Task.Run(() => _switcher.SwitchTo(entry.Id));
         }
         finally
         {
             IsBusy = false;
         }
+        if (result is not null) _onSwitched(result);
         Close();
     }
 
-    private List<BlockedApp> ResolveBlockedApps(Category category) =>
-        category.BlockedAppIds
-            .Select(id => _library.BlockedApps.FirstOrDefault(b => b.Id == id))
-            .Where(b => b is not null)
-            .Cast<BlockedApp>()
-            .ToList();
+    [RelayCommand]
+    private void Close() => RequestClose?.Invoke(this, EventArgs.Empty);
 }

@@ -19,6 +19,8 @@ public sealed class CategorySwitchService : ICategorySwitchService
     /// <summary>The implicit "Unsorted" pseudo-category for anything not assigned to a real one.</summary>
     public static readonly Guid Uncategorized = Guid.Empty;
 
+    public const string UncategorizedName = "Unsorted";
+
     private readonly IWindowManager _windowManager;
     private readonly IWindowFinder _windowFinder;
     private readonly IWindowWatcher _windowWatcher;
@@ -185,6 +187,47 @@ public sealed class CategorySwitchService : ICategorySwitchService
                     ActiveCategoryId = Uncategorized;
                     ActiveSince = _clock.Now;
                 }
+            }
+        }
+        StateChanged?.Invoke();
+    }
+
+    public void ReleaseCategory(Guid categoryId)
+    {
+        if (categoryId == Uncategorized) return;
+
+        lock (_switchLock)
+        {
+            List<OpenWindowInfo> toShow = [];
+            lock (_lock)
+            {
+                var released = OpenWindows(categoryId);
+                _sessions.Remove(categoryId);
+
+                if (ActiveCategoryId == categoryId)
+                {
+                    toShow = OpenWindows(Uncategorized);
+                    ActiveCategoryId = Uncategorized;
+                    ActiveSince = _clock.Now;
+                }
+                else if (ActiveCategoryId == Uncategorized)
+                {
+                    toShow = released;
+                }
+
+                var unsorted = Session(Uncategorized);
+                unsorted.AddRange(released.Where(r => unsorted.All(u => u.Handle != r.Handle)));
+                if (PreviousCategoryId == categoryId || PreviousCategoryId == ActiveCategoryId)
+                    PreviousCategoryId = null;
+            }
+
+            foreach (var window in toShow)
+                _windowManager.Show(window.Handle);
+
+            lock (_lock)
+            {
+                foreach (var window in toShow) _hidden.Remove(window.Handle);
+                PersistHidden();
             }
         }
         StateChanged?.Invoke();

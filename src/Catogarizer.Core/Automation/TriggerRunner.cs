@@ -4,16 +4,21 @@ using Catogarizer.Core.Services;
 namespace Catogarizer.Core.Automation;
 
 /// <summary>
-/// Thin dispatcher over ICategoryActionService - reuses its launch/find-window/position and
-/// close-gracefully-then-kill logic rather than reimplementing process handling. Actions that
-/// point at a since-deleted category/app id are silently skipped, same "never throw out of an
-/// action" philosophy as CategoryActionService itself.
+/// Thin dispatcher: category actions go through the switcher (a trigger "opening" a category
+/// switches to it, same as the user would), app actions through ICategoryActionService. Actions
+/// that point at a since-deleted category/app id are silently skipped, same "never throw out of
+/// an action" philosophy as CategoryActionService itself.
 /// </summary>
 public sealed class TriggerRunner
 {
     private readonly ICategoryActionService _categoryActions;
+    private readonly Func<Guid, SwitchResult?> _switchToCategory;
 
-    public TriggerRunner(ICategoryActionService categoryActions) => _categoryActions = categoryActions;
+    public TriggerRunner(ICategoryActionService categoryActions, Func<Guid, SwitchResult?> switchToCategory)
+    {
+        _categoryActions = categoryActions;
+        _switchToCategory = switchToCategory;
+    }
 
     public IReadOnlyList<AppActionResult> Run(Trigger trigger, LibraryService library)
     {
@@ -38,14 +43,9 @@ public sealed class TriggerRunner
 
     private void RunOpenCategory(TriggerAction action, LibraryService library, List<AppActionResult> results)
     {
-        var category = library.Categories.FirstOrDefault(c => c.Id == action.CategoryId);
-        if (category is null) return;
-
-        var apps = category.AppIds
-            .Select(id => library.Apps.FirstOrDefault(a => a.Id == id))
-            .OfType<AppEntry>()
-            .ToList();
-        results.AddRange(_categoryActions.Open(apps).AppResults);
+        if (action.CategoryId is not { } categoryId || library.Categories.All(c => c.Id != categoryId)) return;
+        if (_switchToCategory(categoryId) is { } switched)
+            results.AddRange(switched.Failures);
     }
 
     private void RunOpenApp(TriggerAction action, LibraryService library, List<AppActionResult> results)

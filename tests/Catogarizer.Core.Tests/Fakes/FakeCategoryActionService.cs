@@ -13,8 +13,12 @@ public sealed class FakeCategoryActionService : ICategoryActionService
     /// <summary>App names whose Open fails.</summary>
     public HashSet<string> FailingApps { get; } = new();
 
+    /// <summary>Runs at the start of Open, to observe other state at launch time.</summary>
+    public Action? OnOpen { get; set; }
+
     public CategoryActionResult Open(IReadOnlyList<AppEntry> apps)
     {
+        OnOpen?.Invoke();
         Calls.Add($"Open:{string.Join(",", apps.Select(a => a.Name))}");
         return new CategoryActionResult(apps.Select(a => FailingApps.Contains(a.Name)
             ? new AppActionResult(a, AppActionOutcome.Failed, $"{a.Name} failed")

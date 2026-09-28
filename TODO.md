@@ -443,10 +443,23 @@ Build plan (branch `feature/v2-switching-ui`, one commit per step):
       desktop icons. Renamed to `FindAllAppWindows` with an Alt-Tab filter;
       verified read-only on the real desktop (spike `list` mode). 126/126.
       Tray "Show all hidden windows" is wired in step 2.
-- [ ] 2. Wire switching into the running app: composition root, tray,
-      palette, CLI `catogarizer switch "<name>"`, blocking follows the
-      active category, trigger action "Open category" becomes a switch. Old
-      category-level Open/Close/Minimize removed; per-app actions stay.
+- [x] 2. Wire switching into the running app. New Core `CategorySwitcher` is
+      the single switching path (home, palette, tray, CLI, triggers):
+      resolves template/blocklist from the library, lifts the outgoing
+      blocklist *before* the incoming template launches (else Deep Work
+      blocking Slack would kill the Slack Comms opens), `SwitchBack`,
+      `SwitchByName` ("Unsorted" included), `DeleteCategory` (windows of a
+      deleted category move to Unsorted via `ReleaseCategory` - never
+      stranded hidden), `RefreshBlocking` after blocklist edits. CLI gains
+      `switch "<name>"` and `back`, relayed over one generalized named pipe.
+      Tray: switch list with the active one checked, Unsorted, "Show all
+      hidden windows", tooltip names the active category. Exit, crash and
+      unhandled background exceptions restore every hidden window.
+      Trigger action relabeled "Switch to category". Launch failures from
+      palette/tray/CLI/triggers show as a tray notification. Pinned-app CRUD
+      in `LibraryService` (copy-on-write, read from the watcher thread).
+      155/155. **Not yet verified in the running app** - needs the user's
+      go-ahead (switching hides real windows on their desktop).
 - [ ] 3. Signature moment: double-tap hotkey → previous category, pill in
       the category color.
 - [ ] 4. Theme system: one token dictionary per theme + shared controls

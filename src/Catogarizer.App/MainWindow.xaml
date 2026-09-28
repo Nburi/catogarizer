@@ -107,8 +107,8 @@
                                         </Grid>
                                         <TextBlock Text="{Binding AppIds.Count, StringFormat={}{0} apps}"
                                                    Style="{StaticResource MutedTextStyle}" Margin="0,4,0,10"/>
-                                        <Button Content="▶  Open" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Stretch"
-                                                Command="{Binding DataContext.OpenCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        <Button Content="Switch here" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Stretch"
+                                                Command="{Binding DataContext.SwitchToCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}"/>
                                     </StackPanel>
                                 </Border>
@@ -129,14 +129,8 @@
                                 <TextBlock Grid.Column="0" Text="{Binding SelectedCategory.Name}" FontSize="16" FontWeight="SemiBold"
                                            Foreground="{StaticResource InkBrush}" VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Button Content="Minimize all" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
-                                            Command="{Binding MinimizeCategoryCommand}" CommandParameter="{Binding SelectedCategory}"/>
-                                    <Button Content="Close all" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
-                                            Command="{Binding CloseCategoryCommand}" CommandParameter="{Binding SelectedCategory}"/>
-                                    <Button Content="+ Add app" Style="{StaticResource SecondaryButtonStyle}"
-                                            Command="{Binding AddAppToCategoryCommand}"/>
-                                </StackPanel>
+                                <Button Grid.Column="1" Content="+ Add app" Style="{StaticResource SecondaryButtonStyle}"
+                                        Command="{Binding AddAppToCategoryCommand}"/>
                             </Grid>
 
                             <TextBlock Text="No apps in this category yet." Style="{StaticResource MutedTextStyle}"

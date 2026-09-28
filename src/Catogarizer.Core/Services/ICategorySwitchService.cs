@@ -53,4 +53,12 @@ public interface ICategorySwitchService : IDisposable
     /// moves all tracked windows into Uncategorized and makes it active.
     /// </summary>
     void ShowAllAndReset();
+
+    /// <summary>
+    /// For a deleted category: its windows move to Uncategorized so they stay
+    /// reachable. If it was active, Uncategorized becomes active (and its own
+    /// parked windows come back); windows end up visible whenever
+    /// Uncategorized is the active category.
+    /// </summary>
+    void ReleaseCategory(Guid categoryId);
 }

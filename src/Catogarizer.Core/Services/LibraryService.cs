@@ -27,7 +27,15 @@ public sealed class LibraryService
     public IReadOnlyList<Category> Categories => _config.Categories;
     public IReadOnlyList<AppEntry> Apps => _config.Apps;
     public IReadOnlyList<BlockedApp> BlockedApps => _config.BlockedApps;
+    /// <summary>Read from the window watcher's thread; mutations replace the list instead of changing it.</summary>
+    public IReadOnlyList<PinnedApp> PinnedApps => _config.PinnedApps;
     public IReadOnlyList<Trigger> Triggers => _config.Triggers;
+
+    public IReadOnlyList<AppEntry> AppsOf(Category category) =>
+        category.AppIds.Select(id => _config.Apps.FirstOrDefault(a => a.Id == id)).OfType<AppEntry>().ToList();
+
+    public IReadOnlyList<BlockedApp> BlockedAppsOf(Category category) =>
+        category.BlockedAppIds.Select(id => _config.BlockedApps.FirstOrDefault(b => b.Id == id)).OfType<BlockedApp>().ToList();
     public AppSettings Settings => _config.Settings;
 
     public void Reload() => _config = _configStore.Load();
@@ -165,6 +173,30 @@ public sealed class LibraryService
         foreach (var category in _config.Categories)
             category.BlockedAppIds.Remove(blockedAppId);
         _config.BlockedApps.Remove(blocked);
+        Save();
+    }
+
+    // ---------------- Pinned apps ----------------
+
+    public PinnedApp AddPinnedApp(string name, string processNameOrPath)
+    {
+        var nameValidation = BlockedAppValidator.ValidateName(name);
+        if (!nameValidation.IsValid) throw new ArgumentException(nameValidation.ErrorMessage, nameof(name));
+        var valueValidation = BlockedAppValidator.ValidateProcessNameOrPath(processNameOrPath);
+        if (!valueValidation.IsValid) throw new ArgumentException(valueValidation.ErrorMessage, nameof(processNameOrPath));
+
+        var existing = _config.PinnedApps.FirstOrDefault(p => string.Equals(p.ProcessNameOrPath, processNameOrPath, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null) return existing;
+
+        var pinned = new PinnedApp { Name = name.Trim(), ProcessNameOrPath = processNameOrPath };
+        _config.PinnedApps = [.. _config.PinnedApps, pinned];
+        Save();
+        return pinned;
+    }
+
+    public void RemovePinnedApp(Guid pinnedAppId)
+    {
+        _config.PinnedApps = _config.PinnedApps.Where(p => p.Id != pinnedAppId).ToList();
         Save();
     }
 

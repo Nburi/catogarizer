@@ -320,6 +320,58 @@ public sealed class CategorySwitchServiceTests
         Assert.Equal("Zotero", Assert.Single(result.Failures).App.Name);
     }
 
+    // ---- deleted categories ----
+
+    [Fact]
+    public void ReleaseCategory_ParkedWhileUnsortedIsActive_ShowsItsWindowsInUnsorted()
+    {
+        _service.Initialize();
+        var learning = Guid.NewGuid();
+        _service.SwitchTo(learning, []);
+        _windowWatcher.RaiseWindowAppeared(Window(7, "WINWORD"));
+        _service.SwitchTo(CategorySwitchService.Uncategorized, []);
+
+        _service.ReleaseCategory(learning);
+
+        Assert.Contains(new IntPtr(7), _windowManager.ShowCalls);
+        Assert.Contains(_service.GetSessions()[CategorySwitchService.Uncategorized], w => w.Handle == new IntPtr(7));
+        Assert.Empty(_hiddenStore.Records);
+    }
+
+    [Fact]
+    public void ReleaseCategory_Active_MakesUnsortedActiveAndBringsBackItsParkedWindows()
+    {
+        _windowFinder.RunningWindows.Add(Window(1, "explorer"));
+        _service.Initialize();
+        var learning = Guid.NewGuid();
+        _service.SwitchTo(learning, []);
+        _windowWatcher.RaiseWindowAppeared(Window(7, "WINWORD"));
+
+        _service.ReleaseCategory(learning);
+
+        Assert.Equal(CategorySwitchService.Uncategorized, _service.ActiveCategoryId);
+        Assert.Contains(new IntPtr(1), _windowManager.ShowCalls);
+        Assert.DoesNotContain(new IntPtr(7), _windowManager.HideCalls);
+        Assert.Null(_service.PreviousCategoryId);
+        Assert.Empty(_hiddenStore.Records);
+    }
+
+    [Fact]
+    public void ReleaseCategory_ParkedWhileAnotherIsActive_KeepsItsWindowsHiddenButReachableViaUnsorted()
+    {
+        _service.Initialize();
+        var learning = Guid.NewGuid();
+        var programming = Guid.NewGuid();
+        _service.SwitchTo(learning, []);
+        _windowWatcher.RaiseWindowAppeared(Window(7, "WINWORD"));
+        _service.SwitchTo(programming, []);
+
+        _service.ReleaseCategory(learning);
+        _service.SwitchTo(CategorySwitchService.Uncategorized, []);
+
+        Assert.Contains(new IntPtr(7), _windowManager.ShowCalls);
+    }
+
     // ---- attribution ----
 
     [Fact]

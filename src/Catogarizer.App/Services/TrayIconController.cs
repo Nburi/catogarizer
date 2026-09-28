@@ -4,36 +4,35 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
-using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
 using H.NotifyIcon;
 
 namespace Catogarizer.App.Services;
 
 /// <summary>
-/// Owns the tray icon, its context menu (categories for quick switching, Start
-/// with Windows toggle, Exit), and minimize/close-to-tray behavior for the
-/// main window - closing or minimizing the window hides it instead of
-/// exiting the app; only the tray's own Exit item really shuts down.
+/// Owns the tray icon, its context menu (switch between categories, show all hidden
+/// windows, Start with Windows toggle, Exit), and minimize/close-to-tray behavior for the
+/// main window - closing or minimizing the window hides it instead of exiting the app;
+/// only the tray's own Exit item really shuts down.
 /// </summary>
 public sealed class TrayIconController : IDisposable
 {
     private readonly LibraryService _library;
-    private readonly ICategoryActionService _categoryActionService;
-    private readonly IAppBlockingService _appBlockingService;
+    private readonly CategorySwitcher _switcher;
     private readonly IAutostartService _autostartService;
     private readonly Window _mainWindow;
+    private readonly Action<SwitchResult> _onSwitched;
     private readonly TaskbarIcon _icon;
     private bool _isExiting;
 
-    public TrayIconController(LibraryService library, ICategoryActionService categoryActionService,
-        IAppBlockingService appBlockingService, IAutostartService autostartService, Window mainWindow)
+    public TrayIconController(LibraryService library, CategorySwitcher switcher, IAppBlockingService appBlockingService,
+        IAutostartService autostartService, Window mainWindow, Action<SwitchResult> onSwitched)
     {
         _library = library;
-        _categoryActionService = categoryActionService;
-        _appBlockingService = appBlockingService;
+        _switcher = switcher;
         _autostartService = autostartService;
         _mainWindow = mainWindow;
+        _onSwitched = onSwitched;
 
         _icon = new TaskbarIcon
         {
@@ -49,10 +48,13 @@ public sealed class TrayIconController : IDisposable
         // wouldn't even be seen.
         // AppBlocked fires from the process watcher's background polling thread, not the
         // UI thread - ShowNotification needs to run on the dispatcher.
-        _appBlockingService.AppBlocked += appName => _mainWindow.Dispatcher.Invoke(() => _icon.ShowNotification(
-            "App blocked",
-            $"\"{appName}\" was closed - blocked while this category is active.",
+        appBlockingService.AppBlocked += appName => _mainWindow.Dispatcher.Invoke(() => _icon.ShowNotification(
+            "App held back",
+            $"\"{appName}\" was closed. It's blocked while {ActiveCategoryName()} is active.",
             H.NotifyIcon.Core.NotificationIcon.Warning));
+
+        _switcher.StateChanged += () => _mainWindow.Dispatcher.BeginInvoke(UpdateToolTip);
+        UpdateToolTip();
 
         _mainWindow.Closing += MainWindow_Closing;
         _mainWindow.StateChanged += MainWindow_StateChanged;
@@ -64,6 +66,17 @@ public sealed class TrayIconController : IDisposable
         _mainWindow.WindowState = WindowState.Normal;
         _mainWindow.Activate();
     }
+
+    /// <summary>For problems the user should see even when no Catogarizer window is open.</summary>
+    public void ShowProblem(string title, string message) =>
+        _icon.ShowNotification(title, message, H.NotifyIcon.Core.NotificationIcon.Warning);
+
+    public void AllowExit() => _isExiting = true;
+
+    private void UpdateToolTip() => _icon.ToolTipText = $"Catogarizer · {ActiveCategoryName()}";
+
+    private string ActiveCategoryName() =>
+        _library.Categories.FirstOrDefault(c => c.Id == _switcher.ActiveCategoryId)?.Name ?? CategorySwitchService.UncategorizedName;
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
@@ -81,22 +94,18 @@ public sealed class TrayIconController : IDisposable
     private ContextMenu BuildMenu()
     {
         var menu = new ContextMenu();
-        var categories = _library.Categories.OrderBy(c => c.SortOrder).ToList();
+        var active = _switcher.ActiveCategoryId;
 
-        foreach (var category in categories)
-        {
-            var item = new MenuItem { Header = category.Name };
-            item.Click += (_, _) =>
-            {
-                var apps = ResolveApps(category);
-                _appBlockingService.ActivateCategory(category.Id, ResolveBlockedApps(category));
-                _ = Task.Run(() => _categoryActionService.Open(apps));
-            };
-            menu.Items.Add(item);
-        }
+        foreach (var category in _library.Categories.OrderBy(c => c.SortOrder))
+            menu.Items.Add(SwitchItem(category.Id, category.Name, category.Id == active));
+        menu.Items.Add(SwitchItem(CategorySwitchService.Uncategorized, CategorySwitchService.UncategorizedName,
+            active == CategorySwitchService.Uncategorized));
 
-        if (categories.Count > 0)
-            menu.Items.Add(new Separator());
+        menu.Items.Add(new Separator());
+
+        var showAllItem = new MenuItem { Header = "Show all hidden windows" };
+        showAllItem.Click += (_, _) => Task.Run(_switcher.ShowAllAndReset);
+        menu.Items.Add(showAllItem);
 
         var showItem = new MenuItem { Header = "Show Catogarizer" };
         showItem.Click += (_, _) => ShowMainWindow();
@@ -123,19 +132,16 @@ public sealed class TrayIconController : IDisposable
         return menu;
     }
 
-    private List<AppEntry> ResolveApps(Category category) =>
-        category.AppIds
-            .Select(id => _library.Apps.FirstOrDefault(a => a.Id == id))
-            .Where(a => a is not null)
-            .Cast<AppEntry>()
-            .ToList();
-
-    private List<BlockedApp> ResolveBlockedApps(Category category) =>
-        category.BlockedAppIds
-            .Select(id => _library.BlockedApps.FirstOrDefault(b => b.Id == id))
-            .Where(b => b is not null)
-            .Cast<BlockedApp>()
-            .ToList();
+    private MenuItem SwitchItem(Guid categoryId, string name, bool isActive)
+    {
+        var item = new MenuItem { Header = name, IsCheckable = false, IsChecked = isActive };
+        item.Click += async (_, _) =>
+        {
+            var result = await Task.Run(() => _switcher.SwitchTo(categoryId));
+            if (result is not null) _onSwitched(result);
+        };
+        return item;
+    }
 
     public void Dispose() => _icon.Dispose();
 }
