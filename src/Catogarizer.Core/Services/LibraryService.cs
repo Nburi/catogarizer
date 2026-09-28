@@ -52,6 +52,14 @@ public sealed class LibraryService
         Save();
     }
 
+    public void SetTheme(string themeId)
+    {
+        if (!Theming.ThemeCatalog.Exists(themeId))
+            throw new ArgumentException($"There is no theme called \"{themeId}\".", nameof(themeId));
+        _config.Settings.Theme = Theming.ThemeCatalog.Get(themeId).Id;
+        Save();
+    }
+
     // ---------------- Categories ----------------
 
     public Category AddCategory(string name)

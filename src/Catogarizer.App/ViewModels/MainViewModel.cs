@@ -21,6 +21,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IMonitorService _monitorService;
     private readonly ICategoryActionService _categoryActionService;
     private readonly CategorySwitcher _switcher;
+    private readonly ThemeService _themeService;
     private readonly IAutostartService _autostartService;
     private readonly TriggerRunner _triggerRunner;
     private readonly Action<string> _onHotkeyChanged;
@@ -52,8 +53,9 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService,
         IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager,
         IMonitorService monitorService, ICategoryActionService categoryActionService, CategorySwitcher switcher,
-        IAutostartService autostartService, TriggerRunner triggerRunner, Action<string> onHotkeyChanged)
+        IAutostartService autostartService, TriggerRunner triggerRunner, ThemeService themeService, Action<string> onHotkeyChanged)
     {
+        _themeService = themeService;
         _library = library;
         _installedAppFinder = installedAppFinder;
         _dialogService = dialogService;
@@ -249,7 +251,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenSettings()
     {
-        var vm = new SettingsViewModel(_library, _autostartService);
+        var vm = new SettingsViewModel(_library, _autostartService, _themeService);
         vm.RequestOpenTriggers += (_, _) => OpenTriggers();
         var saved = _dialogService.ShowSettings(vm);
         if (saved && vm.HotkeyChanged)

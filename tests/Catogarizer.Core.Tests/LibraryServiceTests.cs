@@ -16,6 +16,23 @@ public sealed class LibraryServiceTests
     }
 
     [Fact]
+    public void Settings_DefaultThemeIsFjord() =>
+        Assert.Equal("fjord", _service.Settings.Theme);
+
+    [Fact]
+    public void SetTheme_StoresTheCanonicalIdAndPersists()
+    {
+        _service.SetTheme("Slate");
+
+        Assert.Equal("slate", _service.Settings.Theme);
+        Assert.Equal(1, _store.SaveCount);
+    }
+
+    [Fact]
+    public void SetTheme_UnknownTheme_Throws() =>
+        Assert.Throws<ArgumentException>(() => _service.SetTheme("neon"));
+
+    [Fact]
     public void AddPinnedApp_AddsPersistsAndReusesTheSameProcess()
     {
         var first = _service.AddPinnedApp("Spotify", "Spotify.exe");

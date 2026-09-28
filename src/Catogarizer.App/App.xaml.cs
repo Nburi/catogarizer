@@ -88,6 +88,8 @@ public partial class App : Application
 
         var configStore = new JsonConfigStore(DataFilePath("config.json"));
         var library = new LibraryService(configStore);
+        var themeService = new ThemeService(Resources);
+        themeService.Apply(library.Settings.Theme);
         var installedAppFinder = new InstalledAppFinder();
         var dialogService = new DialogService();
         var processLauncher = new ProcessLauncher();
@@ -118,7 +120,7 @@ public partial class App : Application
         _triggerScheduler = triggerScheduler;
 
         var mainWindow = new MainWindow(library, installedAppFinder, dialogService, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService, switcher, autostartService, triggerRunner, RegisterGlobalHotkey);
+            windowManager, monitorService, categoryActionService, switcher, autostartService, triggerRunner, themeService, RegisterGlobalHotkey);
         // A relayed command (switch/run/back) stays headless regardless of the StartMinimized
         // setting - it's a background request (script/hotkey tool), not a user opening the app.
         if (!library.Settings.StartMinimized && !command.IsRelayed)

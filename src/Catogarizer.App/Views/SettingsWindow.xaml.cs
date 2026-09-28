@@ -15,6 +15,19 @@ public partial class SettingsWindow : Window
         ViewModel = viewModel;
         DataContext = viewModel;
         viewModel.RequestClose += (_, _) => DialogResult = true;
+        Closed += (_, _) => viewModel.RevertUnsavedTheme();
+    }
+
+    private void ThemeTile_Loaded(object sender, RoutedEventArgs e)
+    {
+        var tile = (System.Windows.Controls.RadioButton)sender;
+        tile.IsChecked = ReferenceEquals(tile.DataContext, ViewModel.SelectedTheme);
+    }
+
+    private void ThemeTile_Checked(object sender, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).DataContext is ThemeOption option)
+            ViewModel.SelectedTheme = option;
     }
 
     private void HotkeyCaptureBox_GotFocus(object sender, RoutedEventArgs e)

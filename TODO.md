@@ -489,11 +489,26 @@ categories with charmap/msinfo32, Claude pinned; config restored afterwards):
 - [x] **Bug found + fixed:** switching after startup launched a second copy
       of an already-open template app - Unsorted windows are now claimed.
       Re-verified live: one charmap, taken over.
-- [ ] Double-tap pill + palette visuals: blocked, the PC locked itself
-      mid-test. Redo with the user present (also re-verify the crash fix).
+- [x] Double-tap pill re-verified with the PC unlocked: switched back, no
+      crash, pill "← ● Test A" centered above the taskbar (captured via
+      `PrintWindow`, which also works for layered windows).
 - [ ] Graceful exit via tray "Exit" restores windows (needs the UI).
-- [ ] 4. Theme system: one token dictionary per theme + shared controls
-      (`DynamicResource`), theme choice in Settings, Fjord default.
+- [x] 4. Theme system. Palettes live in Core (`Theming/ThemeCatalog`, OKLCH
+      values identical to `design/concepts-v2.html`) with an `Oklch`→sRGB
+      converter and a unit test that checks text contrast for every theme
+      (it caught Slate Dusk's error red at < 4.5:1 - fixed). `ThemeService`
+      builds the WPF resources at runtime and swaps them live; every color
+      reference in the views is now `DynamicResource`; radii and the heading
+      font are theme tokens too. `DaylightStudio.xaml` → `Controls.xaml`
+      (styles only). Settings: theme tiles with a mini preview, live preview
+      on click, Cancel/close reverts, Save persists (`AppSettings.Theme`,
+      Fjord default). Title bars tinted per theme (Win11 DWM caption/text/
+      border color + dark mode). Verified live: Fjord, Graphite and Night
+      Shift on main window + settings, Cancel reverts. Found + fixed while
+      testing: native white checkboxes on dark themes (new implicit themed
+      CheckBox style, square even on round themes), WPF's dotted focus
+      rectangle (themed accent focus ring on all buttons), a truncated theme
+      description. Still placeholder: blue app/tray icon (branding task).
 - [ ] 5. Category color (`Category.Hue`, additive) + real app icons
       (`SHGetFileInfo`, cached, letter tile fallback).
 - [ ] 6. New "Now + Shelf" home + separate category editor window; empty,

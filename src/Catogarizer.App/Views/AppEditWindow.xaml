@@ -3,10 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Catogarizer" Width="440" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
-        Background="{StaticResource BgBrush}" FontFamily="{StaticResource UiFont}">
+        Background="{DynamicResource BgBrush}" FontFamily="{StaticResource UiFont}">
     <StackPanel Margin="22">
         <TextBlock Text="{Binding HeadingText}" FontSize="16" FontWeight="SemiBold"
-                   Foreground="{StaticResource InkBrush}" Margin="0,0,0,16"/>
+                   Foreground="{DynamicResource InkBrush}" Margin="0,0,0,16"/>
 
         <!-- ===== Search mode ===== -->
         <StackPanel Visibility="{Binding IsManualMode, Converter={StaticResource InverseBoolToVis}}">
@@ -18,7 +18,7 @@
                     Visibility="{Binding IsSearchingApps, Converter={StaticResource BoolToVis}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <ProgressBar IsIndeterminate="True" Width="180" Height="4" Margin="0,0,0,10"
-                                 Foreground="{StaticResource AccentBrush}" Background="{StaticResource SurfaceAltBrush}" BorderThickness="0"/>
+                                 Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource SurfaceAltBrush}" BorderThickness="0"/>
                     <TextBlock Text="Searching installed apps..." Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Center"/>
                 </StackPanel>
             </Border>
@@ -36,9 +36,9 @@
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource InkBrush}"/>
+                                                   Foreground="{DynamicResource InkBrush}"/>
                                         <Border Margin="7,0,0,0" Padding="6,1" CornerRadius="6" VerticalAlignment="Center"
-                                                Background="{StaticResource AccentBrush}"
+                                                Background="{DynamicResource AccentBrush}"
                                                 Visibility="{Binding IsPwa, Converter={StaticResource BoolToVis}}">
                                             <TextBlock Text="Web App" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
                                         </Border>
@@ -51,7 +51,7 @@
                 </ItemsControl>
             </ScrollViewer>
 
-            <TextBlock Margin="0,12,0,0" Cursor="Hand" Foreground="{StaticResource AccentBrush}" FontSize="12.5">
+            <TextBlock Margin="0,12,0,0" Cursor="Hand" Foreground="{DynamicResource AccentBrush}" FontSize="12.5">
                 <Hyperlink Command="{Binding SwitchToManualCommand}" TextDecorations="None">
                     Can't find it? Browse for the .exe instead
                 </Hyperlink>

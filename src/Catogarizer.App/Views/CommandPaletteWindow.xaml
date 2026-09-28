@@ -7,7 +7,7 @@
         WindowStartupLocation="Manual"
         FontFamily="{StaticResource UiFont}"
         PreviewKeyDown="Window_PreviewKeyDown" Deactivated="Window_Deactivated">
-    <Border x:Name="Root" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush2}"
+    <Border x:Name="Root" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}"
             BorderThickness="1" CornerRadius="14" Padding="6" Opacity="0">
         <Border.RenderTransform>
             <TranslateTransform x:Name="EntryOffset" Y="-6"/>
@@ -36,7 +36,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
-                                           Foreground="{StaticResource InkBrush}" TextTrimming="CharacterEllipsis"/>
+                                           Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
                                 <TextBlock Grid.Column="1" Text="{Binding Detail}" Style="{StaticResource MutedTextStyle}"
                                            VerticalAlignment="Center" Margin="12,0,0,0"/>
                             </Grid>

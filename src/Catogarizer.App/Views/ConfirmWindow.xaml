@@ -3,10 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Catogarizer" Width="380" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
-        Background="{StaticResource BgBrush}" FontFamily="{StaticResource UiFont}">
+        Background="{DynamicResource BgBrush}" FontFamily="{StaticResource UiFont}">
     <StackPanel Margin="22">
         <TextBlock x:Name="HeadingText" FontSize="16" FontWeight="SemiBold"
-                   Foreground="{StaticResource InkBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                   Foreground="{DynamicResource InkBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
         <TextBlock x:Name="MessageText" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,20"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}"

@@ -7,7 +7,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Themes/DaylightStudio.xaml"/>
+                <ResourceDictionary Source="Themes/Controls.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis"/>
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>

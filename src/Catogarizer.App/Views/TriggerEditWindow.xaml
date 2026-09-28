@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Catogarizer" Width="540" Height="700"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
-        Background="{StaticResource BgBrush}" FontFamily="{StaticResource UiFont}">
+        Background="{DynamicResource BgBrush}" FontFamily="{StaticResource UiFont}">
     <Grid Margin="22">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -12,7 +12,7 @@
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" Text="{Binding HeadingText}" FontSize="16" FontWeight="SemiBold"
-                   Foreground="{StaticResource InkBrush}" Margin="0,0,0,16"/>
+                   Foreground="{DynamicResource InkBrush}" Margin="0,0,0,16"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel>
@@ -43,7 +43,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <CheckBox Content="{Binding Label}" IsChecked="{Binding IsSelected}" Margin="0,0,14,0"
-                                          Foreground="{StaticResource InkBrush}"/>
+                                          Foreground="{DynamicResource InkBrush}"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -66,7 +66,7 @@
                 <ItemsControl ItemsSource="{Binding Actions}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush2}"
+                            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}"
                                     BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,8">
                                 <StackPanel>
                                     <Grid>
@@ -110,13 +110,13 @@
                                     <StackPanel Margin="0,8,0,0" Visibility="{Binding IsCloseApps, Converter={StaticResource BoolToVis}}">
                                         <Button Content="+ Add app..." Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left"
                                                 Padding="10,6" FontSize="11.5" Margin="0,0,0,6" Command="{Binding AddAppCommand}"/>
-                                        <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="8" Padding="8">
+                                        <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="8" Padding="8">
                                             <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto">
                                                 <ItemsControl ItemsSource="{Binding AppSelections}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <CheckBox Content="{Binding App.Name}" IsChecked="{Binding IsChecked}"
-                                                                      Foreground="{StaticResource InkBrush}" Margin="0,3"/>
+                                                                      Foreground="{DynamicResource InkBrush}" Margin="0,3"/>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>

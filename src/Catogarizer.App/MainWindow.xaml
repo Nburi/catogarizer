@@ -4,7 +4,7 @@
         Title="Catogarizer" Height="720" Width="1080"
         MinHeight="450" MinWidth="600"
         Icon="Assets/app.ico"
-        Background="{StaticResource BgBrush}"
+        Background="{DynamicResource BgBrush}"
         FontFamily="{StaticResource UiFont}">
 
     <Grid>
@@ -21,8 +21,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <Border Width="26" Height="26" CornerRadius="7" Background="{StaticResource AccentBrush}" Margin="0,0,10,0"/>
-                    <TextBlock Text="Catogarizer" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
+                    <Border Width="26" Height="26" CornerRadius="7" Background="{DynamicResource AccentBrush}" Margin="0,0,10,0"/>
+                    <TextBlock Text="Catogarizer" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
@@ -37,10 +37,10 @@
 
             <!-- Notice banner (errors from open/minimize/close) -->
             <Border Grid.Row="1" Margin="0,0,0,16" CornerRadius="10" Padding="12,10"
-                    Background="{StaticResource SurfaceBrush}" BorderThickness="1"
+                    Background="{DynamicResource SurfaceBrush}" BorderThickness="1"
                     Visibility="{Binding Notice, Converter={StaticResource NullToCollapsedConverter}}">
                 <Border.BorderBrush>
-                    <SolidColorBrush Color="{StaticResource DangerColor}"/>
+                    <SolidColorBrush Color="{DynamicResource DangerColor}"/>
                 </Border.BorderBrush>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -48,7 +48,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="{Binding Notice}" TextWrapping="Wrap"
-                               Foreground="{StaticResource DangerBrush}" FontSize="12.5" VerticalAlignment="Center"/>
+                               Foreground="{DynamicResource DangerBrush}" FontSize="12.5" VerticalAlignment="Center"/>
                     <Button Grid.Column="1" Content="✕" Style="{StaticResource GhostIconButtonStyle}"
                             Command="{Binding DismissNoticeCommand}" ToolTip="Dismiss"/>
                 </Grid>
@@ -61,7 +61,7 @@
                     <StackPanel Margin="0,80,0,0" HorizontalAlignment="Center"
                                 Visibility="{Binding HasCategories, Converter={StaticResource InverseBoolToVis}}">
                         <TextBlock Text="No categories yet" FontSize="17" FontWeight="SemiBold"
-                                   Foreground="{StaticResource InkBrush}" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                   Foreground="{DynamicResource InkBrush}" HorizontalAlignment="Center" Margin="0,0,0,6"/>
                         <TextBlock Text="Group the apps you use together into a category you can open with one click."
                                    Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Center" Margin="0,0,0,16"/>
                         <Button Content="+ New category" Style="{StaticResource PrimaryButtonStyle}"
@@ -78,7 +78,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush2}"
+                                <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}"
                                         BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,0,14,14" Width="240"
                                         AutomationProperties.Name="{Binding Name}">
                                     <StackPanel>
@@ -92,7 +92,7 @@
                                                     Command="{Binding DataContext.SelectCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
                                                 <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
-                                                           Foreground="{StaticResource InkBrush}" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
                                                            HorizontalAlignment="Stretch"
                                                            TextTrimming="CharacterEllipsis"/>
                                             </Button>
@@ -117,7 +117,7 @@
                     </ItemsControl>
 
                     <!-- Selected category detail -->
-                    <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource AccentBrush}"
+                    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}"
                             BorderThickness="1" CornerRadius="14" Padding="20" Margin="0,10,0,0"
                             Visibility="{Binding HasSelectedCategory, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
@@ -127,7 +127,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="{Binding SelectedCategory.Name}" FontSize="16" FontWeight="SemiBold"
-                                           Foreground="{StaticResource InkBrush}" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
                                 <Button Grid.Column="1" Content="+ Add app" Style="{StaticResource SecondaryButtonStyle}"
                                         Command="{Binding AddAppToCategoryCommand}"/>
@@ -139,7 +139,7 @@
                             <ItemsControl ItemsSource="{Binding SelectedCategoryApps}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}"
+                                        <Border Background="{DynamicResource BgBrush}" BorderBrush="{DynamicResource BorderBrush2}"
                                                 BorderThickness="1" CornerRadius="9" Padding="10,8" Margin="0,0,0,6"
                                                 AutomationProperties.Name="{Binding Name}">
                                             <Grid>
@@ -149,7 +149,7 @@
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Margin="0,0,10,0">
                                                     <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
-                                                               Foreground="{StaticResource InkBrush}" TextTrimming="CharacterEllipsis"/>
+                                                               Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
                                                     <TextBlock Text="{Binding ExecutablePath}" Style="{StaticResource MutedTextStyle}" FontSize="11"
                                                                TextTrimming="CharacterEllipsis"/>
                                                     <TextBlock Text="{Binding Placement, Converter={StaticResource PlacementStatusConverter}}"
@@ -188,7 +188,7 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Blocked while this category is open" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="{StaticResource InkBrush}"/>
+                                               Foreground="{DynamicResource InkBrush}"/>
                                     <TextBlock Text="These apps get closed automatically if they start while this category is active."
                                                Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,2,0,0"/>
                                 </StackPanel>
@@ -202,7 +202,7 @@
                             <ItemsControl ItemsSource="{Binding SelectedCategoryBlockedApps}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource DangerBrush}"
+                                        <Border Background="{DynamicResource BgBrush}" BorderBrush="{DynamicResource DangerBrush}"
                                                 BorderThickness="1" CornerRadius="9" Padding="10,8" Margin="0,0,0,6"
                                                 AutomationProperties.Name="{Binding Name}">
                                             <Grid>
@@ -212,7 +212,7 @@
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Margin="0,0,10,0">
                                                     <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
-                                                               Foreground="{StaticResource InkBrush}" TextTrimming="CharacterEllipsis"/>
+                                                               Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
                                                     <TextBlock Text="{Binding ProcessNameOrPath}" Style="{StaticResource MutedTextStyle}" FontSize="11"
                                                                TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
@@ -232,11 +232,11 @@
         </Grid>
 
         <!-- Busy overlay -->
-        <Border Background="#B0FFFFFF" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
+        <Border Background="{DynamicResource OverlayBrush}" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <ProgressBar IsIndeterminate="True" Width="220" Height="4" Margin="0,0,0,12"
-                             Foreground="{StaticResource AccentBrush}" Background="{StaticResource SurfaceAltBrush}" BorderThickness="0"/>
-                <TextBlock Text="{Binding BusyMessage}" Foreground="{StaticResource InkBrush}" FontSize="13.5"
+                             Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource SurfaceAltBrush}" BorderThickness="0"/>
+                <TextBlock Text="{Binding BusyMessage}" Foreground="{DynamicResource InkBrush}" FontSize="13.5"
                            FontWeight="SemiBold" HorizontalAlignment="Center"/>
             </StackPanel>
         </Border>

@@ -3,10 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Catogarizer" Width="380" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
-        Background="{StaticResource BgBrush}" FontFamily="{StaticResource UiFont}">
+        Background="{DynamicResource BgBrush}" FontFamily="{StaticResource UiFont}">
     <StackPanel Margin="22">
         <TextBlock Text="{Binding HeadingText}" FontSize="16" FontWeight="SemiBold"
-                   Foreground="{StaticResource InkBrush}" Margin="0,0,0,16"/>
+                   Foreground="{DynamicResource InkBrush}" Margin="0,0,0,16"/>
 
         <TextBlock Text="Name" Style="{StaticResource FieldLabelStyle}"/>
         <TextBox x:Name="NameBox" Style="{StaticResource ThemedTextBoxStyle}"
