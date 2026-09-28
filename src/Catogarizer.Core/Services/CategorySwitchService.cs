@@ -88,11 +88,13 @@ public sealed class CategorySwitchService : ICategorySwitchService
         lock (_switchLock)
         {
             List<OpenWindowInfo> outgoing;
+            List<OpenWindowInfo> claimed;
             lock (_lock)
             {
                 if (categoryId == ActiveCategoryId)
                     return new SwitchResult(categoryId, true, OpenWindows(categoryId).Count, []);
 
+                claimed = OpenWindows(categoryId).Count == 0 ? ClaimUnsortedWindows(templateApps) : [];
                 outgoing = OpenWindows(ActiveCategoryId);
                 foreach (var window in outgoing) _hidden[window.Handle] = window;
                 PersistHidden();
@@ -126,6 +128,14 @@ public sealed class CategorySwitchService : ICategorySwitchService
             }
             else
             {
+                lock (_lock)
+                {
+                    foreach (var window in claimed) Attribute(categoryId, window);
+                }
+                foreach (var window in claimed.Where(w => !_windowManager.IsWindowVisible(w.Handle)))
+                    _windowManager.Show(window.Handle);
+
+                // Open adopts the claimed (now visible) windows instead of launching duplicates.
                 var launch = _categoryActionService.Open(templateApps);
                 lock (_lock)
                 {
@@ -245,6 +255,25 @@ public sealed class CategorySwitchService : ICategorySwitchService
             Attribute(ActiveCategoryId, window);
         }
         StateChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// A template app that's already open as an unassigned window (typically right after
+    /// startup, when everything is in Unsorted) belongs to the category now, instead of being
+    /// hidden with Unsorted and launched a second time. At most one window per app; windows of
+    /// other real categories are never taken. Caller holds _lock.
+    /// </summary>
+    private List<OpenWindowInfo> ClaimUnsortedWindows(IReadOnlyList<AppEntry> templateApps)
+    {
+        var unsorted = OpenWindows(Uncategorized);
+        var claimed = new List<OpenWindowInfo>();
+        foreach (var app in templateApps)
+        {
+            var match = AppWindowMatcher.BestMatch(app, unsorted.Where(w => !claimed.Contains(w)));
+            if (match is not null) claimed.Add(match);
+        }
+        Session(Uncategorized).RemoveAll(claimed.Contains);
+        return claimed;
     }
 
     /// <summary>Moves <paramref name="window"/> into <paramref name="categoryId"/>'s session. Caller holds _lock.</summary>

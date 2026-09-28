@@ -472,7 +472,26 @@ Build plan (branch `feature/v2-switching-ui`, one commit per step):
       → fade only. "Nothing to go back to yet" when there's no previous
       category. A tap while the palette is open now closes it (toggle).
       Mouse path: tray "← Back to …". Pill uses the accent color until
-      step 5 adds category colors. **Not yet verified live.**
+      step 5 adds category colors.
+
+Live test 2026-09-28 (debug build, backup of the user's config, test
+categories with charmap/msinfo32, Claude pinned; config restored afterwards):
+- [x] Switch hides exactly the Alt-Tab windows of Unsorted; pinned Claude,
+      desktop, input host, overlays untouched; ledger written before hiding.
+- [x] Blocklist order: A blocks msinfo32, B launches it → survives A→B.
+- [x] `back` restores in 202 ms *including* starting the CLI process.
+- [x] Hard kill with 8 windows hidden → all still hidden → restart shows all
+      8 again, ledger emptied.
+- [x] Crash handler (hit for real, see ERRORS.md) restored every hidden
+      window before closing.
+- [x] **Bug found + fixed:** double-tap crash (Show while closing) - hotkey now
+      `BeginInvoke` + reentrancy guard + idempotent palette close.
+- [x] **Bug found + fixed:** switching after startup launched a second copy
+      of an already-open template app - Unsorted windows are now claimed.
+      Re-verified live: one charmap, taken over.
+- [ ] Double-tap pill + palette visuals: blocked, the PC locked itself
+      mid-test. Redo with the user present (also re-verify the crash fix).
+- [ ] Graceful exit via tray "Exit" restores windows (needs the UI).
 - [ ] 4. Theme system: one token dictionary per theme + shared controls
       (`DynamicResource`), theme choice in Settings, Fjord default.
 - [ ] 5. Category color (`Category.Hue`, additive) + real app icons

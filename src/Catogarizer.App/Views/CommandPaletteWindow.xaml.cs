@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -8,19 +9,21 @@ namespace Catogarizer.App.Views;
 
 public partial class CommandPaletteWindow : Window
 {
-    private bool _isClosed;
+    // Several paths ask to close (Esc, Deactivated, a finished switch, the hotkey); once one
+    // has started closing, the rest must be no-ops - WPF throws on Close/Show during closing.
+    private bool _isClosing;
 
     public CommandPaletteViewModel ViewModel { get; }
+
+    public bool IsOpen => IsVisible && !_isClosing;
 
     public CommandPaletteWindow(CommandPaletteViewModel viewModel)
     {
         InitializeComponent();
         ViewModel = viewModel;
         DataContext = viewModel;
-        // A switch that launches apps moves focus away (Deactivated closes the palette) before
-        // the switch finishes and asks to close again - Close() on a closed window throws.
-        Closed += (_, _) => _isClosed = true;
-        viewModel.RequestClose += (_, _) => { if (!_isClosed) Close(); };
+        Closing += (_, _) => _isClosing = true;
+        viewModel.RequestClose += (_, _) => Dismiss();
 
         Left = Math.Max(0, (SystemParameters.PrimaryScreenWidth - Width) / 2);
         Top = SystemParameters.PrimaryScreenHeight * 0.2;
@@ -34,7 +37,9 @@ public partial class CommandPaletteWindow : Window
 
     public void Dismiss()
     {
-        if (!_isClosed) Close();
+        if (_isClosing) return;
+        _isClosing = true;
+        Close();
     }
 
     private void FadeIn()
@@ -52,7 +57,7 @@ public partial class CommandPaletteWindow : Window
     {
         if (e.Key == Key.Escape)
         {
-            Close();
+            Dismiss();
             e.Handled = true;
             return;
         }
@@ -64,8 +69,5 @@ public partial class CommandPaletteWindow : Window
         }
     }
 
-    private void Window_Deactivated(object sender, EventArgs e)
-    {
-        if (!_isClosed) Close();
-    }
+    private void Window_Deactivated(object sender, EventArgs e) => Dismiss();
 }

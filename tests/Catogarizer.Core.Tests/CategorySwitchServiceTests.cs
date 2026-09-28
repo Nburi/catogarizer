@@ -320,6 +320,86 @@ public sealed class CategorySwitchServiceTests
         Assert.Equal("Zotero", Assert.Single(result.Failures).App.Name);
     }
 
+    // ---- template apps already open ----
+
+    [Fact]
+    public void SwitchTo_TemplateAppAlreadyOpenInUnsorted_IsTakenOverInsteadOfHidden()
+    {
+        _windowFinder.RunningWindows.Add(Window(1, "charmap", "Zeichentabelle"));
+        _windowFinder.RunningWindows.Add(Window(2, "explorer"));
+        _service.Initialize();
+        var deepWork = Guid.NewGuid();
+
+        _service.SwitchTo(deepWork, [App("charmap")]);
+
+        Assert.DoesNotContain(new IntPtr(1), _windowManager.HideCalls);
+        Assert.Contains(new IntPtr(2), _windowManager.HideCalls);
+        var sessions = _service.GetSessions();
+        Assert.Contains(sessions[deepWork], w => w.Handle == new IntPtr(1));
+        Assert.DoesNotContain(sessions[CategorySwitchService.Uncategorized], w => w.Handle == new IntPtr(1));
+    }
+
+    [Fact]
+    public void SwitchTo_TemplateAppHiddenInAParkedUnsorted_IsShownAndTakenOver()
+    {
+        _windowFinder.RunningWindows.Add(Window(1, "charmap"));
+        _service.Initialize();
+        _service.SwitchTo(Guid.NewGuid(), []); // Unsorted parked, charmap hidden
+        var deepWork = Guid.NewGuid();
+
+        _service.SwitchTo(deepWork, [App("charmap")]);
+
+        Assert.Contains(new IntPtr(1), _windowManager.ShowCalls);
+        Assert.Contains(_service.GetSessions()[deepWork], w => w.Handle == new IntPtr(1));
+        Assert.Empty(_hiddenStore.Records);
+    }
+
+    [Fact]
+    public void SwitchTo_NeverTakesATemplateAppsWindowFromAnotherRealCategory()
+    {
+        _service.Initialize();
+        var comms = Guid.NewGuid();
+        _service.SwitchTo(comms, []);
+        _windowWatcher.RaiseWindowAppeared(Window(8, "chrome", "Gmail"));
+        var research = Guid.NewGuid();
+
+        _service.SwitchTo(research, [App("chrome")]);
+
+        Assert.Contains(new IntPtr(8), _windowManager.HideCalls);
+        Assert.Contains(_service.GetSessions()[comms], w => w.Handle == new IntPtr(8));
+    }
+
+    [Fact]
+    public void SwitchTo_TakesOnlyOneWindowPerTemplateApp_PreferringATitleMatch()
+    {
+        _windowFinder.RunningWindows.Add(Window(1, "msedge", "Bing - Microsoft Edge"));
+        _windowFinder.RunningWindows.Add(Window(2, "msedge", "nothing-to-do"));
+        _service.Initialize();
+        var focus = Guid.NewGuid();
+        var pwa = new AppEntry { Name = "nothing-to-do", ExecutablePath = @"C:\Edge\msedge_proxy.exe" };
+
+        _service.SwitchTo(focus, [pwa]);
+
+        var taken = Assert.Single(_service.GetSessions()[focus]);
+        Assert.Equal(new IntPtr(2), taken.Handle);
+        Assert.Contains(new IntPtr(1), _windowManager.HideCalls);
+    }
+
+    [Fact]
+    public void SwitchTo_ACategoryWithASavedSession_DoesNotTakeUnsortedWindows()
+    {
+        _service.Initialize();
+        var deepWork = Guid.NewGuid();
+        _service.SwitchTo(deepWork, []);
+        _windowWatcher.RaiseWindowAppeared(Window(5, "Code"));
+        _service.SwitchTo(CategorySwitchService.Uncategorized, []);
+        _windowWatcher.RaiseWindowAppeared(Window(6, "charmap"));
+
+        _service.SwitchTo(deepWork, [App("charmap")]);
+
+        Assert.Contains(new IntPtr(6), _windowManager.HideCalls);
+    }
+
     // ---- deleted categories ----
 
     [Fact]

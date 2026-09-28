@@ -86,21 +86,8 @@ public sealed class CategoryActionService : ICategoryActionService
         _positioning.PositionWithRetry(hwnd, x, y, width, height);
     }
 
-    private IReadOnlyList<OpenWindowInfo> FindRunningWindows(AppEntry app)
-    {
-        var processName = Path.GetFileNameWithoutExtension(app.ExecutablePath);
-        return _windowFinder.FindAllRunningWindows(ProcessNameCandidates(processName), [app.Name]);
-    }
-
-    /// <summary>
-    /// A PWA's shortcut launches a short-lived stub (msedge_proxy.exe/chrome_proxy.exe)
-    /// that relaunches the real browser and exits - the actual window ends up owned by
-    /// the unsuffixed browser process, so that name is included as a second candidate.
-    /// </summary>
-    private static IReadOnlyList<string> ProcessNameCandidates(string processName) =>
-        processName.EndsWith("_proxy", StringComparison.OrdinalIgnoreCase)
-            ? [processName, processName[..^"_proxy".Length]]
-            : [processName];
+    private IReadOnlyList<OpenWindowInfo> FindRunningWindows(AppEntry app) =>
+        _windowFinder.FindAllRunningWindows(AppWindowMatcher.ProcessNameCandidates(app), [app.Name]);
 
     private static AppActionResult Fail(AppEntry app, string message) => new(app, AppActionOutcome.Failed, message);
 }

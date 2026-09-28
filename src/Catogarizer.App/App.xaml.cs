@@ -36,6 +36,7 @@ public partial class App : Application
     private CommandPaletteWindow? _paletteWindow;
     private SwitchPillWindow? _pill;
     private readonly DoubleTapDetector _doubleTap = new();
+    private bool _handlingHotkey;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -256,7 +257,14 @@ public partial class App : Application
         if (_hotkeyService is null)
         {
             _hotkeyService = new GlobalHotkeyService();
-            _hotkeyService.HotkeyPressed += () => Dispatcher.Invoke(OnHotkeyPressed);
+            // Tap timing is taken here, on the hotkey thread, so a busy UI thread can't stretch or
+            // squash the gap. BeginInvoke (not Invoke) queues the taps in order instead of letting
+            // the second one run nested inside the first one's palette Show().
+            _hotkeyService.HotkeyPressed += () =>
+            {
+                var isDoubleTap = _doubleTap.RegisterTap();
+                Dispatcher.BeginInvoke(() => OnHotkeyPressed(isDoubleTap));
+            };
         }
         _hotkeyService.Register(modifiers, vk);
         // Registration can fail (combo claimed by another app); the app still works fine
@@ -268,24 +276,38 @@ public partial class App : Application
     /// would slow down the everyday path). A quick second tap dismisses the half-faded-in
     /// palette and goes back to the previous category instead.
     /// </summary>
-    private void OnHotkeyPressed()
+    private void OnHotkeyPressed(bool isDoubleTap)
     {
-        if (_doubleTap.RegisterTap())
+        if (_handlingHotkey)
         {
-            GoBack();
+            Dispatcher.BeginInvoke(() => OnHotkeyPressed(isDoubleTap), DispatcherPriority.Background);
             return;
         }
 
-        if (_paletteWindow is { IsVisible: true })
+        _handlingHotkey = true;
+        try
         {
-            _paletteWindow.Dismiss();
-            return;
-        }
+            if (isDoubleTap)
+            {
+                GoBack();
+                return;
+            }
 
-        var vm = new CommandPaletteViewModel(_library!, _switcher!, OnSwitched);
-        _paletteWindow = new CommandPaletteWindow(vm);
-        _paletteWindow.Show();
-        _paletteWindow.Activate();
+            if (_paletteWindow is { IsOpen: true })
+            {
+                _paletteWindow.Dismiss();
+                return;
+            }
+
+            var vm = new CommandPaletteViewModel(_library!, _switcher!, OnSwitched);
+            _paletteWindow = new CommandPaletteWindow(vm);
+            _paletteWindow.Show();
+            _paletteWindow.Activate();
+        }
+        finally
+        {
+            _handlingHotkey = false;
+        }
     }
 
     private void GoBack()
