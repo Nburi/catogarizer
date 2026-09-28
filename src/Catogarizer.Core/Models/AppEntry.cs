@@ -12,4 +12,6 @@ public sealed class AppEntry
     public string ExecutablePath { get; set; } = string.Empty;
     public string? Arguments { get; set; }
     public WindowRect? Placement { get; set; }
+
+    public override string ToString() => Name;
 }

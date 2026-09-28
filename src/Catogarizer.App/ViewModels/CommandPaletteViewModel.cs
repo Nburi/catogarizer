@@ -23,6 +23,8 @@ public sealed partial class PaletteEntry : ObservableObject
     public required IReadOnlyList<TemplateIcon> Icons { get; init; }
 
     [ObservableProperty] private bool _isSelected;
+
+    public override string ToString() => $"{Name}, {StateText}";
 }
 
 /// <summary>

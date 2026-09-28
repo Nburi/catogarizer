@@ -18,10 +18,15 @@ public sealed partial class HueOption : ObservableObject
     public required double Hue { get; init; }
     public required Brush Brush { get; init; }
     [ObservableProperty] private bool _isSelected;
+
+    public override string ToString() => IsSelected ? "Category color, selected" : "Category color";
 }
 
 /// <summary>An open app that could be added to the template ("what you're already using").</summary>
-public sealed record OpenAppSuggestion(string Name, string ExecutablePath, string WindowTitle);
+public sealed record OpenAppSuggestion(string Name, string ExecutablePath, string WindowTitle)
+{
+    public override string ToString() => $"{Name}, {WindowTitle}";
+}
 
 /// <summary>
 /// Everything about one category: name, color, the apps it opens with, what it holds back.
