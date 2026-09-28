@@ -12,6 +12,10 @@ public sealed class CategoryMatcherTests
     [InlineData("Deep Work", "p w", 1)]
     [InlineData("Deep Work", "xyz", 0)]
     [InlineData("Comms", "COM", 4)]
+    [InlineData("Prüfungsvorbereitung Mathematik", "pruf", 4)]
+    [InlineData("Grösseres Projekt", "grosser", 4)]
+    [InlineData("Straße", "strasse", 4)]
+    [InlineData("Überarbeitung", "Über", 4)]
     public void Score_RanksPrefixThenWordThenInitialsThenContains(string name, string query, int expected) =>
         Assert.Equal(expected, CategoryMatcher.Score(name, query));
 

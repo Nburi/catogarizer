@@ -191,7 +191,11 @@ public partial class App : Application
     /// </summary>
     private void ListenForCliRequests(TriggerRunner triggerRunner)
     {
-        var thread = new Thread(() =>
+        // The listener only reads and queues, so a slow switch (a template launch) never keeps
+        // the pipe closed long enough for the next quick command to time out and be lost.
+        var queue = new System.Collections.Concurrent.BlockingCollection<CliCommand>();
+
+        var listener = new Thread(() =>
         {
             while (true)
             {
@@ -201,7 +205,7 @@ public partial class App : Application
                     server.WaitForConnection();
                     using var reader = new StreamReader(server, Encoding.UTF8);
                     var command = CliCommand.FromPipeMessage(reader.ReadLine());
-                    if (command.IsRelayed) ExecuteCliCommand(command, triggerRunner);
+                    if (command.IsRelayed) queue.Add(command);
                 }
                 catch
                 {
@@ -214,7 +218,22 @@ public partial class App : Application
             IsBackground = true,
             Name = "Catogarizer-CliListener",
         };
-        thread.Start();
+
+        var worker = new Thread(() =>
+        {
+            foreach (var command in queue.GetConsumingEnumerable())
+            {
+                try { ExecuteCliCommand(command, triggerRunner); }
+                catch { /* one failed command must not stop the ones after it */ }
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Catogarizer-CliWorker",
+        };
+
+        listener.Start();
+        worker.Start();
     }
 
     private static void SendCliRequest(CliCommand command)
@@ -222,7 +241,7 @@ public partial class App : Application
         try
         {
             using var client = new NamedPipeClientStream(".", CliPipeName, PipeDirection.Out);
-            client.Connect(2000);
+            client.Connect(5000);
             using var writer = new StreamWriter(client, Encoding.UTF8) { AutoFlush = true };
             writer.WriteLine(command.ToPipeMessage());
         }

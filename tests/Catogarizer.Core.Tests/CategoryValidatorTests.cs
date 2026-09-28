@@ -42,7 +42,8 @@ public sealed class CategoryValidatorTests
         var result = CategoryValidator.ValidateName("deep work", existing);
 
         Assert.False(result.IsValid);
-        Assert.Contains("already exists", result.ErrorMessage);
+        // Quotes the existing category as it's actually written, not the user's input.
+        Assert.Contains("\"Deep Work\"", result.ErrorMessage);
     }
 
     [Fact]

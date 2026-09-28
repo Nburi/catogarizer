@@ -41,6 +41,10 @@ public sealed class TrayIconController : IDisposable
         };
         _icon.TrayLeftMouseUp += (_, _) => ShowMainWindow();
         _icon.TrayContextMenuOpen += (_, _) => _icon.ContextMenu = BuildMenu();
+        // Created in code (not XAML), so it must be created explicitly - otherwise every
+        // notification throws "TrayIcon is not created". Efficiency mode off: it would
+        // throttle the whole process, and switching has to stay instant.
+        _icon.ForceCreate(enablesEfficiencyMode: false);
 
         // A system toast, not a themed in-app dialog, is the right call here: the user is
         // very likely in a *different* app when a blocked one gets closed out from under
@@ -48,10 +52,9 @@ public sealed class TrayIconController : IDisposable
         // wouldn't even be seen.
         // AppBlocked fires from the process watcher's background polling thread, not the
         // UI thread - ShowNotification needs to run on the dispatcher.
-        appBlockingService.AppBlocked += appName => _mainWindow.Dispatcher.Invoke(() => _icon.ShowNotification(
+        appBlockingService.AppBlocked += appName => _mainWindow.Dispatcher.BeginInvoke(() => Notify(
             "App held back",
-            $"\"{appName}\" was closed. It's blocked while {ActiveCategoryName()} is active.",
-            H.NotifyIcon.Core.NotificationIcon.Warning));
+            $"\"{appName}\" was closed. It's blocked while {ActiveCategoryName()} is active."));
 
         _switcher.StateChanged += () => _mainWindow.Dispatcher.BeginInvoke(UpdateToolTip);
         UpdateToolTip();
@@ -68,8 +71,20 @@ public sealed class TrayIconController : IDisposable
     }
 
     /// <summary>For problems the user should see even when no Catogarizer window is open.</summary>
-    public void ShowProblem(string title, string message) =>
-        _icon.ShowNotification(title, message, H.NotifyIcon.Core.NotificationIcon.Warning);
+    public void ShowProblem(string title, string message) => Notify(title, message);
+
+    /// <summary>A notification is a courtesy: if Windows refuses it, the app carries on.</summary>
+    private void Notify(string title, string message)
+    {
+        try
+        {
+            _icon.ShowNotification(title, message, H.NotifyIcon.Core.NotificationIcon.Warning);
+        }
+        catch (Exception)
+        {
+            // Nothing sensible to fall back to; the home window shows the same state.
+        }
+    }
 
     public void AllowExit() => _isExiting = true;
 
