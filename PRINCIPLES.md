@@ -1,9 +1,18 @@
 # Principles
 
-> **Status: DRAFT, waiting for approval.** Once approved, this file is binding
-> and does not change. Every feature plan is checked against it; if a feature
-> breaks a principle, the feature changes, not the principle.
+> **Status: BINDING, approved 2026-09-28.** This file does not change. Every
+> feature plan is checked against it; if a feature breaks a principle, the
+> feature changes, not the principle.
 > Interactive version with design previews: `design/concepts-v2.html`.
+
+## Decisions made with these principles (2026-09-28)
+
+- **Theme:** Fjord is the default. All themes from `design/concepts-v2.html`
+  are selectable in Settings.
+- **Home design:** C · Now + Shelf.
+- **Signature moment:** double-tap the hotkey to go back to the previous
+  category. It is off-limits for cleanup and consistency passes.
+- **Language:** English UI. The implicit category is called **Unsorted**.
 
 ## What makes Catogarizer unique
 
