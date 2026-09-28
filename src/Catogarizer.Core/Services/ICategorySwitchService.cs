@@ -2,6 +2,10 @@ using Catogarizer.Core.Models;
 
 namespace Catogarizer.Core.Services;
 
+/// <param name="RestoredSession">True if saved windows came back, false if the template was opened fresh.</param>
+/// <param name="WindowCount">Windows now showing for the category (restored or successfully opened).</param>
+public sealed record SwitchResult(Guid CategoryId, bool RestoredSession, int WindowCount, IReadOnlyList<AppActionResult> Failures);
+
 /// <summary>
 /// The v2 category-switching model (see CONCEPT.md "Category switching &amp;
 /// sessions"): at any moment exactly one category is active, including the
@@ -15,9 +19,21 @@ public interface ICategorySwitchService : IDisposable
 {
     Guid ActiveCategoryId { get; }
 
+    /// <summary>The category that was active before the current one, if there was a switch yet.</summary>
+    Guid? PreviousCategoryId { get; }
+
+    DateTime ActiveSince { get; }
+
     /// <summary>
-    /// Snapshots whatever's currently open into the Uncategorized session and
-    /// starts watching for new windows. Call once, at app startup.
+    /// Raised after a switch, a reset, or a change to any session's window set.
+    /// Can fire on a background thread (the window watcher's).
+    /// </summary>
+    event Action? StateChanged;
+
+    /// <summary>
+    /// Shows any windows a previous (crashed) run left hidden, snapshots
+    /// what's open into the Uncategorized session and starts watching for
+    /// new windows. Call once, at app startup.
     /// </summary>
     void Initialize();
 
@@ -25,8 +41,16 @@ public interface ICategorySwitchService : IDisposable
     /// Switches to <paramref name="categoryId"/>: hides the active category's
     /// session, then either restores <paramref name="categoryId"/>'s own
     /// saved session or opens <paramref name="templateApps"/> fresh if it
-    /// doesn't have one yet. A no-op if <paramref name="categoryId"/> is
-    /// already active.
+    /// doesn't have one. A no-op if <paramref name="categoryId"/> is already active.
     /// </summary>
-    void SwitchTo(Guid categoryId, IReadOnlyList<AppEntry> templateApps);
+    SwitchResult SwitchTo(Guid categoryId, IReadOnlyList<AppEntry> templateApps);
+
+    /// <summary>Still-open windows per category, with their current titles.</summary>
+    IReadOnlyDictionary<Guid, IReadOnlyList<OpenWindowInfo>> GetSessions();
+
+    /// <summary>
+    /// Emergency exit and shutdown path: shows every window Catogarizer hid,
+    /// moves all tracked windows into Uncategorized and makes it active.
+    /// </summary>
+    void ShowAllAndReset();
 }

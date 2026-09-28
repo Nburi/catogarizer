@@ -7,10 +7,18 @@ public sealed class FakeCategoryActionService : ICategoryActionService
 {
     public List<string> Calls { get; } = [];
 
+    /// <summary>Window handle an app's Open reports, by app name. Unlisted apps report none.</summary>
+    public Dictionary<string, IntPtr> LaunchHandles { get; } = new();
+
+    /// <summary>App names whose Open fails.</summary>
+    public HashSet<string> FailingApps { get; } = new();
+
     public CategoryActionResult Open(IReadOnlyList<AppEntry> apps)
     {
         Calls.Add($"Open:{string.Join(",", apps.Select(a => a.Name))}");
-        return new CategoryActionResult(apps.Select(a => new AppActionResult(a, AppActionOutcome.Opened)).ToList());
+        return new CategoryActionResult(apps.Select(a => FailingApps.Contains(a.Name)
+            ? new AppActionResult(a, AppActionOutcome.Failed, $"{a.Name} failed")
+            : new AppActionResult(a, AppActionOutcome.Opened, WindowHandle: LaunchHandles.TryGetValue(a.Name, out var h) ? h : null)).ToList());
     }
 
     public CategoryActionResult Minimize(IReadOnlyList<AppEntry> apps) =>

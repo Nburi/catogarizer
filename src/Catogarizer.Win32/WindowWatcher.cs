@@ -3,7 +3,7 @@ using Catogarizer.Core.Services;
 namespace Catogarizer.Win32;
 
 /// <summary>
-/// Polls <see cref="IWindowFinder.FindAllVisibleWindows"/> and diffs against
+/// Polls <see cref="IWindowFinder.FindAllAppWindows"/> and diffs against
 /// the previous snapshot for newly-appeared window handles - same "poll and
 /// diff" shape as <see cref="ProcessWatcher"/>, applied to windows instead of
 /// processes. Backs the v2 session-switching spike's "auto-attribute an
@@ -29,7 +29,7 @@ public sealed class WindowWatcher : IWindowWatcher
     {
         if (_cts is not null) return;
         _cts = new CancellationTokenSource();
-        _knownHandles = _finder.FindAllVisibleWindows().Select(w => w.Handle).ToHashSet();
+        _knownHandles = _finder.FindAllAppWindows().Select(w => w.Handle).ToHashSet();
         _loopTask = Task.Run(() => PollLoop(_cts.Token));
     }
 
@@ -45,7 +45,7 @@ public sealed class WindowWatcher : IWindowWatcher
         {
             try
             {
-                var current = _finder.FindAllVisibleWindows();
+                var current = _finder.FindAllAppWindows();
                 var currentHandles = new HashSet<IntPtr>(current.Count);
                 foreach (var window in current)
                 {

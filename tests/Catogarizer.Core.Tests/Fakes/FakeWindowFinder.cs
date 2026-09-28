@@ -16,5 +16,5 @@ public sealed class FakeWindowFinder : IWindowFinder
             titleCandidates.Any(t => w.Title.Contains(t, StringComparison.OrdinalIgnoreCase))
         ).ToList();
 
-    public IReadOnlyList<OpenWindowInfo> FindAllVisibleWindows() => RunningWindows.ToList();
+    public IReadOnlyList<OpenWindowInfo> FindAllAppWindows() => RunningWindows.ToList();
 }

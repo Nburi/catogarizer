@@ -65,4 +65,20 @@ public sealed class WindowManager : IWindowManager
     public void Show(IntPtr handle) => ShowWindow(handle, SW_SHOW);
 
     public bool IsWindowVisible(IntPtr handle) => NativeMethods.IsWindowVisible(handle);
+
+    public string GetTitle(IntPtr handle)
+    {
+        var len = GetWindowTextLength(handle);
+        if (len == 0) return "";
+        var sb = new System.Text.StringBuilder(len + 1);
+        GetWindowText(handle, sb, sb.Capacity);
+        return sb.ToString();
+    }
+
+    public int GetProcessId(IntPtr handle)
+    {
+        if (!IsWindow(handle)) return 0;
+        GetWindowThreadProcessId(handle, out var pid);
+        return pid;
+    }
 }

@@ -428,11 +428,21 @@ around a command-palette-first interaction, per the updated CONCEPT.md.
       principles in `PRINCIPLES.md`.
 
 Build plan (branch `feature/v2-switching-ui`, one commit per step):
-- [ ] 1. Safety net + session state (Core, test-first): persist hidden
-      windows to `hidden.json`, restore on exit and on next start (after a
-      crash), tray "Show all hidden windows". Switch service exposes
-      `ActiveCategoryChanged`, `PreviousCategoryId`, active-since time and a
-      per-category session snapshot (count + titles).
+- [x] 1. Safety net + session state (Core, test-first). `IHiddenWindowStore`/
+      `JsonHiddenWindowStore` ledger written *before* every hide; `Initialize`
+      shows windows a crashed run left hidden (handle + pid must both match,
+      so a handle reused after reboot is never shown); `ShowAllAndReset` for
+      exit and the tray emergency item (wired in step 2). Switch service now
+      has `PreviousCategoryId`, `ActiveSince`, `StateChanged`, `GetSessions()`
+      (live titles) and returns a `SwitchResult`. Also fixed while in there:
+      Catogarizer never tracks its own windows; template-launched windows are
+      attributed immediately (closes the 350 ms race); a parked window that
+      re-shows itself moves to the active category. **Real bug found:**
+      `FindAllVisibleWindows` included the desktop ("Program Manager"),
+      cloaked UWP windows and tool windows - a switch would have hidden the
+      desktop icons. Renamed to `FindAllAppWindows` with an Alt-Tab filter;
+      verified read-only on the real desktop (spike `list` mode). 126/126.
+      Tray "Show all hidden windows" is wired in step 2.
 - [ ] 2. Wire switching into the running app: composition root, tray,
       palette, CLI `catogarizer switch "<name>"`, blocking follows the
       active category, trigger action "Open category" becomes a switch. Old

@@ -21,9 +21,10 @@ public interface IWindowFinder
     IReadOnlyList<OpenWindowInfo> FindAllRunningWindows(IReadOnlyList<string> processNameCandidates, IReadOnlyList<string> titleCandidates);
 
     /// <summary>
-    /// Every currently visible top-level window with a non-empty title, no
-    /// filtering - the raw snapshot <see cref="IWindowWatcher"/> diffs
-    /// against itself over time to notice new windows appearing.
+    /// Every window a user would see in Alt-Tab: visible, titled, not cloaked,
+    /// unowned, not a tool window, and not a shell surface (desktop, taskbar).
+    /// Anything else must never be hidden by a category switch - hiding
+    /// "Program Manager" would take the desktop icons with it.
     /// </summary>
-    IReadOnlyList<OpenWindowInfo> FindAllVisibleWindows();
+    IReadOnlyList<OpenWindowInfo> FindAllAppWindows();
 }

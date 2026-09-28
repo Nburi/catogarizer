@@ -39,12 +39,17 @@ public sealed class WindowFinder : IWindowFinder
         return results;
     }
 
-    public IReadOnlyList<OpenWindowInfo> FindAllVisibleWindows()
+    private static readonly HashSet<string> ShellWindowClasses = new(StringComparer.Ordinal)
+    {
+        "Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd",
+    };
+
+    public IReadOnlyList<OpenWindowInfo> FindAllAppWindows()
     {
         var results = new List<OpenWindowInfo>();
         EnumWindows((hWnd, _) =>
         {
-            if (!IsWindowVisible(hWnd)) return true;
+            if (!IsAltTabWindow(hWnd)) return true;
             var title = GetTitle(hWnd);
             if (title.Length == 0) return true;
 
@@ -53,6 +58,22 @@ public sealed class WindowFinder : IWindowFinder
             return true;
         }, IntPtr.Zero);
         return results;
+    }
+
+    private static bool IsAltTabWindow(IntPtr hWnd)
+    {
+        if (!IsWindowVisible(hWnd)) return false;
+        if (GetWindow(hWnd, GW_OWNER) != IntPtr.Zero) return false;
+
+        var exStyle = GetWindowLongPtr(hWnd, GWL_EXSTYLE).ToInt64();
+        if ((exStyle & WS_EX_TOOLWINDOW) != 0 && (exStyle & WS_EX_APPWINDOW) == 0) return false;
+
+        // Suspended UWP apps and windows on other virtual desktops report visible but are cloaked.
+        if (DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, out var cloaked, sizeof(int)) == 0 && cloaked != 0) return false;
+
+        var className = new StringBuilder(64);
+        GetClassName(hWnd, className, className.Capacity);
+        return !ShellWindowClasses.Contains(className.ToString());
     }
 
     private static IntPtr? FindByProcessHandle(int processId, TimeSpan timeout)

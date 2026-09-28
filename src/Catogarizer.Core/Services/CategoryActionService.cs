@@ -45,7 +45,7 @@ public sealed class CategoryActionService : ICategoryActionService
             if (app.Placement is not null)
                 Position(hwnd.Value, app.Placement);
 
-            return new AppActionResult(app, AppActionOutcome.Opened);
+            return new AppActionResult(app, AppActionOutcome.Opened, WindowHandle: hwnd);
         }
         catch (Exception ex)
         {
