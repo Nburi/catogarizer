@@ -95,7 +95,7 @@ public sealed class CategorySwitchService : ICategorySwitchService
                     return new SwitchResult(categoryId, true, OpenWindows(categoryId).Count, []);
 
                 claimed = OpenWindows(categoryId).Count == 0 ? ClaimUnsortedWindows(templateApps) : [];
-                outgoing = OpenWindows(ActiveCategoryId);
+                outgoing = OpenWindows(ActiveCategoryId).Where(IsTrackable).ToList();
                 foreach (var window in outgoing) _hidden[window.Handle] = window;
                 PersistHidden();
             }
@@ -197,6 +197,30 @@ public sealed class CategorySwitchService : ICategorySwitchService
                     ActiveCategoryId = Uncategorized;
                     ActiveSince = _clock.Now;
                 }
+            }
+        }
+        StateChanged?.Invoke();
+    }
+
+    public void ApplyPinnedApps()
+    {
+        lock (_switchLock)
+        {
+            List<OpenWindowInfo> pinned;
+            lock (_lock)
+            {
+                pinned = _sessions.Values.SelectMany(s => s).Where(w => IsPinned(w.ProcessName)).DistinctBy(w => w.Handle).ToList();
+                foreach (var session in _sessions.Values)
+                    session.RemoveAll(w => IsPinned(w.ProcessName));
+            }
+
+            foreach (var window in pinned.Where(w => _windowManager.IsWindowOpen(w.Handle) && !_windowManager.IsWindowVisible(w.Handle)))
+                _windowManager.Show(window.Handle);
+
+            lock (_lock)
+            {
+                foreach (var window in pinned) _hidden.Remove(window.Handle);
+                PersistHidden();
             }
         }
         StateChanged?.Invoke();

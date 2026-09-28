@@ -121,8 +121,9 @@ public partial class App : Application
         triggerScheduler.Start(() => library.Triggers);
         _triggerScheduler = triggerScheduler;
 
-        var mainWindow = new MainWindow(library, installedAppFinder, dialogService, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService, switcher, autostartService, triggerRunner, themeService, RegisterGlobalHotkey);
+        var editorServices = new EditorServices(library, dialogService, installedAppFinder, processLauncher, windowFinder,
+            windowManager, monitorService, categoryActionService, autostartService, triggerRunner);
+        var mainWindow = new MainWindow(editorServices, switcher, themeService, appBlockingService, RegisterGlobalHotkey);
         // A relayed command (switch/run/back) stays headless regardless of the StartMinimized
         // setting - it's a background request (script/hotkey tool), not a user opening the app.
         if (!library.Settings.StartMinimized && !command.IsRelayed)
@@ -158,6 +159,9 @@ public partial class App : Application
                 break;
             case CliCommand.Back:
                 if (switcher.SwitchBack() is { } back) OnSwitched(back);
+                break;
+            case CliCommand.ShowAll:
+                switcher.ShowAllAndReset();
                 break;
         }
     }

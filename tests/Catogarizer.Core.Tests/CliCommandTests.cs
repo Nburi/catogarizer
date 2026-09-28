@@ -53,6 +53,7 @@ public sealed class CliCommandTests
     [InlineData("run", "Morning")]
     [InlineData("switch", "Deep Work")]
     [InlineData("back", null)]
+    [InlineData("show-all", null)]
     public void PipeMessage_RoundTrips(string verb, string? name)
     {
         var original = CliCommand.Parse(name is null ? [verb] : [verb, name]);

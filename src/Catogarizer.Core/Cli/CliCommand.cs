@@ -15,9 +15,11 @@ public abstract record CliCommand
     public sealed record Run(string TriggerName) : CliCommand;
     public sealed record Switch(string CategoryName) : CliCommand;
     public sealed record Back : CliCommand;
+    /// <summary>Emergency: show every window Catogarizer hid and make Unsorted active.</summary>
+    public sealed record ShowAll : CliCommand;
 
     /// <summary>True for commands a second process relays to the running instance instead of just showing it.</summary>
-    public bool IsRelayed => this is Run or Switch or Back;
+    public bool IsRelayed => this is Run or Switch or Back or ShowAll;
 
     public static CliCommand Parse(string[] args)
     {
@@ -28,6 +30,7 @@ public abstract record CliCommand
 
         if (Is(verb, "start")) return new Start();
         if (Is(verb, "back")) return new Back();
+        if (Is(verb, "show-all")) return new ShowAll();
         if (Is(verb, "run") && hasName) return new Run(args[1]);
         if (Is(verb, "switch") && hasName) return new Switch(args[1]);
         return new None();
@@ -39,6 +42,7 @@ public abstract record CliCommand
         Run r => $"run\t{r.TriggerName}",
         Switch s => $"switch\t{s.CategoryName}",
         Back => "back",
+        ShowAll => "show-all",
         _ => "",
     };
 

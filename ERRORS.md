@@ -21,6 +21,15 @@ found no *visible* window and launched the app again.
 window per template app into the category before hiding (never from other real
 categories), so `CategoryActionService.Open` adopts it.
 
+## Testing: a user's window stayed hidden after a live test
+**Seen:** 2026-09-28. A template claimed the user's open Explorer window into the
+test category; the test cleanup then force-killed the app and *deleted
+hidden.json* - so neither the exit path nor the next-start recovery could show
+the window again. Restored by hand the same minute.
+**Rule:** never delete `hidden.json` after a kill. End every live test with
+`Catogarizer.App.exe show-all` (added for this), then verify against a snapshot of
+the user's windows taken before the test.
+
 ## Testing: screen captures come back black/white, hotkeys do nothing
 **Seen:** 2026-09-28. The workstation had locked mid-test (`LogonUI` running,
 `OpenInputDesktop` fails). Synthetic keys go to the secure desktop and BitBlt

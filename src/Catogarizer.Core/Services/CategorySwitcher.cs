@@ -80,6 +80,8 @@ public sealed class CategorySwitcher
         }
     }
 
+    public void ApplyPinnedApps() => _switch.ApplyPinnedApps();
+
     /// <summary>Re-applies the active category's blocklist after it was edited.</summary>
     public void RefreshBlocking()
     {

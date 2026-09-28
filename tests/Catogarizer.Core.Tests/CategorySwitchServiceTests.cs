@@ -400,6 +400,39 @@ public sealed class CategorySwitchServiceTests
         Assert.Contains(new IntPtr(6), _windowManager.HideCalls);
     }
 
+    // ---- pinning while running ----
+
+    [Fact]
+    public void ApplyPinnedApps_ShowsAParkedWindowOfANewlyPinnedApp_AndNeverHidesItAgain()
+    {
+        _windowFinder.RunningWindows.Add(Window(1, "Spotify"));
+        _service.Initialize();
+        var deepWork = Guid.NewGuid();
+        _service.SwitchTo(deepWork, []); // Spotify hidden with Unsorted
+
+        _pinnedApps.Add(new PinnedApp { Name = "Spotify", ProcessNameOrPath = "Spotify.exe" });
+        _service.ApplyPinnedApps();
+        _service.SwitchTo(CategorySwitchService.Uncategorized, []);
+        _windowManager.HideCalls.Clear();
+        _service.SwitchTo(deepWork, []);
+
+        Assert.Contains(new IntPtr(1), _windowManager.ShowCalls);
+        Assert.DoesNotContain(new IntPtr(1), _windowManager.HideCalls);
+        Assert.Empty(_hiddenStore.Records);
+    }
+
+    [Fact]
+    public void SwitchTo_NeverHidesAWindowWhoseAppWasPinnedAfterItWasTracked()
+    {
+        _windowFinder.RunningWindows.Add(Window(1, "WhatsApp"));
+        _service.Initialize();
+        _pinnedApps.Add(new PinnedApp { Name = "WhatsApp", ProcessNameOrPath = "WhatsApp" });
+
+        _service.SwitchTo(Guid.NewGuid(), []);
+
+        Assert.DoesNotContain(new IntPtr(1), _windowManager.HideCalls);
+    }
+
     // ---- deleted categories ----
 
     [Fact]

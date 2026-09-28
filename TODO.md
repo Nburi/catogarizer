@@ -523,8 +523,28 @@ categories with charmap/msinfo32, Claude pinned; config restored afterwards):
       appear without fade). Known limit: a PWA shows its browser's icon (the
       PWA's own icon lives in its Start Menu shortcut, which `AppEntry`
       doesn't keep). Verified live together with step 6.
-- [ ] 6. New "Now + Shelf" home + separate category editor window; empty,
-      first-launch and error states.
+- [x] 6. New "Now + Shelf" home + separate category editor window.
+      Home: hero "You're in" (category tint, heading-font name, since/
+      duration, live windows with real icons and friendly app names, "+N
+      more"), side column (held back + last blocked attempt, always-visible
+      pins with "+ Pin app"/unpin, "← Back to …" card), shelf of tiles (color,
+      number key, template icons - Unsorted shows its parked apps' icons -,
+      parked/fresh/empty state, "Opening..." only for fresh launches, held-
+      back count, hover lift in the category color, edit pencil), first-run
+      card, next time-trigger line, number keys 1-9/0 switch, narrow layout
+      stacks the side column. Editor: inline name with live validation,
+      10 color swatches, template apps (open/minimize/close, set position,
+      edit, remove), "From open windows" (plain version of the
+      build-from-what's-open idea), held-back apps, delete with confirmation.
+      Also: pinning applies at once (`ApplyPinnedApps`, pinned windows never
+      hidden at switch time), `TriggerPreview` (Core, tested), CLI `show-all`,
+      themed thin scrollbars, dialogs open over the active window.
+      Deviation from the blueprint: no separate "switch receipt" toast on
+      every switch - it would compete with the signature pill; the home and
+      tray tooltip already show the result. Verified live in Fjord and
+      Graphite (home, switch, editor, narrow layout). **Test cleanup bug**
+      (not an app bug): see ERRORS.md - a user window stayed hidden after a
+      force-kill + deleted ledger; fixed the procedure, added `show-all`.
 - [ ] 7. Palette v2 (preview shown to the user before building).
 - [ ] 8. Review rounds 0–4 (fs-* agents).
 - [ ] 9. Docs, code review, user review, merge, deploy.

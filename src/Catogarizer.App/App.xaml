@@ -14,6 +14,7 @@
             <conv:NullToCollapsedConverter x:Key="NullToCollapsedConverter"/>
             <conv:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter"/>
             <conv:PlacementStatusConverter x:Key="PlacementStatusConverter"/>
+            <conv:EmptyAndIdleToVisibleConverter x:Key="EmptyAndIdleToVisibleConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

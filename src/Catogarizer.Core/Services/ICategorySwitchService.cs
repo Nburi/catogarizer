@@ -61,4 +61,10 @@ public interface ICategorySwitchService : IDisposable
     /// Uncategorized is the active category.
     /// </summary>
     void ReleaseCategory(Guid categoryId);
+
+    /// <summary>
+    /// After the pinned list changed: windows of now-pinned apps leave every session and are
+    /// shown if they were parked, so pinning takes effect at once instead of on the next switch.
+    /// </summary>
+    void ApplyPinnedApps();
 }
