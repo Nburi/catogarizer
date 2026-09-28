@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Catogarizer.App.ViewModels;
 
 namespace Catogarizer.App.Views;
@@ -23,7 +25,27 @@ public partial class CommandPaletteWindow : Window
         Left = Math.Max(0, (SystemParameters.PrimaryScreenWidth - Width) / 2);
         Top = SystemParameters.PrimaryScreenHeight * 0.2;
 
-        Loaded += (_, _) => SearchBox.Focus();
+        Loaded += (_, _) =>
+        {
+            SearchBox.Focus();
+            FadeIn();
+        };
+    }
+
+    public void Dismiss()
+    {
+        if (!_isClosed) Close();
+    }
+
+    private void FadeIn()
+    {
+        var duration = new Duration(TimeSpan.FromMilliseconds(140));
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        Root.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, duration) { EasingFunction = ease });
+        if (SystemParameters.ClientAreaAnimation)
+            EntryOffset.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-6, 0, duration) { EasingFunction = ease });
+        else
+            EntryOffset.Y = 0;
     }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)

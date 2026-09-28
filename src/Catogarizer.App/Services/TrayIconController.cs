@@ -96,6 +96,19 @@ public sealed class TrayIconController : IDisposable
         var menu = new ContextMenu();
         var active = _switcher.ActiveCategoryId;
 
+        if (_switcher.PreviousCategoryId is { } previous)
+        {
+            var name = _library.Categories.FirstOrDefault(c => c.Id == previous)?.Name ?? CategorySwitchService.UncategorizedName;
+            var backItem = new MenuItem { Header = $"← Back to {name}", InputGestureText = "hotkey twice" };
+            backItem.Click += async (_, _) =>
+            {
+                var result = await Task.Run(_switcher.SwitchBack);
+                if (result is not null) _onSwitched(result);
+            };
+            menu.Items.Add(backItem);
+            menu.Items.Add(new Separator());
+        }
+
         foreach (var category in _library.Categories.OrderBy(c => c.SortOrder))
             menu.Items.Add(SwitchItem(category.Id, category.Name, category.Id == active));
         menu.Items.Add(SwitchItem(CategorySwitchService.Uncategorized, CategorySwitchService.UncategorizedName,

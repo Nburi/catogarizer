@@ -460,8 +460,19 @@ Build plan (branch `feature/v2-switching-ui`, one commit per step):
       in `LibraryService` (copy-on-write, read from the watcher thread).
       155/155. **Not yet verified in the running app** - needs the user's
       go-ahead (switching hides real windows on their desktop).
-- [ ] 3. Signature moment: double-tap hotkey → previous category, pill in
-      the category color.
+- [x] 3. Signature moment: double-tap hotkey → previous category. Pure
+      `DoubleTapDetector` (Core, 350 ms window, third tap starts a new
+      sequence, tested). First tap opens the palette *immediately* (no
+      waiting for a possible second tap - that would slow the everyday
+      path); it fades in over 140 ms, so a quick second tap dismisses it
+      before it's fully visible and `SwitchPillWindow` rises from the
+      taskbar edge: "← Comms" with a dot and tint in the category color,
+      back-eased lift + arrow nudge, ~0.9 s hold, fade out. Click-through,
+      never activates, not in Alt-Tab (`OverlayWindowStyle`). Reduced motion
+      → fade only. "Nothing to go back to yet" when there's no previous
+      category. A tap while the palette is open now closes it (toggle).
+      Mouse path: tray "← Back to …". Pill uses the accent color until
+      step 5 adds category colors. **Not yet verified live.**
 - [ ] 4. Theme system: one token dictionary per theme + shared controls
       (`DynamicResource`), theme choice in Settings, Fjord default.
 - [ ] 5. Category color (`Category.Hue`, additive) + real app icons

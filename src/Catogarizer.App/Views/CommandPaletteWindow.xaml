@@ -7,8 +7,11 @@
         WindowStartupLocation="Manual"
         FontFamily="{StaticResource UiFont}"
         PreviewKeyDown="Window_PreviewKeyDown" Deactivated="Window_Deactivated">
-    <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush2}"
-            BorderThickness="1" CornerRadius="14" Padding="6">
+    <Border x:Name="Root" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush2}"
+            BorderThickness="1" CornerRadius="14" Padding="6" Opacity="0">
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="EntryOffset" Y="-6"/>
+        </Border.RenderTransform>
         <Border.Effect>
             <DropShadowEffect BlurRadius="34" ShadowDepth="10" Opacity="0.28" Color="Black"/>
         </Border.Effect>
@@ -42,8 +45,8 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <TextBlock Text="Enter switches to the first match · Esc closes" Style="{StaticResource MutedTextStyle}"
-                       FontSize="11" Margin="6,10,6,2"/>
+            <TextBlock Text="Enter switches to the first match · Esc closes · press the hotkey twice to go back"
+                       Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="6,10,6,2" TextWrapping="Wrap"/>
         </StackPanel>
     </Border>
 </Window>

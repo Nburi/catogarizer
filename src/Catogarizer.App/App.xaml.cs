@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Catogarizer.App.Services;
 using Catogarizer.App.ViewModels;
@@ -33,6 +34,8 @@ public partial class App : Application
     private CategorySwitchService? _switchService;
     private CategorySwitcher? _switcher;
     private CommandPaletteWindow? _paletteWindow;
+    private SwitchPillWindow? _pill;
+    private readonly DoubleTapDetector _doubleTap = new();
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -253,18 +256,29 @@ public partial class App : Application
         if (_hotkeyService is null)
         {
             _hotkeyService = new GlobalHotkeyService();
-            _hotkeyService.HotkeyPressed += () => Dispatcher.Invoke(ShowCommandPalette);
+            _hotkeyService.HotkeyPressed += () => Dispatcher.Invoke(OnHotkeyPressed);
         }
         _hotkeyService.Register(modifiers, vk);
         // Registration can fail (combo claimed by another app); the app still works fine
         // without the fast-path palette, so this isn't treated as an error.
     }
 
-    private void ShowCommandPalette()
+    /// <summary>
+    /// One tap toggles the palette right away (no waiting to see if a second tap follows - that
+    /// would slow down the everyday path). A quick second tap dismisses the half-faded-in
+    /// palette and goes back to the previous category instead.
+    /// </summary>
+    private void OnHotkeyPressed()
     {
+        if (_doubleTap.RegisterTap())
+        {
+            GoBack();
+            return;
+        }
+
         if (_paletteWindow is { IsVisible: true })
         {
-            _paletteWindow.Activate();
+            _paletteWindow.Dismiss();
             return;
         }
 
@@ -273,6 +287,30 @@ public partial class App : Application
         _paletteWindow.Show();
         _paletteWindow.Activate();
     }
+
+    private void GoBack()
+    {
+        _paletteWindow?.Dismiss();
+        _pill ??= new SwitchPillWindow();
+
+        if (_switcher!.PreviousCategoryId is not { } previous)
+        {
+            _pill.Flash("Nothing to go back to yet", null, showBackArrow: false);
+            return;
+        }
+
+        _pill.Flash(CategoryName(previous), CategoryColor(previous), showBackArrow: true);
+        Task.Run(() =>
+        {
+            if (_switcher.SwitchBack() is { } result) OnSwitched(result);
+        });
+    }
+
+    private string CategoryName(Guid id) =>
+        _library!.Categories.FirstOrDefault(c => c.Id == id)?.Name ?? CategorySwitchService.UncategorizedName;
+
+    private Color? CategoryColor(Guid id) =>
+        id == CategorySwitchService.Uncategorized ? (Color)FindResource("MutedColor") : (Color)FindResource("AccentColor");
 
     /// <summary>Never leave a window hidden behind when Catogarizer stops (PRINCIPLES.md, value 1).</summary>
     private void RestoreHiddenWindows()
