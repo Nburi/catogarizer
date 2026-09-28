@@ -31,7 +31,8 @@
         <!-- Shelf tile: the whole tile switches; its border takes the category color on hover. -->
         <Style x:Key="ShelfTileStyle" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Width" Value="212"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Margin" Value="0,0,12,12"/>
             <Setter Property="FocusVisualStyle" Value="{StaticResource ThemedFocusVisual}"/>
             <Setter Property="Template">
@@ -75,7 +76,7 @@
         </Style>
     </Window.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+    <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto" Focusable="False">
         <StackPanel Margin="28,20,28,24">
 
             <!-- Header -->
@@ -117,10 +118,36 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding Notice}" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" FontSize="12.5" VerticalAlignment="Center"/>
-                    <Button Grid.Column="1" Content="&#x2715;" Style="{StaticResource GhostIconButtonStyle}"
+                    <Button Grid.Column="1" Content="Open editor" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5" Margin="12,0,6,0"
+                            VerticalAlignment="Center" Command="{Binding EditNoticeCategoryCommand}"
+                            Visibility="{Binding NoticeCanEdit, Converter={StaticResource BoolToVis}}"/>
+                    <Button Grid.Column="2" Content="&#x2715;" Style="{StaticResource GhostIconButtonStyle}"
                             Command="{Binding DismissNoticeCommand}" ToolTip="Dismiss" AutomationProperties.Name="Dismiss"/>
+                </Grid>
+            </Border>
+
+            <!-- First launch: explain before any term (Unsorted, parked, held back) shows up. -->
+            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                    CornerRadius="{DynamicResource CardRadius}" Padding="24,20" Margin="0,0,0,16"
+                    Visibility="{Binding HasCategories, Converter={StaticResource InverseBoolToVis}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,20,0">
+                        <TextBlock Text="One keystroke between kinds of work" FontFamily="{DynamicResource HeadingFont}" FontSize="19"
+                                   FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                        <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12.5" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Text="Make a category for each kind of work, like Deep Work or Comms. Switching to one parks the windows you don't need (hidden, never closed) and brings its own back exactly as you left them."/>
+                        <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12.5" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Text="Until then, everything you have open is in Unsorted - that's what you see below."/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Make your first category" Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Center"
+                            Command="{Binding NewCategoryCommand}"/>
                 </Grid>
             </Border>
 
@@ -184,8 +211,10 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <TextBlock Text="{Binding MoreWindowsText}" Style="{StaticResource MutedTextStyle}" FontSize="12" Margin="4,0,0,0"
-                                       Visibility="{Binding MoreWindowsText, Converter={StaticResource NullToCollapsedConverter}}"/>
+                            <Button Content="{Binding MoreWindowsText}" Style="{StaticResource GhostRowButtonStyle}" Padding="6,3" HorizontalAlignment="Left"
+                                    Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold"
+                                    Command="{Binding ToggleAllWindowsCommand}"
+                                    Visibility="{Binding MoreWindowsText, Converter={StaticResource NullToCollapsedConverter}}"/>
                             <Border BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1" CornerRadius="{DynamicResource ControlRadius}"
                                     Padding="14,12" Visibility="{Binding NoWindowsText, Converter={StaticResource NullToCollapsedConverter}}">
                                 <TextBlock Text="{Binding NoWindowsText}" Style="{StaticResource MutedTextStyle}" FontSize="12.5" TextWrapping="Wrap"/>
@@ -278,10 +307,8 @@
                                                        TextTrimming="CharacterEllipsis"/>
                                             <TextBlock Text="{Binding BackDetail}" Style="{StaticResource MutedTextStyle}" FontSize="11.5"/>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" ToolTip="Press the hotkey twice">
-                                            <TextBlock Text="hotkey" Style="{StaticResource MutedTextStyle}" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                            <TextBlock Text="&#xD7;2" Style="{StaticResource MutedTextStyle}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                        </StackPanel>
+                                        <TextBlock Grid.Column="3" Text="{Binding BackHint}" Style="{StaticResource MutedTextStyle}" FontSize="11"
+                                                   VerticalAlignment="Center" TextAlignment="Right" TextWrapping="Wrap" MaxWidth="110" Margin="8,0,0,0"/>
                                     </Grid>
                                 </Border>
                             </Button>
@@ -293,27 +320,14 @@
             <!-- Shelf -->
             <TextBlock Text="SWITCH TO" Style="{StaticResource SectionLabelStyle}" Margin="2,24,0,10"/>
 
-            <Border BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1" CornerRadius="{DynamicResource CardRadius}" Padding="22,18"
-                    Margin="0,0,0,12" Visibility="{Binding HasCategories, Converter={StaticResource InverseBoolToVis}}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Margin="0,0,16,0">
-                        <TextBlock Text="Make your first category" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                        <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12.5" TextWrapping="Wrap" Margin="0,4,0,0"
-                                   Text="A category is one kind of work, like Deep Work or Comms. Switching to it parks everything else and brings its windows back exactly as you left them. You can start from the apps you have open right now."/>
-                    </StackPanel>
-                    <Button Grid.Column="1" Content="+ New category" Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Center"
-                            Command="{Binding NewCategoryCommand}"/>
-                </Grid>
-            </Border>
+            <TextBlock Text="Your categories show up here." Style="{StaticResource MutedTextStyle}" FontSize="12.5" Margin="2,0,0,12"
+                       Visibility="{Binding HasCategories, Converter={StaticResource InverseBoolToVis}}"/>
 
-            <ItemsControl ItemsSource="{Binding Shelf}" Focusable="False">
+            <ItemsControl x:Name="ShelfList" ItemsSource="{Binding Shelf}" Focusable="False" Margin="0,0,-12,0">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <WrapPanel/>
+                        <!-- Columns follow the window width (code-behind), so tiles fill the row instead of leaving a gap. -->
+                        <UniformGrid Columns="{Binding ShelfColumns, RelativeSource={RelativeSource AncestorType=Window}}" VerticalAlignment="Top"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -329,15 +343,16 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <Ellipse Width="9" Height="9" Fill="{Binding Color}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Ellipse Width="9" Height="9" Fill="{Binding Color}" VerticalAlignment="Top" Margin="0,6,8,0"/>
                                     <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                               TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="38" VerticalAlignment="Top"
+                                               ToolTip="{Binding Name}"/>
                                     <Button Grid.Column="2" Content="&#x270E;" Style="{StaticResource GhostIconButtonStyle}" Width="24" Height="24" FontSize="11"
                                             Margin="4,-4,2,-4" ToolTip="Edit" AutomationProperties.Name="{Binding Name, StringFormat=Edit {0}}"
                                             Command="{Binding DataContext.EditCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             CommandParameter="{Binding}"
                                             Visibility="{Binding IsUnsorted, Converter={StaticResource InverseBoolToVis}}"/>
-                                    <Border Grid.Column="3" Style="{StaticResource KeycapStyle}" VerticalAlignment="Center"
+                                    <Border Grid.Column="3" Style="{StaticResource KeycapStyle}" VerticalAlignment="Top"
                                             Visibility="{Binding KeyText, Converter={StaticResource NullToCollapsedConverter}}">
                                         <TextBlock Text="{Binding KeyText}" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" FontWeight="SemiBold"
                                                    Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
@@ -364,13 +379,18 @@
 
                                 <Grid>
                                     <Border CornerRadius="10" Padding="8,2" HorizontalAlignment="Left" Background="{DynamicResource SurfaceAltBrush}">
-                                        <TextBlock FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}">
+                                        <TextBlock FontSize="11.5" FontWeight="SemiBold">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Text" Value="{Binding StateText}"/>
+                                                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
                                                     <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasMissingApp}" Value="True">
+                                                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                        </DataTrigger>
                                                         <DataTrigger Binding="{Binding IsSwitching}" Value="True">
                                                             <Setter Property="Text" Value="Opening..."/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -401,7 +421,8 @@
                         Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold"
                         Command="{Binding OpenAutomationCommand}"/>
                 <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12" VerticalAlignment="Center" Margin="14,0,0,0"
-                           Text="Number keys 1–9 switch here, 0 goes to Unsorted."/>
+                           Text="In this window, number keys 1–9 switch to a category and 0 to Unsorted."
+                           Visibility="{Binding HasCategories, Converter={StaticResource BoolToVis}}"/>
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

@@ -20,6 +20,12 @@ public partial class CategoryEditorWindow : Window
         {
             if (e.Key == Key.Escape) Close();
         };
+        Loaded += (_, _) =>
+        {
+            if (viewModel.SuggestOpenApps && !viewModel.ShowOpenApps)
+                viewModel.ToggleOpenAppsCommand.Execute(null);
+        };
+        Activated += async (_, _) => await viewModel.RefreshOpenAppsAsync();
     }
 
     private void NameBox_LostFocus(object sender, RoutedEventArgs e) => _viewModel.CommitName();

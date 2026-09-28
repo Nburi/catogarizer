@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -32,6 +33,7 @@ public partial class CommandPaletteWindow : Window
         {
             SearchBox.Focus();
             FadeIn();
+            Dispatcher.BeginInvoke(RevealSelection, System.Windows.Threading.DispatcherPriority.Loaded);
         };
     }
 
@@ -64,10 +66,12 @@ public partial class CommandPaletteWindow : Window
             case Key.Down:
                 e.Handled = true;
                 ViewModel.MoveSelection(+1);
+                RevealSelection();
                 return;
             case Key.Up:
                 e.Handled = true;
                 ViewModel.MoveSelection(-1);
+                RevealSelection();
                 return;
             case Key.Enter:
                 e.Handled = true;
@@ -91,6 +95,14 @@ public partial class CommandPaletteWindow : Window
                 await ViewModel.SwitchByNumberAsync(number);
             }
         }
+    }
+
+    /// <summary>With many categories the list scrolls; the keyboard selection must never be off-screen.</summary>
+    private void RevealSelection()
+    {
+        var selected = ViewModel.Results.FirstOrDefault(r => r.IsSelected);
+        if (selected is not null && ResultsList.ItemContainerGenerator.ContainerFromItem(selected) is FrameworkElement row)
+            row.BringIntoView();
     }
 
     private void Row_MouseEnter(object sender, MouseEventArgs e)

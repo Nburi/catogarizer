@@ -46,6 +46,10 @@ public sealed partial class ShelfItem : ObservableObject
     public required string StateText { get; init; }
     public required bool HasParkedWindows { get; init; }
     public required int BlockedCount { get; init; }
+    public required int TemplateCount { get; init; }
+
+    /// <summary>An app of its template no longer exists at its path - switching would fail for it.</summary>
+    public required bool HasMissingApp { get; init; }
 
     public bool HasBlocked => BlockedCount > 0;
     public string BlockedTooltip => BlockedCount == 1 ? "Holds back 1 app while active" : $"Holds back {BlockedCount} apps while active";

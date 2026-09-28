@@ -50,7 +50,7 @@
             <!-- Results -->
             <TextBlock Text="Nothing matches. Try the first letters of each word." Style="{StaticResource MutedTextStyle}" Margin="20,16,20,14"
                        Visibility="{Binding Results.Count, Converter={StaticResource ZeroToVisibleConverter}}"/>
-            <ItemsControl ItemsSource="{Binding Results}" Margin="8,8,8,4" MaxHeight="420" Focusable="False">
+            <ItemsControl x:Name="ResultsList" ItemsSource="{Binding Results}" Margin="8,8,8,4" MaxHeight="420" Focusable="False">
                 <ItemsControl.Template>
                     <ControlTemplate TargetType="ItemsControl">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
@@ -89,12 +89,16 @@
                                                Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                 </Border>
                                 <Ellipse Grid.Column="1" Width="9" Height="9" Fill="{Binding Color}" VerticalAlignment="Center" Margin="4,0,10,0"/>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Grid Grid.Column="2" VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MaxWidth="330"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                    <TextBlock Text="  last used" Style="{StaticResource MutedTextStyle}" FontSize="11.5" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip="{Binding Name}"/>
+                                    <TextBlock Grid.Column="1" Text="  last used" Style="{StaticResource MutedTextStyle}" FontSize="11.5" VerticalAlignment="Center"
                                                Visibility="{Binding IsPrevious, Converter={StaticResource BoolToVis}}"/>
-                                </StackPanel>
+                                </Grid>
                                 <ItemsControl Grid.Column="3" ItemsSource="{Binding Icons}" Focusable="False" VerticalAlignment="Center" Margin="10,0,12,0">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>

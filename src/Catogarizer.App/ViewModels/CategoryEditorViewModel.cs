@@ -81,6 +81,8 @@ public partial class CategoryEditorViewModel : ObservableObject
     {
         var validation = CategoryValidator.ValidateName(value, _library.Categories, excludingId: CategoryId);
         NameError = validation.IsValid ? null : validation.ErrorMessage;
+        // Saved as you type, like everything else in the editor - closing never has to guess.
+        CommitName();
     }
 
     /// <summary>Saves a valid, changed name. Called when the name box loses focus, on Enter, and on Done.</summary>
@@ -135,12 +137,24 @@ public partial class CategoryEditorViewModel : ObservableObject
         RefreshLists();
     }
 
+    /// <summary>A brand-new, empty category starts with its open apps suggested.</summary>
+    public bool SuggestOpenApps { get; init; }
+
     [RelayCommand]
     private async Task ToggleOpenAppsAsync()
     {
         ShowOpenApps = !ShowOpenApps;
-        if (!ShowOpenApps) return;
+        if (ShowOpenApps) await LoadOpenAppsAsync();
+    }
 
+    /// <summary>The list is a snapshot; refreshed whenever the editor gets focus back.</summary>
+    public async Task RefreshOpenAppsAsync()
+    {
+        if (ShowOpenApps && !IsLoadingOpenApps) await LoadOpenAppsAsync();
+    }
+
+    private async Task LoadOpenAppsAsync()
+    {
         IsLoadingOpenApps = true;
         OpenApps.Clear();
         // By exe name, not full path: Windows 11 Notepad runs from WindowsApps, not C:\Windows\notepad.exe.
@@ -248,7 +262,7 @@ public partial class CategoryEditorViewModel : ObservableObject
     {
         var confirmed = _services.Dialogs.ShowConfirm(
             "Delete category?",
-            $"\"{Category.Name}\" will be removed. Its open windows move to Unsorted, and its apps stay in your library for other categories.");
+            $"\"{Category.Name}\" will be removed. Its open windows move to Unsorted - nothing is closed, and the apps themselves aren't touched.");
         if (!confirmed) return;
         _switcher.DeleteCategory(CategoryId);
         RequestClose?.Invoke(this, EventArgs.Empty);

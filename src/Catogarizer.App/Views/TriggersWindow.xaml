@@ -1,7 +1,7 @@
 <Window x:Class="Catogarizer.App.Views.TriggersWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Catogarizer" Width="560" Height="560"
+        Title="Automation" Width="560" Height="560"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Background="{DynamicResource BgBrush}" FontFamily="{StaticResource UiFont}">
     <Grid Margin="22">

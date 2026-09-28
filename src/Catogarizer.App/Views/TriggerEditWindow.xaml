@@ -1,7 +1,7 @@
 <Window x:Class="Catogarizer.App.Views.TriggerEditWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Catogarizer" Width="540" Height="700"
+        Title="Edit trigger" Width="540" Height="700"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Background="{DynamicResource BgBrush}" FontFamily="{StaticResource UiFont}">
     <Grid Margin="22">

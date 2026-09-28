@@ -1,7 +1,7 @@
 <Window x:Class="Catogarizer.App.Views.PlacementWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Catogarizer" Width="420" SizeToContent="Height"
+        Title="Set window position" Width="420" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Background="{DynamicResource BgBrush}" FontFamily="{StaticResource UiFont}">
     <StackPanel Margin="22">

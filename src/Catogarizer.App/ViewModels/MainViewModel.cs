@@ -56,6 +56,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _hasPrevious;
     [ObservableProperty] private string _backTitle = "";
     [ObservableProperty] private string _backDetail = "";
+    [ObservableProperty] private string _backHint = "";
+    [ObservableProperty] private bool _showAllWindows;
+    [ObservableProperty] private bool _noticeCanEdit;
     [ObservableProperty] private Brush _backColor = Brushes.Gray;
 
     // ---- Shelf ----
@@ -139,8 +142,11 @@ public partial class MainViewModel : ObservableObject
         var windows = sessions.TryGetValue(activeId, out var list) ? list : [];
         var opening = _switcher.IsOpeningApps && active is not null;
         WindowCountText = opening ? "opening apps..." : windows.Count switch { 0 => "No windows", 1 => "1 window", var n => $"{n} windows" };
-        Replace(ActiveWindows, windows.Take(MaxWindowRows).Select(w => new WindowRow(w.Title, AppNames.ForProcess(w.ProcessId, w.ProcessName), w.ProcessId)));
-        MoreWindowsText = windows.Count > MaxWindowRows ? $"+{windows.Count - MaxWindowRows} more" : null;
+        var shown = ShowAllWindows ? windows.Count : MaxWindowRows;
+        Replace(ActiveWindows, windows.Take(shown).Select(w => new WindowRow(w.Title, AppNames.ForProcess(w.ProcessId, w.ProcessName), w.ProcessId)));
+        MoreWindowsText = windows.Count <= MaxWindowRows ? null
+            : ShowAllWindows ? "Show fewer"
+            : $"Show {windows.Count - MaxWindowRows} more";
         NoWindowsText = windows.Count > 0 ? null
             : opening ? $"Opening {string.Join(", ", _library.AppsOf(active!).Select(a => a.Name))}..."
             : active is null ? "Nothing open outside your categories."
@@ -167,6 +173,7 @@ public partial class MainViewModel : ObservableObject
         if (!HasPrevious) return;
 
         BackTitle = $"Back to {previous?.Name ?? CategorySwitchService.UncategorizedName}";
+        BackHint = $"or press {_library.Settings.CommandPaletteHotkey} twice";
         var parked = sessions.TryGetValue(previousId!.Value, out var w) ? w.Count : 0;
         BackDetail = parked switch { 0 => "Opens fresh", 1 => "1 window parked", var n => $"{n} windows parked" };
         BackColor = Frozen(new SolidColorBrush(ColorOf(previous)));
@@ -179,6 +186,7 @@ public partial class MainViewModel : ObservableObject
         {
             var apps = _library.AppsOf(category);
             var parked = sessions.TryGetValue(category.Id, out var w) ? w.Count : 0;
+            var missing = parked > 0 ? 0 : apps.Count(a => !File.Exists(a.ExecutablePath));
             items.Add(new ShelfItem
             {
                 Id = category.Id,
@@ -188,9 +196,13 @@ public partial class MainViewModel : ObservableObject
                 IsUnsorted = false,
                 Icons = apps.Take(MaxShelfIcons).Select(a => new TemplateIcon(a.Name, a.ExecutablePath)).ToList(),
                 MoreIconsText = apps.Count > MaxShelfIcons ? $"+{apps.Count - MaxShelfIcons}" : null,
-                StateText = parked > 0 ? $"{parked} parked" : apps.Count > 0 ? "Starts fresh" : "Empty",
+                StateText = parked > 0 ? $"{parked} parked"
+                    : missing > 0 ? (missing == 1 ? "1 app not found" : $"{missing} apps not found")
+                    : apps.Count switch { 0 => "Empty", 1 => "Opens 1 app", var n => $"Opens {n} apps" },
                 HasParkedWindows = parked > 0,
                 BlockedCount = category.BlockedAppIds.Count,
+                TemplateCount = apps.Count,
+                HasMissingApp = missing > 0,
             });
         }
 
@@ -216,6 +228,8 @@ public partial class MainViewModel : ObservableObject
                 StateText = parked > 0 ? $"{parked} parked" : "Nothing parked",
                 HasParkedWindows = parked > 0,
                 BlockedCount = 0,
+                TemplateCount = 0,
+                HasMissingApp = false,
             });
         }
 
@@ -270,7 +284,7 @@ public partial class MainViewModel : ObservableObject
     {
         Notice = null;
         // A restore is instant; only a fresh template launch gets the "Opening..." state.
-        item.IsSwitching = !item.HasParkedWindows && !item.IsUnsorted && item.StateText != "Empty";
+        item.IsSwitching = !item.HasParkedWindows && !item.IsUnsorted && item.TemplateCount > 0;
         try
         {
             var result = await Task.Run(() => _switcher.SwitchTo(item.Id));
@@ -307,7 +321,7 @@ public partial class MainViewModel : ObservableObject
         if (name is null) return;
         var category = _library.AddCategory(name);
         Refresh();
-        OpenEditor(category.Id);
+        OpenEditor(category.Id, suggestOpenApps: true);
     }
 
     [RelayCommand]
@@ -322,9 +336,9 @@ public partial class MainViewModel : ObservableObject
         if (!item.IsUnsorted) OpenEditor(item.Id);
     }
 
-    private void OpenEditor(Guid categoryId)
+    private void OpenEditor(Guid categoryId, bool suggestOpenApps = false)
     {
-        _dialogService.ShowCategoryEditor(new CategoryEditorViewModel(_services, _switcher, _themeService, categoryId));
+        _dialogService.ShowCategoryEditor(new CategoryEditorViewModel(_services, _switcher, _themeService, categoryId) { SuggestOpenApps = suggestOpenApps });
         Refresh();
     }
 
@@ -373,8 +387,30 @@ public partial class MainViewModel : ObservableObject
     {
         if (result is not { Failures.Count: > 0 }) return;
         _noticeCategoryId = result.CategoryId;
+        NoticeCanEdit = result.CategoryId != CategorySwitchService.Uncategorized;
         Notice = DescribeFailures(result.Failures);
         NoticeIsError = true;
+        NoticeRaised?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The view scrolls the banner into sight - a problem the user can't see isn't reported.</summary>
+    public event EventHandler? NoticeRaised;
+
+    [RelayCommand]
+    private void EditNoticeCategory()
+    {
+        if (_noticeCategoryId is { } id && _library.Categories.Any(c => c.Id == id))
+        {
+            Notice = null;
+            OpenEditor(id);
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleAllWindows()
+    {
+        ShowAllWindows = !ShowAllWindows;
+        Refresh();
     }
 
     public static string? DescribeFailures(IReadOnlyList<AppActionResult> failures) => failures.Count switch

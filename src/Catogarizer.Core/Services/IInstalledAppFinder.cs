@@ -7,6 +7,9 @@ public sealed record InstalledApp(string Name, string ExecutablePath, string? Ar
     /// launch arguments carry a Chromium --app-id, unlike a regular app.
     /// </summary>
     public bool IsPwa => Arguments?.Contains("--app-id=", StringComparison.OrdinalIgnoreCase) == true;
+
+    /// <summary>List items are announced by ToString(); a record's default reads out every field.</summary>
+    public override string ToString() => IsPwa ? $"{Name}, web app" : Name;
 }
 
 public interface IInstalledAppFinder

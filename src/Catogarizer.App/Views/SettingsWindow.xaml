@@ -1,7 +1,7 @@
 <Window x:Class="Catogarizer.App.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Catogarizer" Width="460" SizeToContent="Height"
+        Title="Settings" Width="460" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Background="{DynamicResource BgBrush}" FontFamily="{StaticResource UiFont}">
     <Window.Resources>
@@ -106,7 +106,7 @@
             <Button Content="Automation..." Style="{StaticResource SecondaryButtonStyle}"
                     Command="{Binding OpenTriggersCommand}" Margin="0,0,8,0"/>
             <Button Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Width="90" Margin="0,0,8,0"
-                    Command="{Binding CancelCommand}"/>
+                    Command="{Binding CancelCommand}" IsCancel="True"/>
             <Button Content="Save" Style="{StaticResource PrimaryButtonStyle}" Width="90"
                     Command="{Binding SaveCommand}" IsDefault="True"/>
         </StackPanel>
