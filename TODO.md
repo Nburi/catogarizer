@@ -545,6 +545,14 @@ categories with charmap/msinfo32, Claude pinned; config restored afterwards):
       Graphite (home, switch, editor, narrow layout). **Test cleanup bug**
       (not an app bug): see ERRORS.md - a user window stayed hidden after a
       force-kill + deleted ledger; fixed the procedure, added `show-all`.
-- [ ] 7. Palette v2 (preview shown to the user before building).
+- [x] 7. Palette v2: "Switch to..." placeholder, rows with number key, color
+      dot, template icons and state (you're here / N parked / starts fresh /
+      empty), selection starts on the previous category ("last used"),
+      ↑/↓ + Enter, digits in an empty box jump (0 = Unsorted), hover
+      selects, smarter matching (`CategoryMatcher`, Core, tested: prefix >
+      word prefix > initials "dw" → Deep Work > contains), pinned apps in
+      the footer, theme radius. Deviation: built without a separate preview
+      because the user asked not to stop between steps; screenshots sent
+      instead. Verified live (preselection, "tb" → Test B, "2" switched).
 - [ ] 8. Review rounds 0–4 (fs-* agents).
 - [ ] 9. Docs, code review, user review, merge, deploy.

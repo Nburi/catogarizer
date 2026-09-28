@@ -53,20 +53,50 @@ public partial class CommandPaletteWindow : Window
             EntryOffset.Y = 0;
     }
 
-    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape)
+        switch (e.Key)
         {
-            Dismiss();
-            e.Handled = true;
-            return;
+            case Key.Escape:
+                e.Handled = true;
+                Dismiss();
+                return;
+            case Key.Down:
+                e.Handled = true;
+                ViewModel.MoveSelection(+1);
+                return;
+            case Key.Up:
+                e.Handled = true;
+                ViewModel.MoveSelection(-1);
+                return;
+            case Key.Enter:
+                e.Handled = true;
+                await ViewModel.SwitchSelectedAsync();
+                return;
         }
 
-        if (e.Key == Key.Enter && ViewModel.Results.Count > 0)
+        // Digits jump straight to a category - but only before anything is typed, so a
+        // category name with a number in it can still be searched.
+        if (ViewModel.SearchText.Length == 0 && Keyboard.Modifiers == ModifierKeys.None)
         {
-            ViewModel.SwitchToCommand.Execute(ViewModel.Results[0]);
-            e.Handled = true;
+            var number = e.Key switch
+            {
+                >= Key.D0 and <= Key.D9 => e.Key - Key.D0,
+                >= Key.NumPad0 and <= Key.NumPad9 => e.Key - Key.NumPad0,
+                _ => -1,
+            };
+            if (number >= 0)
+            {
+                e.Handled = true;
+                await ViewModel.SwitchByNumberAsync(number);
+            }
         }
+    }
+
+    private void Row_MouseEnter(object sender, MouseEventArgs e)
+    {
+        if (((FrameworkElement)sender).DataContext is not PaletteEntry hovered) return;
+        foreach (var entry in ViewModel.Results) entry.IsSelected = ReferenceEquals(entry, hovered);
     }
 
     private void Window_Deactivated(object sender, EventArgs e) => Dismiss();

@@ -307,7 +307,7 @@ public partial class App : Application
                 return;
             }
 
-            var vm = new CommandPaletteViewModel(_library!, _switcher!, OnSwitched);
+            var vm = new CommandPaletteViewModel(_library!, _switcher!, _themeService!, OnSwitched);
             _paletteWindow = new CommandPaletteWindow(vm);
             _paletteWindow.Show();
             _paletteWindow.Activate();
