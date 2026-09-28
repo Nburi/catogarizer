@@ -16,6 +16,9 @@ public static class CategoryValidator
         if (trimmed.Length > MaxNameLength)
             return ValidationResult.Fail($"Category name is too long (max {MaxNameLength} characters).");
 
+        if (string.Equals(trimmed, CategorySwitchService.UncategorizedName, StringComparison.OrdinalIgnoreCase))
+            return ValidationResult.Fail($"\"{CategorySwitchService.UncategorizedName}\" is built in (it holds everything outside your categories). Pick another name.");
+
         var duplicate = existing.Any(c => c.Id != excludingId && string.Equals(c.Name.Trim(), trimmed, StringComparison.OrdinalIgnoreCase));
         if (duplicate)
             return ValidationResult.Fail($"A category named \"{trimmed}\" already exists.");

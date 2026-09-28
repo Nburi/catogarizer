@@ -24,6 +24,9 @@ public interface ICategorySwitchService : IDisposable
 
     DateTime ActiveSince { get; }
 
+    /// <summary>True while the active category's template apps are being launched (a switch that restores never sets it).</summary>
+    bool IsOpeningApps { get; }
+
     /// <summary>
     /// Raised after a switch, a reset, or a change to any session's window set.
     /// Can fire on a background thread (the window watcher's).

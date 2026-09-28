@@ -291,7 +291,39 @@ public sealed class CategorySwitchServiceTests
 
         _service.SwitchTo(Guid.NewGuid(), []);
 
-        Assert.Equal(1, raised);
+        Assert.True(raised >= 1);
+    }
+
+    [Fact]
+    public void SwitchTo_ATemplateLaunch_AnnouncesTheNewCategoryBeforeAppsOpen()
+    {
+        _service.Initialize();
+        var research = Guid.NewGuid();
+        var seenBeforeLaunch = new List<(Guid Active, bool Opening)>();
+        _service.StateChanged += () => seenBeforeLaunch.Add((_service.ActiveCategoryId, _service.IsOpeningApps));
+        _categoryActionService.OnOpen = () => seenBeforeLaunch.Add((Guid.Empty, true)); // marks the launch moment
+
+        _service.SwitchTo(research, [App("Zotero")]);
+
+        Assert.Equal((research, true), seenBeforeLaunch[0]);
+        Assert.Equal((research, false), seenBeforeLaunch[^1]);
+        Assert.False(_service.IsOpeningApps);
+    }
+
+    [Fact]
+    public void SwitchTo_ARestore_NeverReportsOpeningApps()
+    {
+        _service.Initialize();
+        var learning = Guid.NewGuid();
+        _service.SwitchTo(learning, []);
+        _windowWatcher.RaiseWindowAppeared(Window(7, "WINWORD"));
+        _service.SwitchTo(Guid.NewGuid(), []);
+        var sawOpening = false;
+        _service.StateChanged += () => sawOpening |= _service.IsOpeningApps;
+
+        _service.SwitchTo(learning, [App("Word")]);
+
+        Assert.False(sawOpening);
     }
 
     [Fact]

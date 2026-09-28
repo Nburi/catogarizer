@@ -63,7 +63,7 @@
                             <Button Command="{Binding DataContext.PickHueCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                     CommandParameter="{Binding}" Cursor="Hand" Margin="0,0,6,0"
                                     FocusVisualStyle="{StaticResource ThemedFocusVisual}"
-                                    AutomationProperties.Name="Category color">
+                                    AutomationProperties.Name="{Binding Name}" ToolTip="{Binding Name}">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Grid Width="26" Height="26" Background="Transparent">

@@ -38,6 +38,7 @@ public sealed class CategorySwitchService : ICategorySwitchService
     public Guid ActiveCategoryId { get; private set; } = Uncategorized;
     public Guid? PreviousCategoryId { get; private set; }
     public DateTime ActiveSince { get; private set; }
+    public bool IsOpeningApps { get; private set; }
 
     public event Action? StateChanged;
 
@@ -135,8 +136,20 @@ public sealed class CategorySwitchService : ICategorySwitchService
                 foreach (var window in claimed.Where(w => !_windowManager.IsWindowVisible(w.Handle)))
                     _windowManager.Show(window.Handle);
 
+                // Launching can take seconds: tell the UI where we are now, not only once it's done.
+                IsOpeningApps = templateApps.Count > 0;
+                StateChanged?.Invoke();
+
                 // Open adopts the claimed (now visible) windows instead of launching duplicates.
-                var launch = _categoryActionService.Open(templateApps);
+                CategoryActionResult launch;
+                try
+                {
+                    launch = _categoryActionService.Open(templateApps);
+                }
+                finally
+                {
+                    IsOpeningApps = false;
+                }
                 lock (_lock)
                 {
                     // Attribute launched windows now rather than on the watcher's next tick, so an

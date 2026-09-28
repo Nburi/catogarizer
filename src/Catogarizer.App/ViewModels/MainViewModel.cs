@@ -33,6 +33,7 @@ public partial class MainViewModel : ObservableObject
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _refreshDebounce;
     private (string Name, DateTime At, Guid CategoryId)? _lastBlocked;
+    private Guid? _noticeCategoryId;
 
     // ---- Now ----
     [ObservableProperty] private string _activeName = "";
@@ -136,12 +137,17 @@ public partial class MainViewModel : ObservableObject
         ActiveSinceText = elapsed.TotalMinutes < 1 ? $"since {since:HH:mm}" : $"since {since:HH:mm} · {Duration(elapsed)}";
 
         var windows = sessions.TryGetValue(activeId, out var list) ? list : [];
-        WindowCountText = windows.Count switch { 0 => "No windows", 1 => "1 window", var n => $"{n} windows" };
+        var opening = _switcher.IsOpeningApps && active is not null;
+        WindowCountText = opening ? "opening apps..." : windows.Count switch { 0 => "No windows", 1 => "1 window", var n => $"{n} windows" };
         Replace(ActiveWindows, windows.Take(MaxWindowRows).Select(w => new WindowRow(w.Title, AppNames.ForProcess(w.ProcessId, w.ProcessName), w.ProcessId)));
         MoreWindowsText = windows.Count > MaxWindowRows ? $"+{windows.Count - MaxWindowRows} more" : null;
         NoWindowsText = windows.Count > 0 ? null
+            : opening ? $"Opening {string.Join(", ", _library.AppsOf(active!).Select(a => a.Name))}..."
             : active is null ? "Nothing open outside your categories."
             : "Windows you open now join this category.";
+
+        // A launch problem belongs to the switch that caused it; the next switch clears it.
+        if (Notice is not null && _noticeCategoryId != activeId) Notice = null;
 
         var blocked = active is null ? [] : _library.BlockedAppsOf(active);
         Replace(HeldBack, blocked.Select(b => new HeldBackRow(b.Name, PathOrNull(b.ProcessNameOrPath), RunningProcessOf(b.ProcessNameOrPath))));
@@ -346,7 +352,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenSettings()
     {
-        var vm = new SettingsViewModel(_library, _services.Autostart, _themeService);
+        var vm = new SettingsViewModel(_library, _services.Autostart, _themeService, _switcher.ShowAllAndReset);
         vm.RequestOpenTriggers += (_, _) => OpenAutomation();
         var saved = _dialogService.ShowSettings(vm);
         if (saved && vm.HotkeyChanged)
@@ -366,6 +372,7 @@ public partial class MainViewModel : ObservableObject
     private void ShowFailures(SwitchResult? result)
     {
         if (result is not { Failures.Count: > 0 }) return;
+        _noticeCategoryId = result.CategoryId;
         Notice = DescribeFailures(result.Failures);
         NoticeIsError = true;
     }

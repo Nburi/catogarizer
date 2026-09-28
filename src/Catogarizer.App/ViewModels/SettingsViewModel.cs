@@ -9,7 +9,10 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Catogarizer.App.ViewModels;
 
-public sealed record ThemeOption(string Id, string Name, string Description, Brush Background, Brush Surface, Brush Accent, Brush Ink);
+public sealed record ThemeOption(string Id, string Name, string Description, Brush Background, Brush Surface, Brush Accent, Brush Ink)
+{
+    public override string ToString() => $"{Name}, {Description}";
+}
 
 public partial class SettingsViewModel : ObservableObject
 {
@@ -46,8 +49,13 @@ public partial class SettingsViewModel : ObservableObject
     /// modal on top of it, same owner (MainWindow), which WPF supports fine.</summary>
     public event EventHandler? RequestOpenTriggers;
 
-    public SettingsViewModel(LibraryService library, IAutostartService autostartService, ThemeService themeService)
+    private readonly Action _showAllHiddenWindows;
+
+    [ObservableProperty] private string? _showAllDoneText;
+
+    public SettingsViewModel(LibraryService library, IAutostartService autostartService, ThemeService themeService, Action showAllHiddenWindows)
     {
+        _showAllHiddenWindows = showAllHiddenWindows;
         _library = library;
         _autostartService = autostartService;
         _themeService = themeService;
@@ -106,6 +114,13 @@ public partial class SettingsViewModel : ObservableObject
 
     [RelayCommand]
     private void OpenTriggers() => RequestOpenTriggers?.Invoke(this, EventArgs.Empty);
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ShowAllHiddenWindowsAsync()
+    {
+        await System.Threading.Tasks.Task.Run(_showAllHiddenWindows);
+        ShowAllDoneText = "Done. Every parked window is visible again, and you're in Unsorted.";
+    }
 
     private bool CanSave() => !string.IsNullOrWhiteSpace(HotkeyText);
 }

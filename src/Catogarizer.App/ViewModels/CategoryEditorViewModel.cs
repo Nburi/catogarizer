@@ -16,10 +16,11 @@ namespace Catogarizer.App.ViewModels;
 public sealed partial class HueOption : ObservableObject
 {
     public required double Hue { get; init; }
+    public required string Name { get; init; }
     public required Brush Brush { get; init; }
     [ObservableProperty] private bool _isSelected;
 
-    public override string ToString() => IsSelected ? "Category color, selected" : "Category color";
+    public override string ToString() => IsSelected ? $"{Name}, selected" : Name;
 }
 
 /// <summary>An open app that could be added to the template ("what you're already using").</summary>
@@ -101,8 +102,17 @@ public partial class CategoryEditorViewModel : ObservableObject
         var current = Category.Hue ?? CategoryHues.Palette[0];
         Color = Frozen(new SolidColorBrush(_themeService.CategoryColor(current)));
         Hues.Clear();
-        foreach (var hue in CategoryHues.Palette)
-            Hues.Add(new HueOption { Hue = hue, Brush = Frozen(new SolidColorBrush(_themeService.CategoryColor(hue))), IsSelected = Math.Abs(hue - current) < 0.5 });
+        for (var i = 0; i < CategoryHues.Palette.Count; i++)
+        {
+            var hue = CategoryHues.Palette[i];
+            Hues.Add(new HueOption
+            {
+                Hue = hue,
+                Name = CategoryHues.Names[i],
+                Brush = Frozen(new SolidColorBrush(_themeService.CategoryColor(hue))),
+                IsSelected = Math.Abs(hue - current) < 0.5,
+            });
+        }
     }
 
     // ---------------- Apps it opens with ----------------

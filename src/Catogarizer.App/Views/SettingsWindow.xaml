@@ -88,6 +88,20 @@
         <TextBlock Text="Click the box above, then press the key combination you want."
                    Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,5,0,0"/>
 
+        <TextBlock Text="Lost a window?" Style="{StaticResource FieldLabelStyle}" Margin="0,20,0,5"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Brings back every window Catogarizer has parked, in every category, and switches to Unsorted."
+                       Style="{StaticResource MutedTextStyle}" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,12,0" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="Show all hidden windows" Style="{StaticResource SecondaryButtonStyle}"
+                    Command="{Binding ShowAllHiddenWindowsCommand}"/>
+        </Grid>
+        <TextBlock Text="{Binding ShowAllDoneText}" Style="{StaticResource MutedTextStyle}" FontSize="11.5" Margin="0,6,0,0"
+                   Visibility="{Binding ShowAllDoneText, Converter={StaticResource NullToCollapsedConverter}}"/>
+
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
             <Button Content="Automation..." Style="{StaticResource SecondaryButtonStyle}"
                     Command="{Binding OpenTriggersCommand}" Margin="0,0,8,0"/>

@@ -15,6 +15,17 @@ public sealed class CategoryValidatorTests
         Assert.False(result.IsValid);
     }
 
+    [Theory]
+    [InlineData("Unsorted")]
+    [InlineData(" unsorted ")]
+    public void ValidateName_RejectsTheBuiltInUnsortedName(string name)
+    {
+        var result = CategoryValidator.ValidateName(name, []);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("built in", result.ErrorMessage);
+    }
+
     [Fact]
     public void ValidateName_RejectsTooLong()
     {

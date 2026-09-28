@@ -5,6 +5,9 @@ public static class CategoryHues
     /// <summary>The hues offered for categories - spread around the wheel, each readable in every theme.</summary>
     public static IReadOnlyList<double> Palette { get; } = [260, 150, 330, 70, 200, 25, 290, 110, 175, 50];
 
+    /// <summary>Spoken/tooltip names for <see cref="Palette"/>, same order.</summary>
+    public static IReadOnlyList<string> Names { get; } = ["Blue", "Green", "Pink", "Amber", "Teal", "Red", "Violet", "Olive", "Jade", "Orange"];
+
     /// <summary>The palette hue farthest from every hue already in use (first palette entry on a tie).</summary>
     public static double Next(IEnumerable<double> used)
     {

@@ -24,6 +24,7 @@ public sealed class CategorySwitcher
     public Guid ActiveCategoryId => _switch.ActiveCategoryId;
     public Guid? PreviousCategoryId => _switch.PreviousCategoryId;
     public DateTime ActiveSince => _switch.ActiveSince;
+    public bool IsOpeningApps => _switch.IsOpeningApps;
 
     /// <inheritdoc cref="ICategorySwitchService.StateChanged"/>
     public event Action? StateChanged

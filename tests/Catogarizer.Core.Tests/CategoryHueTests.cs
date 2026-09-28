@@ -8,6 +8,10 @@ namespace Catogarizer.Core.Tests;
 public sealed class CategoryHueTests
 {
     [Fact]
+    public void EveryPaletteHue_HasAName() =>
+        Assert.Equal(CategoryHues.Palette.Count, CategoryHues.Names.Distinct().Count());
+
+    [Fact]
     public void Next_WithNothingUsed_IsTheFirstPaletteHue() =>
         Assert.Equal(CategoryHues.Palette[0], CategoryHues.Next([]));
 
