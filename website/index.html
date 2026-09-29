@@ -131,17 +131,16 @@
           <h2>Get Catogarizer for Windows.</h2>
         </div>
         <div class="cta">
-          <!-- TODO: point href at the real release file once the first public build is published -->
-          <a class="btn" href="#download" aria-disabled="true" title="The first public build is not published yet">Download for Windows (coming soon)</a>
+          <a class="btn" href="downloads/Catogarizer-Setup.exe" download>Download for Windows</a>
         </div>
         <div class="facts">
           <span>Windows 10 &amp; 11, 64-bit</span>
-          <span>Single portable .exe, nothing to install</span>
+          <span>Per-user installer, no admin rights needed</span>
           <span>No account, no telemetry</span>
         </div>
         <div class="notice">
           <b>Windows may show a "protected your PC" warning.</b>
-          <p>Catogarizer isn't code-signed yet, so Windows SmartScreen doesn't know it. Click <em>More info</em>, then <em>Run anyway</em>. This only happens the first time.</p>
+          <p>Catogarizer isn't code-signed yet, so Windows SmartScreen doesn't know the installer. Click <em>More info</em>, then <em>Run anyway</em>. This only happens the first time.</p>
         </div>
       </div>
     </div>
@@ -193,10 +192,6 @@
 
 <script>
   document.getElementById("year").textContent = new Date().getFullYear();
-  // Keep the disabled download button from jumping to the top of the section.
-  document.querySelectorAll('a[aria-disabled="true"]').forEach(function (a) {
-    a.addEventListener("click", function (e) { e.preventDefault(); });
-  });
 </script>
 </body>
 </html>

@@ -35,3 +35,6 @@ PLAN.md
 PRINCIPLES.md
 ERRORS.md
 TODO.md
+
+## Installer build output
+app/installer/Output/
