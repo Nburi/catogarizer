@@ -19,3 +19,10 @@ tools/livetest/*.png
 ## OS cruft
 Thumbs.db
 .DS_Store
+
+## Secrets / env
+.env
+.env.*
+
+## Website tooling
+node_modules/

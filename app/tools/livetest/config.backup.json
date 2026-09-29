@@ -1,0 +1,49 @@
+{
+  "Categories": [
+    {
+      "Id": "2775159f-cf1e-4f0e-976b-6d426e33f417",
+      "Name": "PWA Test",
+      "SortOrder": 0,
+      "AppIds": [
+        "d6a13875-4e90-41ed-80fb-285086edc152"
+      ],
+      "BlockedAppIds": []
+    }
+  ],
+  "Apps": [
+    {
+      "Id": "4220c9ca-4375-4f6d-8a1a-c9edd1c022ed",
+      "Name": "Visual Studio Code",
+      "ExecutablePath": "C:\\Users\\ninob\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+      "Arguments": null,
+      "Placement": null
+    },
+    {
+      "Id": "a3f8b55c-23a4-4c91-a88c-c9518d5f8c54",
+      "Name": "Command Prompt",
+      "ExecutablePath": "C:\\Windows\\system32\\cmd.exe",
+      "Arguments": null,
+      "Placement": null
+    },
+    {
+      "Id": "d6a13875-4e90-41ed-80fb-285086edc152",
+      "Name": "nothing-to-do",
+      "ExecutablePath": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge_proxy.exe",
+      "Arguments": " --profile-directory=Default --app-id=npidkhhekkaojklkomadanllckbleafi --app-url=https://nothing-to-do.ch/ --app-run-on-os-login-mode=windowed --app-launch-source=19",
+      "Placement": {
+        "OffsetX": 106,
+        "OffsetY": 728,
+        "Width": 1570,
+        "Height": 1072,
+        "MonitorId": "\\\\.\\DISPLAY1"
+      }
+    }
+  ],
+  "BlockedApps": [],
+  "Triggers": [],
+  "Settings": {
+    "StartWithWindows": false,
+    "StartMinimized": false,
+    "CommandPaletteHotkey": "Ctrl\u002BAlt\u002BSpace"
+  }
+}
