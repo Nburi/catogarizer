@@ -5,7 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catogarizer.App.ViewModels;
 
 /// <summary>A window in the active category's session.</summary>
-public sealed record WindowRow(string Title, string AppName, int ProcessId)
+public sealed record WindowRow(string Title, string AppName, int ProcessId, IntPtr Handle)
 {
     /// <summary>Null when the title already says it ("Arc", "Arc"), so the name isn't shown twice.</summary>
     public string? AppLabel => string.Equals(Title.Trim(), AppName.Trim(), StringComparison.OrdinalIgnoreCase) ? null : AppName;
@@ -53,7 +53,12 @@ public sealed partial class ShelfItem : ObservableObject
 
     public bool HasBlocked => BlockedCount > 0;
     public string BlockedTooltip => BlockedCount == 1 ? "Holds back 1 app while active" : $"Holds back {BlockedCount} apps while active";
-    public string AutomationName => $"Switch to {Name}, {StateText}";
+    public string AutomationName => BlockedCount switch
+    {
+        0 => $"Switch to {Name}, {StateText}",
+        1 => $"Switch to {Name}, {StateText}, holds back 1 app",
+        _ => $"Switch to {Name}, {StateText}, holds back {BlockedCount} apps",
+    };
 
     public override string ToString() => AutomationName;
 

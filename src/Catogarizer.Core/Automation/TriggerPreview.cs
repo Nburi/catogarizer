@@ -12,7 +12,8 @@ public static class TriggerPreview
         var limit = now + (horizon ?? TimeSpan.FromHours(24));
         UpcomingTrigger? best = null;
 
-        foreach (var trigger in triggers.Where(t => t.IsEnabled && t.Type == TriggerType.Time))
+        // A trigger without actions would "run" and change nothing - announcing it would be a false promise.
+        foreach (var trigger in triggers.Where(t => t.IsEnabled && t.Type == TriggerType.Time && t.Actions.Count > 0))
         {
             if (!TimeOnly.TryParseExact(trigger.TimeOfDay, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time))
                 continue;

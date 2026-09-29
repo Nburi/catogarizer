@@ -46,6 +46,35 @@ public sealed class CategoryActionServiceTests
     }
 
     [Fact]
+    public void OpenApp_WhenAlreadyRunningButMinimized_RestoresAndBringsItToFront()
+    {
+        var service = CreateService();
+        var app = MakeApp(path: @"C:\charmap.exe");
+        var hwnd = new IntPtr(43);
+        _windowFinder.RunningWindows.Add(new OpenWindowInfo(hwnd, "Zeichentabelle", "charmap", 998));
+        _windowManager.Minimized.Add(hwnd);
+
+        service.OpenApp(app);
+
+        Assert.Contains(hwnd, _windowManager.RestoreCalls);
+        Assert.Contains(hwnd, _windowManager.BringToFrontCalls);
+    }
+
+    [Fact]
+    public void OpenApp_WhenAlreadyRunningAndVisible_BringsItToFrontWithoutRestoring()
+    {
+        var service = CreateService();
+        var app = MakeApp(path: @"C:\charmap.exe");
+        var hwnd = new IntPtr(44);
+        _windowFinder.RunningWindows.Add(new OpenWindowInfo(hwnd, "Zeichentabelle", "charmap", 997));
+
+        service.OpenApp(app);
+
+        Assert.DoesNotContain(hwnd, _windowManager.RestoreCalls);
+        Assert.Contains(hwnd, _windowManager.BringToFrontCalls);
+    }
+
+    [Fact]
     public void OpenApp_WhenNotRunning_LaunchesAndFindsWindow()
     {
         var service = CreateService();

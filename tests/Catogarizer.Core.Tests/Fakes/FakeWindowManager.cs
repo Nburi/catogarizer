@@ -75,6 +75,13 @@ public sealed class FakeWindowManager : IWindowManager
 
     public string GetTitle(IntPtr handle) => Titles.TryGetValue(handle, out var t) ? t : "";
 
+    public HashSet<IntPtr> Minimized { get; } = new();
+    public List<IntPtr> BringToFrontCalls { get; } = new();
+
+    public bool IsMinimized(IntPtr handle) => Minimized.Contains(handle);
+
+    public void BringToFront(IntPtr handle) => BringToFrontCalls.Add(handle);
+
     public int GetProcessId(IntPtr handle) =>
         !IsWindowOpen(handle) ? 0 : ProcessIds.TryGetValue(handle, out var pid) ? pid : handle.ToInt32();
 

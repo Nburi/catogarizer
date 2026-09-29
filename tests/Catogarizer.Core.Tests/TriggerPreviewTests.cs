@@ -8,7 +8,20 @@ public sealed class TriggerPreviewTests
     private static readonly DateTime Now = new(2026, 9, 28, 10, 0, 0);
 
     private static Trigger Time(string name, string at, params DayOfWeek[] days) =>
-        new() { Name = name, Type = TriggerType.Time, TimeOfDay = at, DaysOfWeek = days.ToList() };
+        new()
+        {
+            Name = name, Type = TriggerType.Time, TimeOfDay = at, DaysOfWeek = days.ToList(),
+            Actions = [new TriggerAction { Type = TriggerActionType.OpenCategory, CategoryId = Guid.NewGuid() }],
+        };
+
+    [Fact]
+    public void Next_IgnoresTriggersWithoutActions()
+    {
+        var empty = Time("Wrap-up", "16:30");
+        empty.Actions.Clear();
+
+        Assert.Null(TriggerPreview.Next([empty], Now));
+    }
 
     [Fact]
     public void Next_PicksTheSoonestUpcomingTimeTrigger()

@@ -75,6 +75,10 @@ public sealed class WindowManager : IWindowManager
         return sb.ToString();
     }
 
+    public bool IsMinimized(IntPtr handle) => IsIconic(handle);
+
+    public void BringToFront(IntPtr handle) => SetForegroundWindow(handle);
+
     public int GetProcessId(IntPtr handle)
     {
         if (!IsWindow(handle)) return 0;

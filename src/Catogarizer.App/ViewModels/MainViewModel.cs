@@ -143,7 +143,7 @@ public partial class MainViewModel : ObservableObject
         var opening = _switcher.IsOpeningApps && active is not null;
         WindowCountText = opening ? "opening apps..." : windows.Count switch { 0 => "No windows", 1 => "1 window", var n => $"{n} windows" };
         var shown = ShowAllWindows ? windows.Count : MaxWindowRows;
-        Replace(ActiveWindows, windows.Take(shown).Select(w => new WindowRow(w.Title, AppNames.ForProcess(w.ProcessId, w.ProcessName), w.ProcessId)));
+        Replace(ActiveWindows, windows.Take(shown).Select(w => new WindowRow(w.Title, AppNames.ForProcess(w.ProcessId, w.ProcessName), w.ProcessId, w.Handle)));
         MoreWindowsText = windows.Count <= MaxWindowRows ? null
             : ShowAllWindows ? "Show fewer"
             : $"Show {windows.Count - MaxWindowRows} more";
@@ -160,7 +160,8 @@ public partial class MainViewModel : ObservableObject
         HeldBackEmptyText = blocked.Count > 0 ? null
             : active is null ? "Unsorted never holds anything back."
             : "Nothing is held back here. Add distracting apps in the editor.";
-        LastBlockedText = _lastBlocked is { } last && last.CategoryId == activeId
+        // Only for this visit: coming back later, an old attempt would read like a new one.
+        LastBlockedText = _lastBlocked is { } last && last.CategoryId == activeId && last.At >= _switcher.ActiveSince
             ? $"{last.Name} tried to open at {last.At:HH:mm} and was closed."
             : null;
     }
@@ -175,12 +176,14 @@ public partial class MainViewModel : ObservableObject
         BackTitle = $"Back to {previous?.Name ?? CategorySwitchService.UncategorizedName}";
         BackHint = $"or press {_library.Settings.CommandPaletteHotkey} twice";
         var parked = sessions.TryGetValue(previousId!.Value, out var w) ? w.Count : 0;
-        var templateCount = previous is null ? 0 : _library.AppsOf(previous).Count;
+        var template = previous is null ? [] : _library.AppsOf(previous);
+        var missing = template.Count(a => !File.Exists(a.ExecutablePath));
         BackDetail = parked switch
         {
             1 => "1 window parked",
             > 1 => $"{parked} windows parked",
-            _ => templateCount switch { 0 => "Nothing parked", 1 => "Opens 1 app", var n => $"Opens {n} apps" },
+            _ when missing > 0 => missing == 1 ? "1 app not found" : $"{missing} apps not found",
+            _ => template.Count switch { 0 => "Nothing parked", 1 => "Opens 1 app", var n => $"Opens {n} apps" },
         };
         BackColor = Frozen(new SolidColorBrush(ColorOf(previous)));
     }
@@ -410,6 +413,16 @@ public partial class MainViewModel : ObservableObject
             Notice = null;
             OpenEditor(id);
         }
+    }
+
+    /// <summary>A window row in the hero brings that window forward (restoring it if minimized).</summary>
+    [RelayCommand]
+    private void BringToFront(WindowRow row)
+    {
+        var windows = _services.WindowManager;
+        if (!windows.IsWindowOpen(row.Handle)) return;
+        if (windows.IsMinimized(row.Handle)) windows.Restore(row.Handle);
+        windows.BringToFront(row.Handle);
     }
 
     [RelayCommand]

@@ -38,9 +38,17 @@ public sealed class CategoryActionService : ICategoryActionService
 
         try
         {
-            var hwnd = FindRunningWindows(app).FirstOrDefault()?.Handle ?? LaunchAndFind(app);
+            var running = FindRunningWindows(app).FirstOrDefault()?.Handle;
+            var hwnd = running ?? LaunchAndFind(app);
             if (hwnd is null)
                 return Fail(app, $"\"{app.Name}\" didn't open a window in time.");
+
+            // Already running: "open" means show it - a minimized window would otherwise stay invisible.
+            if (running is { } existing)
+            {
+                if (_windowManager.IsMinimized(existing)) _windowManager.Restore(existing);
+                _windowManager.BringToFront(existing);
+            }
 
             if (app.Placement is not null)
                 Position(hwnd.Value, app.Placement);

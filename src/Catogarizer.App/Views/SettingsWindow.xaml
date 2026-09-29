@@ -79,13 +79,14 @@
                    Foreground="{DynamicResource InkBrush}" FontSize="13.5" Margin="0,0,0,18"/>
 
         <TextBlock Text="Command palette shortcut" Style="{StaticResource FieldLabelStyle}"/>
-        <Border x:Name="HotkeyCaptureBox" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}"
-                BorderThickness="1" CornerRadius="{DynamicResource ControlRadius}" Padding="10,8" Focusable="True"
-                PreviewKeyDown="HotkeyCaptureBox_PreviewKeyDown"
-                GotFocus="HotkeyCaptureBox_GotFocus" LostFocus="HotkeyCaptureBox_LostFocus">
-            <TextBlock x:Name="HotkeyDisplayText" Text="{Binding HotkeyText}" Foreground="{DynamicResource InkBrush}" FontSize="13.5"/>
-        </Border>
-        <TextBlock Text="Click the box above, then press the key combination you want."
+        <!-- A read-only TextBox, not a Border: it takes focus on click and screen readers announce it as a field. -->
+        <TextBox x:Name="HotkeyCaptureBox" Style="{StaticResource ThemedTextBoxStyle}" IsReadOnly="True" IsReadOnlyCaretVisible="False"
+                 Text="{Binding HotkeyText, Mode=OneWay}" FontSize="13.5" Cursor="Hand"
+                 AutomationProperties.Name="Command palette shortcut"
+                 AutomationProperties.HelpText="Press the key combination you want, including Ctrl, Alt, Shift or Win."
+                 PreviewKeyDown="HotkeyCaptureBox_PreviewKeyDown"
+                 GotKeyboardFocus="HotkeyCaptureBox_GotFocus" LostKeyboardFocus="HotkeyCaptureBox_LostFocus"/>
+        <TextBlock x:Name="HotkeyHelp" Text="Click the box above, then press the key combination you want."
                    Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,5,0,0"/>
 
         <TextBlock Text="Lost a window?" Style="{StaticResource FieldLabelStyle}" Margin="0,20,0,5"/>

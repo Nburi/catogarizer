@@ -33,15 +33,20 @@ public partial class SettingsWindow : Window
     private void HotkeyCaptureBox_GotFocus(object sender, RoutedEventArgs e)
     {
         HotkeyCaptureBox.BorderBrush = (Brush)FindResource("AccentBrush");
+        HotkeyHelp.Text = "Listening - press the combination now (Tab to skip).";
     }
 
     private void HotkeyCaptureBox_LostFocus(object sender, RoutedEventArgs e)
     {
-        HotkeyCaptureBox.BorderBrush = (Brush)FindResource("BorderBrush2");
+        HotkeyCaptureBox.ClearValue(BorderBrushProperty);
+        HotkeyHelp.Text = "Click the box above, then press the key combination you want.";
     }
 
     private void HotkeyCaptureBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // Tab and Escape keep working, so the field can't trap keyboard users.
+        if (Keyboard.Modifiers == ModifierKeys.None && e.Key is Key.Tab or Key.Escape) return;
+        if (Keyboard.Modifiers == ModifierKeys.Shift && e.Key == Key.Tab) return;
         e.Handled = true;
 
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
