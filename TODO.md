@@ -566,3 +566,11 @@ categories with charmap/msinfo32, Claude pinned; config restored afterwards):
   - [~] Round 4 (user simulation) - skipped: the fs-nutzer-simulant agent was blocked by an
         API safeguard error on Sonnet and Opus (2026-09-29); user chose to move on.
 - [ ] 9. Docs, code review, user review, merge, deploy.
+  - [x] Docs: USER_GUIDE.md rewritten, CHANGELOG.md, STACK.md (3a7d540).
+  - [x] code-review: unpin, blocked helper processes, notice colour fixed (696802d).
+  - [x] security-review (manual; the skill needs a git remote): named pipe, hidden.json, launching - nothing to fix.
+  - [x] simplify: shared lookups, Reveal helper, Win32 cleanup, dead code (ba1fe02).
+  - [ ] User review, then merge and deploy (only when the user says so).
+  - Later (skipped in simplify, bigger refactors): ShelfItem value equality so the shelf isn't rebuilt every
+    5 s; derive "Opening..." from the switch service instead of ShelfItem.IsSwitching; a Switched(SwitchResult)
+    event instead of threading onSwitched through tray/palette/CLI; one window scan at startup; cache File.Exists.
