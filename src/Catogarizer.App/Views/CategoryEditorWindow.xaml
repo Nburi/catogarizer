@@ -183,10 +183,10 @@
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
                                         <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                                    TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Text="{Binding Placement, Converter={StaticResource PlacementStatusConverter}}"
-                                                   FontSize="11.5" TextTrimming="CharacterEllipsis">
+                                        <TextBlock FontSize="11.5" TextTrimming="CharacterEllipsis">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock" BasedOn="{StaticResource MutedTextStyle}">
+                                                    <Setter Property="Text" Value="{Binding Placement, Converter={StaticResource PlacementStatusConverter}}"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding ExecutablePath, Converter={StaticResource MissingFileConverter}}" Value="True">
                                                             <Setter Property="Text" Value="{Binding ExecutablePath, StringFormat='Not found at {0}'}"/>
