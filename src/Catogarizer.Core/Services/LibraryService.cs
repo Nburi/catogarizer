@@ -49,6 +49,31 @@ public sealed class LibraryService
         category.BlockedAppIds.Select(id => _config.BlockedApps.FirstOrDefault(b => b.Id == id)).OfType<BlockedApp>().ToList();
     public AppSettings Settings => _config.Settings;
 
+    /// <summary>The category's name; the implicit Unsorted category (and a deleted one) reads "Unsorted".</summary>
+    public string NameOf(Guid categoryId) =>
+        _config.Categories.FirstOrDefault(c => c.Id == categoryId)?.Name ?? CategorySwitchService.UncategorizedName;
+
+    /// <summary>Number-key shortcut: 1-9 are the first nine categories in shelf order, 0 is Unsorted.</summary>
+    public string? KeyOf(Guid categoryId)
+    {
+        if (categoryId == CategorySwitchService.Uncategorized) return "0";
+        var index = OrderedCategories().FindIndex(c => c.Id == categoryId);
+        return index is >= 0 and < 9 ? (index + 1).ToString() : null;
+    }
+
+    /// <summary>The reverse of <see cref="KeyOf"/>; null if no category has that number.</summary>
+    public Guid? CategoryIdForKey(int number) => number switch
+    {
+        0 => CategorySwitchService.Uncategorized,
+        >= 1 and <= 9 => OrderedCategories().ElementAtOrDefault(number - 1)?.Id,
+        _ => null,
+    };
+
+    /// <summary>How many of the category's apps no longer exist at their path.</summary>
+    public int MissingAppCount(Category category) => AppsOf(category).Count(a => !_fileExists(a.ExecutablePath));
+
+    private List<Category> OrderedCategories() => _config.Categories.OrderBy(c => c.SortOrder).ToList();
+
     public void Reload() => _config = _configStore.Load();
 
     /// <summary>

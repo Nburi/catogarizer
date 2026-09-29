@@ -53,7 +53,7 @@
                          Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                          FontFamily="{DynamicResource HeadingFont}" FontSize="20" FontWeight="SemiBold"
                          AutomationProperties.Name="Category name"
-                         LostFocus="NameBox_LostFocus" KeyDown="NameBox_KeyDown"/>
+                         KeyDown="NameBox_KeyDown"/>
             </Grid>
             <TextBlock Text="{Binding NameError}" Style="{StaticResource ErrorTextStyle}" Margin="26,5,0,0"
                        Visibility="{Binding NameError, Converter={StaticResource NullToCollapsedConverter}}"/>

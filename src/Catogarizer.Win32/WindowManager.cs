@@ -66,18 +66,15 @@ public sealed class WindowManager : IWindowManager
 
     public bool IsWindowVisible(IntPtr handle) => NativeMethods.IsWindowVisible(handle);
 
-    public string GetTitle(IntPtr handle)
-    {
-        var len = GetWindowTextLength(handle);
-        if (len == 0) return "";
-        var sb = new System.Text.StringBuilder(len + 1);
-        GetWindowText(handle, sb, sb.Capacity);
-        return sb.ToString();
-    }
+    public string GetTitle(IntPtr handle) => ReadWindowTitle(handle);
 
     public bool IsMinimized(IntPtr handle) => IsIconic(handle);
 
-    public void BringToFront(IntPtr handle) => SetForegroundWindow(handle);
+    public void BringToFront(IntPtr handle)
+    {
+        if (IsIconic(handle)) ShowWindow(handle, SW_RESTORE);
+        SetForegroundWindow(handle);
+    }
 
     public int GetProcessId(IntPtr handle)
     {

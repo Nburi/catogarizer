@@ -11,7 +11,7 @@ public static class AppNames
     private static readonly ConcurrentDictionary<int, string> ByProcess = new();
 
     public static string ForProcess(int processId, string processName) =>
-        ByProcess.GetOrAdd(processId, pid => ShellIcons.TryGetExecutablePath(pid) is { } path ? ForExecutable(path, processName) : processName);
+        ByProcess.GetOrAdd(processId, pid => Processes.ExecutablePathOf(pid) is { } path ? ForExecutable(path, processName) : processName);
 
     public static string ForExecutable(string path, string fallback)
     {
@@ -29,5 +29,5 @@ public static class AppNames
     }
 
     /// <summary>The exe path for a running process, or null (e.g. it just exited).</summary>
-    public static string? ExecutableOf(int processId) => ShellIcons.TryGetExecutablePath(processId);
+    public static string? ExecutableOf(int processId) => Processes.ExecutablePathOf(processId);
 }

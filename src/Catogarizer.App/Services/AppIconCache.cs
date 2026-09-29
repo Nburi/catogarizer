@@ -24,7 +24,7 @@ public static class AppIconCache
         ByPath.GetOrAdd(path, p => Task.Run(() => Load(p)));
 
     public static Task<ImageSource?> ForProcess(int processId) =>
-        ByProcess.GetOrAdd(processId, pid => Task.Run(() => ShellIcons.TryGetExecutablePath(pid) is { } path ? ForExecutable(path) : Task.FromResult<ImageSource?>(null)));
+        ByProcess.GetOrAdd(processId, pid => Task.Run(() => Processes.ExecutablePathOf(pid) is { } path ? ForExecutable(path) : Task.FromResult<ImageSource?>(null)));
 
     private static ImageSource? Load(string path)
     {

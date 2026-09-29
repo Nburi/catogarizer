@@ -86,8 +86,7 @@ public partial class CategoryEditorViewModel : ObservableObject
         CommitName();
     }
 
-    /// <summary>Saves a valid, changed name. Called when the name box loses focus, on Enter, and on Done.</summary>
-    public void CommitName()
+    private void CommitName()
     {
         if (NameError is not null || string.Equals(Name.Trim(), Category.Name, StringComparison.Ordinal)) return;
         _library.RenameCategory(CategoryId, Name);
@@ -103,7 +102,7 @@ public partial class CategoryEditorViewModel : ObservableObject
     private void RefreshColors()
     {
         var current = Category.Hue ?? CategoryHues.Palette[0];
-        Color = Frozen(new SolidColorBrush(_themeService.CategoryColor(current)));
+        Color = ThemeService.FrozenBrush(_themeService.CategoryColor(current));
         Hues.Clear();
         for (var i = 0; i < CategoryHues.Palette.Count; i++)
         {
@@ -112,7 +111,7 @@ public partial class CategoryEditorViewModel : ObservableObject
             {
                 Hue = hue,
                 Name = CategoryHues.Names[i],
-                Brush = Frozen(new SolidColorBrush(_themeService.CategoryColor(hue))),
+                Brush = ThemeService.FrozenBrush(_themeService.CategoryColor(hue)),
                 IsSelected = Math.Abs(hue - current) < 0.5,
             });
         }
@@ -160,7 +159,7 @@ public partial class CategoryEditorViewModel : ObservableObject
         OpenApps.Clear();
         // By exe name, not full path: Windows 11 Notepad runs from WindowsApps, not C:\Windows\notepad.exe.
         var known = Apps.Select(a => Path.GetFileNameWithoutExtension(a.ExecutablePath))
-            .Concat(_library.PinnedApps.Select(p => Path.GetFileNameWithoutExtension(p.ProcessNameOrPath.Trim())))
+            .Concat(_library.PinnedApps.Select(p => ProcessPattern.ProcessName(p.ProcessNameOrPath)))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var suggestions = await Task.Run(() => FindOpenApps(known));
         foreach (var suggestion in suggestions) OpenApps.Add(suggestion);
@@ -244,17 +243,14 @@ public partial class CategoryEditorViewModel : ObservableObject
         var vm = new AppEditDialogViewModel(_services.InstalledAppFinder, headingOverride: "Hold back an app", relaxedValidation: true);
         var result = _services.Dialogs.ShowAppEdit(vm);
         if (result is null) return;
-        var blocked = _library.AddOrReuseBlockedApp(result.Value.Name, result.Value.ExecutablePath);
-        _library.AddBlockedAppToCategory(CategoryId, blocked.Id);
-        _switcher.RefreshBlocking();
+        _switcher.HoldBack(CategoryId, result.Value.Name, result.Value.ExecutablePath);
         RefreshLists();
     }
 
     [RelayCommand]
     private void RemoveBlocked(BlockedApp blocked)
     {
-        _library.RemoveBlockedAppFromCategory(CategoryId, blocked.Id);
-        _switcher.RefreshBlocking();
+        _switcher.StopHoldingBack(CategoryId, blocked.Id);
         RefreshLists();
     }
 
@@ -272,19 +268,8 @@ public partial class CategoryEditorViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanFinish))]
-    private void Done()
-    {
-        CommitName();
-        RequestClose?.Invoke(this, EventArgs.Empty);
-    }
+    private void Done() => RequestClose?.Invoke(this, EventArgs.Empty);
 
     private bool CanFinish() => NameError is null;
 
-    public bool IsDeleted => _library.Categories.All(c => c.Id != CategoryId);
-
-    private static Brush Frozen(SolidColorBrush brush)
-    {
-        brush.Freeze();
-        return brush;
-    }
 }

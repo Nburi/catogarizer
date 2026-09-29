@@ -46,7 +46,6 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string? _noWindowsText;
     [ObservableProperty] private string? _heldBackEmptyText;
     [ObservableProperty] private string? _lastBlockedText;
-    [ObservableProperty] private string? _activeKeyText;
 
     public ObservableCollection<WindowRow> ActiveWindows { get; } = new();
     public ObservableCollection<HeldBackRow> HeldBack { get; } = new();
@@ -69,7 +68,6 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string? _nextTriggerText;
     [ObservableProperty] private IReadOnlyList<string> _hotkeyKeys = [];
     [ObservableProperty] private string? _notice;
-    [ObservableProperty] private bool _noticeIsError;
 
     public MainViewModel(EditorServices services, CategorySwitcher switcher, ThemeService themeService,
         IAppBlockingService appBlockingService, Action<string> onHotkeyChanged)
@@ -100,9 +98,16 @@ public partial class MainViewModel : ObservableObject
         Refresh();
     }
 
+    /// <summary>
+    /// Set by the view. While the home sits hidden in the tray, events don't refresh it - windows
+    /// appear all day - and showing it refreshes once instead.
+    /// </summary>
+    public bool IsViewVisible { get; set; }
+
     /// <summary>Safe from any thread; bursts of events collapse into one refresh.</summary>
     public void RequestRefresh() => _dispatcher.BeginInvoke(() =>
     {
+        if (!IsViewVisible) return;
         _refreshDebounce.Stop();
         _refreshDebounce.Start();
     });
@@ -128,10 +133,9 @@ public partial class MainViewModel : ObservableObject
     {
         var activeId = _switcher.ActiveCategoryId;
         ActiveIsUnsorted = active is null;
-        ActiveName = active?.Name ?? CategorySwitchService.UncategorizedName;
-        ActiveKeyText = KeyFor(activeId);
-        var color = ColorOf(active);
-        ActiveColor = Frozen(new SolidColorBrush(color));
+        ActiveName = _library.NameOf(activeId);
+        var color = _themeService.ColorFor(active);
+        ActiveColor = ThemeService.FrozenBrush(color);
         // Unsorted has no color of its own; a gray tint would only muddy the theme.
         HeroTint = active is null ? Brushes.Transparent : HeroGradient(color);
 
@@ -173,19 +177,12 @@ public partial class MainViewModel : ObservableObject
         HasPrevious = previousId is not null && (previous is not null || previousId == CategorySwitchService.Uncategorized);
         if (!HasPrevious) return;
 
-        BackTitle = $"Back to {previous?.Name ?? CategorySwitchService.UncategorizedName}";
+        BackTitle = $"Back to {_library.NameOf(previousId!.Value)}";
         BackHint = $"or press {_library.Settings.CommandPaletteHotkey} twice";
-        var parked = sessions.TryGetValue(previousId!.Value, out var w) ? w.Count : 0;
-        var template = previous is null ? [] : _library.AppsOf(previous);
-        var missing = template.Count(a => !File.Exists(a.ExecutablePath));
-        BackDetail = parked switch
-        {
-            1 => "1 window parked",
-            > 1 => $"{parked} windows parked",
-            _ when missing > 0 => missing == 1 ? "1 app not found" : $"{missing} apps not found",
-            _ => template.Count switch { 0 => "Nothing parked", 1 => "Opens 1 app", var n => $"Opens {n} apps" },
-        };
-        BackColor = Frozen(new SolidColorBrush(ColorOf(previous)));
+        var parked = sessions.TryGetValue(previousId.Value, out var w) ? w.Count : 0;
+        var missing = parked > 0 || previous is null ? 0 : _library.MissingAppCount(previous);
+        BackDetail = CategoryStateText.Describe(parked, missing, previous?.AppIds.Count ?? 0, previous is null);
+        BackColor = ThemeService.FrozenBrush(_themeService.ColorFor(previous));
     }
 
     private void RefreshShelf(List<Category> categories, Guid activeId, IReadOnlyDictionary<Guid, IReadOnlyList<OpenWindowInfo>> sessions)
@@ -195,19 +192,17 @@ public partial class MainViewModel : ObservableObject
         {
             var apps = _library.AppsOf(category);
             var parked = sessions.TryGetValue(category.Id, out var w) ? w.Count : 0;
-            var missing = parked > 0 ? 0 : apps.Count(a => !File.Exists(a.ExecutablePath));
+            var missing = parked > 0 ? 0 : _library.MissingAppCount(category);
             items.Add(new ShelfItem
             {
                 Id = category.Id,
                 Name = category.Name,
-                KeyText = KeyFor(category.Id),
-                Color = Frozen(new SolidColorBrush(ColorOf(category))),
+                KeyText = _library.KeyOf(category.Id),
+                Color = ThemeService.FrozenBrush(_themeService.ColorFor(category)),
                 IsUnsorted = false,
                 Icons = apps.Take(MaxShelfIcons).Select(a => new TemplateIcon(a.Name, a.ExecutablePath)).ToList(),
                 MoreIconsText = apps.Count > MaxShelfIcons ? $"+{apps.Count - MaxShelfIcons}" : null,
-                StateText = parked > 0 ? $"{parked} parked"
-                    : missing > 0 ? (missing == 1 ? "1 app not found" : $"{missing} apps not found")
-                    : apps.Count switch { 0 => "Empty", 1 => "Opens 1 app", var n => $"Opens {n} apps" },
+                StateText = CategoryStateText.Describe(parked, missing, apps.Count, isUnsorted: false),
                 HasParkedWindows = parked > 0,
                 BlockedCount = category.BlockedAppIds.Count,
                 TemplateCount = apps.Count,
@@ -229,12 +224,12 @@ public partial class MainViewModel : ObservableObject
             {
                 Id = CategorySwitchService.Uncategorized,
                 Name = CategorySwitchService.UncategorizedName,
-                KeyText = "0",
-                Color = Frozen(new SolidColorBrush(ColorOf(null))),
+                KeyText = _library.KeyOf(CategorySwitchService.Uncategorized),
+                Color = ThemeService.FrozenBrush(_themeService.ColorFor(null)),
                 IsUnsorted = true,
                 Icons = parkedApps.Take(MaxShelfIcons).Select(x => new TemplateIcon(AppNames.ForProcess(x.Window.ProcessId, x.Window.ProcessName), x.Path!)).ToList(),
                 MoreIconsText = parkedApps.Count > MaxShelfIcons ? $"+{parkedApps.Count - MaxShelfIcons}" : null,
-                StateText = parked > 0 ? $"{parked} parked" : "Nothing parked",
+                StateText = CategoryStateText.Describe(parked, 0, 0, isUnsorted: true),
                 HasParkedWindows = parked > 0,
                 BlockedCount = 0,
                 TemplateCount = 0,
@@ -251,13 +246,13 @@ public partial class MainViewModel : ObservableObject
     private void RefreshPinned() =>
         Replace(Pinned, _library.PinnedApps.Select(p => new PinnedRow(p.Id, p.Name, PathOrNull(p.ProcessNameOrPath), RunningProcessOf(p.ProcessNameOrPath))));
 
-    private static string? PathOrNull(string value) => LooksLikePath(value) ? value : null;
+    private static string? PathOrNull(string value) => ProcessPattern.IsPath(value) ? value : null;
 
     /// <summary>For bare process names ("claude"): a running process to take the icon from, or 0.</summary>
     private static int RunningProcessOf(string value)
     {
-        if (LooksLikePath(value)) return 0;
-        var processes = System.Diagnostics.Process.GetProcessesByName(Path.GetFileNameWithoutExtension(value.Trim()));
+        if (ProcessPattern.IsPath(value)) return 0;
+        var processes = System.Diagnostics.Process.GetProcessesByName(ProcessPattern.ProcessName(value));
         try
         {
             return processes.FirstOrDefault()?.Id ?? 0;
@@ -315,12 +310,9 @@ public partial class MainViewModel : ObservableObject
     /// <summary>Number keys on the home: 1-9 are categories in order, 0 is Unsorted.</summary>
     public async Task SwitchByNumberAsync(int number)
     {
-        var id = number == 0
-            ? CategorySwitchService.Uncategorized
-            : _library.Categories.OrderBy(c => c.SortOrder).Skip(number - 1).FirstOrDefault()?.Id;
-        if (id is null) return;
+        if (_library.CategoryIdForKey(number) is not { } id) return;
         Notice = null;
-        ShowFailures(await Task.Run(() => _switcher.SwitchTo(id.Value)));
+        ShowFailures(await Task.Run(() => _switcher.SwitchTo(id)));
     }
 
     [RelayCommand]
@@ -352,21 +344,19 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void PinApp()
+    private async Task PinAppAsync()
     {
         var vm = new AppEditDialogViewModel(_services.InstalledAppFinder, headingOverride: "Keep an app always visible", relaxedValidation: true);
         var result = _dialogService.ShowAppEdit(vm);
         if (result is null) return;
-        _library.AddPinnedApp(result.Value.Name, result.Value.ExecutablePath);
-        Task.Run(_switcher.ApplyPinnedApps);
+        await Task.Run(() => _switcher.PinApp(result.Value.Name, result.Value.ExecutablePath));
         Refresh();
     }
 
     [RelayCommand]
-    private void Unpin(PinnedRow row)
+    private async Task UnpinAsync(PinnedRow row)
     {
-        _library.RemovePinnedApp(row.Id);
-        Task.Run(_switcher.ApplyPinnedApps);
+        await Task.Run(() => _switcher.Unpin(row.Id));
         Refresh();
     }
 
@@ -399,7 +389,6 @@ public partial class MainViewModel : ObservableObject
         _noticeCategoryId = result.CategoryId;
         NoticeCanEdit = result.CategoryId != CategorySwitchService.Uncategorized;
         Notice = DescribeFailures(result.Failures);
-        NoticeIsError = true;
         NoticeRaised?.Invoke(this, EventArgs.Empty);
     }
 
@@ -420,10 +409,8 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void BringToFront(WindowRow row)
     {
-        var windows = _services.WindowManager;
-        if (!windows.IsWindowOpen(row.Handle)) return;
-        if (windows.IsMinimized(row.Handle)) windows.Restore(row.Handle);
-        windows.BringToFront(row.Handle);
+        if (_services.WindowManager.IsWindowOpen(row.Handle))
+            _services.WindowManager.BringToFront(row.Handle);
     }
 
     [RelayCommand]
@@ -440,16 +427,6 @@ public partial class MainViewModel : ObservableObject
         _ => $"{failures.Count} apps had a problem: {string.Join(" ", failures.Select(f => f.ErrorMessage))}",
     };
 
-    private string? KeyFor(Guid categoryId)
-    {
-        if (categoryId == CategorySwitchService.Uncategorized) return "0";
-        var index = _library.Categories.OrderBy(c => c.SortOrder).ToList().FindIndex(c => c.Id == categoryId);
-        return index is >= 0 and < 9 ? (index + 1).ToString() : null;
-    }
-
-    private Color ColorOf(Category? category) =>
-        category?.Hue is { } hue ? _themeService.CategoryColor(hue) : ThemeService.ToColor(_themeService.Current.Muted.ToRgb());
-
     private static Brush HeroGradient(Color color)
     {
         var brush = new LinearGradientBrush(
@@ -460,19 +437,11 @@ public partial class MainViewModel : ObservableObject
         return brush;
     }
 
-    private static Brush Frozen(SolidColorBrush brush)
-    {
-        brush.Freeze();
-        return brush;
-    }
-
     private static string Duration(TimeSpan span) => span.TotalMinutes switch
     {
         < 60 => $"{(int)span.TotalMinutes} min",
         _ => span.Minutes == 0 ? $"{(int)span.TotalHours} h" : $"{(int)span.TotalHours} h {span.Minutes} min",
     };
-
-    private static bool LooksLikePath(string value) => value.Contains('\\') || value.Contains('/');
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> items)
     {

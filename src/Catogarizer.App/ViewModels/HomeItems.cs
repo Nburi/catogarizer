@@ -66,3 +66,13 @@ public sealed partial class ShelfItem : ObservableObject
     [ObservableProperty]
     private bool _isSwitching;
 }
+
+/// <summary>The one wording for "what's there" on a category, shared by the home's tiles, the back card and the palette.</summary>
+public static class CategoryStateText
+{
+    public static string Describe(int parked, int missing, int templateCount, bool isUnsorted) =>
+        parked > 0 ? $"{parked} parked"
+        : isUnsorted ? "Nothing parked"
+        : missing > 0 ? (missing == 1 ? "1 app not found" : $"{missing} apps not found")
+        : templateCount switch { 0 => "Empty", 1 => "Opens 1 app", var n => $"Opens {n} apps" };
+}

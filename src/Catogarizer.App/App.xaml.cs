@@ -101,7 +101,7 @@ public partial class App : Application
         var categoryActionService = new CategoryActionService(processLauncher, windowFinder, windowManager, monitorService, new SystemDelay());
         var autostartService = new AutostartService();
         var processWatcher = new ProcessWatcher();
-        var appBlockingService = new AppBlockingService(processWatcher, parentProcessName: ProcessTree.GetParentProcessName);
+        var appBlockingService = new AppBlockingService(processWatcher, parentProcessName: Processes.ParentNameOf);
         appBlockingService.Start();
         _library = library;
         _appBlockingService = appBlockingService;
@@ -170,8 +170,7 @@ public partial class App : Application
     private void OnSwitched(SwitchResult result)
     {
         if (result.Failures.Count == 0) return;
-        var name = _library!.Categories.FirstOrDefault(c => c.Id == result.CategoryId)?.Name ?? CategorySwitchService.UncategorizedName;
-        ShowProblem($"{name}: not everything opened", MainViewModel.DescribeFailures(result.Failures)!);
+        ShowProblem($"{_library!.NameOf(result.CategoryId)}: not everything opened", MainViewModel.DescribeFailures(result.Failures)!);
     }
 
     private void ReportFailures(string triggerName, IReadOnlyList<AppActionResult> results)
@@ -348,20 +347,15 @@ public partial class App : Application
             return;
         }
 
-        _pill.Flash(CategoryName(previous), CategoryColor(previous), showBackArrow: true);
+        _pill.Flash(_library!.NameOf(previous), CategoryColor(previous), showBackArrow: true);
         Task.Run(() =>
         {
             if (_switcher.SwitchBack() is { } result) OnSwitched(result);
         });
     }
 
-    private string CategoryName(Guid id) =>
-        _library!.Categories.FirstOrDefault(c => c.Id == id)?.Name ?? CategorySwitchService.UncategorizedName;
-
-    private Color? CategoryColor(Guid id) =>
-        _library!.Categories.FirstOrDefault(c => c.Id == id)?.Hue is { } hue
-            ? _themeService!.CategoryColor(hue)
-            : (Color)FindResource("MutedColor");
+    private Color CategoryColor(Guid id) =>
+        _themeService!.ColorFor(_library!.Categories.FirstOrDefault(c => c.Id == id));
 
     /// <summary>Never leave a window hidden behind when Catogarizer stops (PRINCIPLES.md, value 1).</summary>
     private void RestoreHiddenWindows()

@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using Catogarizer.App.Services;
 using Catogarizer.App.ViewModels;
+using Catogarizer.App.Views;
 using Catogarizer.Core.Services;
 
 namespace Catogarizer.App;
@@ -28,6 +29,7 @@ public partial class MainWindow : Window
         _liveRefresh.Stop();
         IsVisibleChanged += (_, _) =>
         {
+            _viewModel.IsViewVisible = IsVisible;
             if (IsVisible) { _viewModel.Refresh(); _liveRefresh.Start(); }
             else _liveRefresh.Stop();
         };
@@ -36,13 +38,7 @@ public partial class MainWindow : Window
     private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (Keyboard.FocusedElement is TextBox || Keyboard.Modifiers != ModifierKeys.None) return;
-        var number = e.Key switch
-        {
-            >= Key.D0 and <= Key.D9 => e.Key - Key.D0,
-            >= Key.NumPad0 and <= Key.NumPad9 => e.Key - Key.NumPad0,
-            _ => -1,
-        };
-        if (number < 0) return;
+        if (KeyDigits.Of(e.Key) is not { } number) return;
         e.Handled = true;
         await _viewModel.SwitchByNumberAsync(number);
     }

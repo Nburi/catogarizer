@@ -28,8 +28,6 @@ public sealed class CategoryActionService : ICategoryActionService
     }
 
     public CategoryActionResult Open(IReadOnlyList<AppEntry> apps) => new(apps.Select(OpenApp).ToList());
-    public CategoryActionResult Minimize(IReadOnlyList<AppEntry> apps) => new(apps.Select(MinimizeApp).ToList());
-    public CategoryActionResult Close(IReadOnlyList<AppEntry> apps) => new(apps.Select(CloseApp).ToList());
 
     public AppActionResult OpenApp(AppEntry app)
     {
@@ -45,10 +43,7 @@ public sealed class CategoryActionService : ICategoryActionService
 
             // Already running: "open" means show it - a minimized window would otherwise stay invisible.
             if (running is { } existing)
-            {
-                if (_windowManager.IsMinimized(existing)) _windowManager.Restore(existing);
                 _windowManager.BringToFront(existing);
-            }
 
             if (app.Placement is not null)
                 Position(hwnd.Value, app.Placement);

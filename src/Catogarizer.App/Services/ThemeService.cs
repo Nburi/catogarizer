@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using Catogarizer.Core.Models;
 using Catogarizer.Core.Theming;
 using Catogarizer.Win32;
 
@@ -42,7 +43,19 @@ public sealed class ThemeService
 
     public Color CategoryColor(double hue) => ToColor(Current.CategoryColor(hue));
 
+    /// <summary>A category's color; Unsorted (null) and colorless categories use the muted ink.</summary>
+    public Color ColorFor(Category? category) =>
+        category?.Hue is { } hue ? CategoryColor(hue) : ToColor(Current.Muted.ToRgb());
+
     public static Color ToColor(Rgb rgb) => Color.FromRgb(rgb.R, rgb.G, rgb.B);
+
+    /// <summary>Frozen, so it can be shared across threads and bindings without change tracking.</summary>
+    public static SolidColorBrush FrozenBrush(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
 
     private void StyleTitleBar(Window window)
     {
@@ -58,9 +71,7 @@ public sealed class ThemeService
         {
             var color = ToColor(value.ToRgb());
             resources[name + "Color"] = color;
-            var brush = new SolidColorBrush(color);
-            brush.Freeze();
-            resources[brushKey ?? name + "Brush"] = brush;
+            resources[brushKey ?? name + "Brush"] = FrozenBrush(color);
         }
 
         AddColor("Bg", theme.Bg);
@@ -74,9 +85,7 @@ public sealed class ThemeService
         AddColor("Danger", theme.Danger);
 
         var bg = ToColor(theme.Bg.ToRgb());
-        var overlay = new SolidColorBrush(Color.FromArgb(0xC0, bg.R, bg.G, bg.B));
-        overlay.Freeze();
-        resources["OverlayBrush"] = overlay;
+        resources["OverlayBrush"] = FrozenBrush(Color.FromArgb(0xC0, bg.R, bg.G, bg.B));
 
         resources["CardRadius"] = new CornerRadius(theme.CardRadius);
         resources["ControlRadius"] = new CornerRadius(theme.ControlRadius);

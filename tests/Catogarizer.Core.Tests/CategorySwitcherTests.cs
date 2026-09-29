@@ -136,15 +136,25 @@ public sealed class CategorySwitcherTests
     }
 
     [Fact]
-    public void RefreshBlocking_AppliesAnEditedBlocklistOfTheActiveCategory()
+    public void HoldBack_AppliesToTheActiveCategoryRightAway()
     {
         var deepWork = CategoryWith("Deep Work", []);
         _switcher.SwitchTo(deepWork.Id);
-        _library.AddBlockedAppToCategory(deepWork.Id, _library.AddOrReuseBlockedApp("Steam", "steam").Id);
 
-        _switcher.RefreshBlocking();
+        _switcher.HoldBack(deepWork.Id, "Steam", "steam");
 
         Assert.Contains("Steam", _blocking.BlockedNames);
+    }
+
+    [Fact]
+    public void StopHoldingBack_LiftsItRightAway()
+    {
+        var deepWork = CategoryWith("Deep Work", [], blocked: ["Discord"]);
+        _switcher.SwitchTo(deepWork.Id);
+
+        _switcher.StopHoldingBack(deepWork.Id, _library.BlockedAppsOf(deepWork)[0].Id);
+
+        Assert.DoesNotContain("Discord", _blocking.BlockedNames);
     }
 
     [Fact]

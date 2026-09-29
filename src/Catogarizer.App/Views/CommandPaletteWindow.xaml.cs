@@ -83,13 +83,7 @@ public partial class CommandPaletteWindow : Window
         // category name with a number in it can still be searched.
         if (ViewModel.SearchText.Length == 0 && Keyboard.Modifiers == ModifierKeys.None)
         {
-            var number = e.Key switch
-            {
-                >= Key.D0 and <= Key.D9 => e.Key - Key.D0,
-                >= Key.NumPad0 and <= Key.NumPad9 => e.Key - Key.NumPad0,
-                _ => -1,
-            };
-            if (number >= 0)
+            if (KeyDigits.Of(e.Key) is { } number)
             {
                 e.Handled = true;
                 await ViewModel.SwitchByNumberAsync(number);

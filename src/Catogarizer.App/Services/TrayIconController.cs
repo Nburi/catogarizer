@@ -54,7 +54,7 @@ public sealed class TrayIconController : IDisposable
         // UI thread - ShowNotification needs to run on the dispatcher.
         appBlockingService.AppBlocked += appName => _mainWindow.Dispatcher.BeginInvoke(() => Notify(
             "App held back",
-            $"\"{appName}\" was closed. It's blocked while {ActiveCategoryName()} is active."));
+            $"\"{appName}\" was closed. It's blocked while {_library.NameOf(_switcher.ActiveCategoryId)} is active."));
 
         _switcher.StateChanged += () => _mainWindow.Dispatcher.BeginInvoke(UpdateToolTip);
         UpdateToolTip();
@@ -86,12 +86,7 @@ public sealed class TrayIconController : IDisposable
         }
     }
 
-    public void AllowExit() => _isExiting = true;
-
-    private void UpdateToolTip() => _icon.ToolTipText = $"Catogarizer · {ActiveCategoryName()}";
-
-    private string ActiveCategoryName() =>
-        _library.Categories.FirstOrDefault(c => c.Id == _switcher.ActiveCategoryId)?.Name ?? CategorySwitchService.UncategorizedName;
+    private void UpdateToolTip() => _icon.ToolTipText = $"Catogarizer · {_library.NameOf(_switcher.ActiveCategoryId)}";
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
@@ -113,8 +108,7 @@ public sealed class TrayIconController : IDisposable
 
         if (_switcher.PreviousCategoryId is { } previous)
         {
-            var name = _library.Categories.FirstOrDefault(c => c.Id == previous)?.Name ?? CategorySwitchService.UncategorizedName;
-            var backItem = new MenuItem { Header = $"← Back to {name}", InputGestureText = "hotkey twice" };
+            var backItem = new MenuItem { Header = $"← Back to {_library.NameOf(previous)}", InputGestureText = "hotkey twice" };
             backItem.Click += async (_, _) =>
             {
                 var result = await Task.Run(_switcher.SwitchBack);

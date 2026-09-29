@@ -1,5 +1,5 @@
-using System.Runtime.InteropServices;
 using Catogarizer.Core.Theming;
+using static Catogarizer.Win32.Interop.NativeMethods;
 
 namespace Catogarizer.Win32;
 
@@ -13,9 +13,6 @@ public static class TitleBarStyle
     private const int DWMWA_BORDER_COLOR = 34;
     private const int DWMWA_CAPTION_COLOR = 35;
     private const int DWMWA_TEXT_COLOR = 36;
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
     public static void Apply(IntPtr hwnd, bool dark, Rgb caption, Rgb text, Rgb border)
     {

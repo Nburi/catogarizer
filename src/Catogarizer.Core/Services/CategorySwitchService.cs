@@ -71,7 +71,9 @@ public sealed class CategorySwitchService : ICategorySwitchService
 
     private void RecoverWindowsHiddenByAPreviousRun()
     {
-        foreach (var record in _hiddenStore.Load())
+        var records = _hiddenStore.Load();
+        if (records.Count == 0) return;
+        foreach (var record in records)
         {
             var handle = new IntPtr(record.Handle);
             if (_windowManager.IsWindowOpen(handle)
@@ -117,24 +119,18 @@ public sealed class CategorySwitchService : ICategorySwitchService
             SwitchResult result;
             if (incoming.Count > 0)
             {
-                foreach (var window in incoming)
-                    _windowManager.Show(window.Handle);
-
-                lock (_lock)
-                {
-                    foreach (var window in incoming) _hidden.Remove(window.Handle);
-                    PersistHidden();
-                }
+                Reveal(incoming);
                 result = new SwitchResult(categoryId, true, incoming.Count, []);
             }
             else
             {
                 lock (_lock)
                 {
-                    foreach (var window in claimed) Attribute(categoryId, window);
+                    var unhidden = false;
+                    foreach (var window in claimed) unhidden |= Attribute(categoryId, window);
+                    if (unhidden) PersistHidden();
                 }
-                foreach (var window in claimed.Where(w => !_windowManager.IsWindowVisible(w.Handle)))
-                    _windowManager.Show(window.Handle);
+                Reveal(claimed);
 
                 // Launching can take seconds: tell the UI where we are now, not only once it's done.
                 IsOpeningApps = templateApps.Count > 0;
@@ -154,13 +150,15 @@ public sealed class CategorySwitchService : ICategorySwitchService
                 {
                     // Attribute launched windows now rather than on the watcher's next tick, so an
                     // immediate switch away still hides them with the category that opened them.
+                    var unhidden = false;
                     foreach (var appResult in launch.AppResults)
                     {
                         if (appResult.WindowHandle is not { } handle || handle == IntPtr.Zero) continue;
                         var window = new OpenWindowInfo(handle, _windowManager.GetTitle(handle),
                             Path.GetFileNameWithoutExtension(appResult.App.ExecutablePath), _windowManager.GetProcessId(handle));
-                        if (IsTrackable(window)) Attribute(categoryId, window);
+                        if (IsTrackable(window)) unhidden |= Attribute(categoryId, window);
                     }
+                    if (unhidden) PersistHidden();
                 }
                 var opened = launch.AppResults.Count(r => r.Outcome == AppActionOutcome.Opened);
                 result = new SwitchResult(categoryId, false, opened, launch.Failures);
@@ -227,17 +225,13 @@ public sealed class CategorySwitchService : ICategorySwitchService
                     session.RemoveAll(w => IsPinned(w.ProcessName));
             }
 
-            foreach (var window in pinned.Where(w => _windowManager.IsWindowOpen(w.Handle) && !_windowManager.IsWindowVisible(w.Handle)))
-                _windowManager.Show(window.Handle);
+            Reveal(pinned);
 
             // Unpinned apps' windows were never tracked, and the watcher won't report them as new.
             var visible = _windowFinder.FindAllAppWindows().Where(IsTrackable).ToList();
 
             lock (_lock)
             {
-                foreach (var window in pinned) _hidden.Remove(window.Handle);
-                PersistHidden();
-
                 var tracked = _sessions.Values.SelectMany(s => s).Select(w => w.Handle).ToHashSet();
                 foreach (var window in visible.Where(w => !tracked.Contains(w.Handle)))
                     Session(ActiveCategoryId).Add(window);
@@ -275,14 +269,7 @@ public sealed class CategorySwitchService : ICategorySwitchService
                     PreviousCategoryId = null;
             }
 
-            foreach (var window in toShow)
-                _windowManager.Show(window.Handle);
-
-            lock (_lock)
-            {
-                foreach (var window in toShow) _hidden.Remove(window.Handle);
-                PersistHidden();
-            }
+            Reveal(toShow);
         }
         StateChanged?.Invoke();
     }
@@ -296,7 +283,7 @@ public sealed class CategorySwitchService : ICategorySwitchService
             if (Session(ActiveCategoryId).Any(w => w.Handle == window.Handle)) return;
             // New, or a window of a parked session that re-showed itself (e.g. a chat app on a
             // new message): it is visible in the active context now, so it belongs there.
-            Attribute(ActiveCategoryId, window);
+            if (Attribute(ActiveCategoryId, window)) PersistHidden();
         }
         StateChanged?.Invoke();
     }
@@ -320,13 +307,34 @@ public sealed class CategorySwitchService : ICategorySwitchService
         return claimed;
     }
 
-    /// <summary>Moves <paramref name="window"/> into <paramref name="categoryId"/>'s session. Caller holds _lock.</summary>
-    private void Attribute(Guid categoryId, OpenWindowInfo window)
+    /// <summary>
+    /// Moves <paramref name="window"/> into <paramref name="categoryId"/>'s session. Caller holds _lock
+    /// and persists the ledger if this returns true (the window was in it), so a batch writes once.
+    /// </summary>
+    private bool Attribute(Guid categoryId, OpenWindowInfo window)
     {
         foreach (var session in _sessions.Values)
             session.RemoveAll(w => w.Handle == window.Handle);
         Session(categoryId).Add(window);
-        if (_hidden.Remove(window.Handle)) PersistHidden();
+        return _hidden.Remove(window.Handle);
+    }
+
+    /// <summary>
+    /// Shows <paramref name="windows"/> and drops them from the hidden ledger - the one way a parked
+    /// window comes back, so the ledger always matches what is actually hidden. Caller holds _switchLock.
+    /// </summary>
+    private void Reveal(IReadOnlyCollection<OpenWindowInfo> windows)
+    {
+        if (windows.Count == 0) return;
+        foreach (var window in windows.Where(w => _windowManager.IsWindowOpen(w.Handle) && !_windowManager.IsWindowVisible(w.Handle)))
+            _windowManager.Show(window.Handle);
+
+        lock (_lock)
+        {
+            var changed = false;
+            foreach (var window in windows) changed |= _hidden.Remove(window.Handle);
+            if (changed) PersistHidden();
+        }
     }
 
     /// <summary>Caller holds _lock. Also forgets closed windows so the hidden ledger doesn't grow stale.</summary>
@@ -361,9 +369,7 @@ public sealed class CategorySwitchService : ICategorySwitchService
         window.ProcessId != _ownProcessId && !IsPinned(window.ProcessName);
 
     private bool IsPinned(string processName) =>
-        _getPinnedApps().Any(p => string.Equals(NormalizedProcessName(p.ProcessNameOrPath), processName, StringComparison.OrdinalIgnoreCase));
-
-    private static string NormalizedProcessName(string pattern) => Path.GetFileNameWithoutExtension(pattern.Trim());
+        _getPinnedApps().Any(p => string.Equals(ProcessPattern.ProcessName(p.ProcessNameOrPath), processName, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Caller holds _lock.</summary>
     private void PersistHidden() =>

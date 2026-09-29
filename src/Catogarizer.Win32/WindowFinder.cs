@@ -22,11 +22,11 @@ public sealed class WindowFinder : IWindowFinder
         EnumWindows((hWnd, _) =>
         {
             if (!IsWindowVisible(hWnd)) return true;
-            var title = GetTitle(hWnd);
+            var title = ReadWindowTitle(hWnd);
             if (title.Length == 0) return true;
 
             GetWindowThreadProcessId(hWnd, out var pid);
-            var procName = TryGetProcessName(pid);
+            var procName = Processes.NameOf(pid);
 
             var processMatches = processNameCandidates.Any(c => string.Equals(c, procName, StringComparison.OrdinalIgnoreCase));
             var titleMatches = titleCandidates.Any(c => title.Contains(c, StringComparison.OrdinalIgnoreCase));
@@ -50,11 +50,11 @@ public sealed class WindowFinder : IWindowFinder
         EnumWindows((hWnd, _) =>
         {
             if (!IsAltTabWindow(hWnd)) return true;
-            var title = GetTitle(hWnd);
+            var title = ReadWindowTitle(hWnd);
             if (title.Length == 0) return true;
 
             GetWindowThreadProcessId(hWnd, out var pid);
-            results.Add(new OpenWindowInfo(hWnd, title, TryGetProcessName(pid), pid));
+            results.Add(new OpenWindowInfo(hWnd, title, Processes.NameOf(pid), pid));
             return true;
         }, IntPtr.Zero);
         return results;
@@ -112,7 +112,7 @@ public sealed class WindowFinder : IWindowFinder
             EnumWindows((hWnd, _) =>
             {
                 if (!IsWindowVisible(hWnd)) return true;
-                var title = GetTitle(hWnd);
+                var title = ReadWindowTitle(hWnd);
                 if (title.Length == 0) return true;
                 if (titleCandidates.Any(c => title.Contains(c, StringComparison.OrdinalIgnoreCase)))
                 {
@@ -126,20 +126,5 @@ public sealed class WindowFinder : IWindowFinder
             Thread.Sleep(80);
         }
         return null;
-    }
-
-    private static string GetTitle(IntPtr hWnd)
-    {
-        int len = GetWindowTextLength(hWnd);
-        if (len == 0) return "";
-        var sb = new StringBuilder(len + 1);
-        GetWindowText(hWnd, sb, sb.Capacity);
-        return sb.ToString();
-    }
-
-    private static string TryGetProcessName(int pid)
-    {
-        try { return Process.GetProcessById(pid).ProcessName; }
-        catch (ArgumentException) { return "?"; }
     }
 }

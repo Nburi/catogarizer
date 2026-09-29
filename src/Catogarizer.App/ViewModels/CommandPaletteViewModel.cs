@@ -74,36 +74,27 @@ public partial class CommandPaletteViewModel : ObservableObject
         var sessions = _switcher.GetSessions();
         var active = _switcher.ActiveCategoryId;
         var previous = _switcher.PreviousCategoryId;
-        var categories = _library.Categories.OrderBy(c => c.SortOrder).ToList();
 
-        PaletteEntry Entry(Guid id, string name, string? key, Color color, IReadOnlyList<AppEntry> template)
+        PaletteEntry Entry(Guid id, Category? category)
         {
+            var template = category is null ? [] : _library.AppsOf(category);
             var parked = sessions.TryGetValue(id, out var w) ? w.Count : 0;
-            // Same wording as the home's tiles.
-            var missing = id == active || parked > 0 ? 0 : template.Count(a => !System.IO.File.Exists(a.ExecutablePath));
-            var state = id == active ? "You're here"
-                : parked > 0 ? $"{parked} parked"
-                : id == CategorySwitchService.Uncategorized ? "Nothing parked"
-                : missing > 0 ? (missing == 1 ? "1 app not found" : $"{missing} apps not found")
-                : template.Count switch { 0 => "Empty", 1 => "Opens 1 app", var n => $"Opens {n} apps" };
-            var brush = new SolidColorBrush(color);
-            brush.Freeze();
+            var missing = id == active || parked > 0 || category is null ? 0 : _library.MissingAppCount(category);
             return new PaletteEntry
             {
-                Id = id, Name = name, KeyText = key, Color = brush, StateText = state,
+                Id = id, Name = _library.NameOf(id), KeyText = _library.KeyOf(id),
+                Color = ThemeService.FrozenBrush(_themeService.ColorFor(category)),
+                StateText = id == active ? "You're here" : CategoryStateText.Describe(parked, missing, template.Count, category is null),
                 IsActive = id == active, IsPrevious = id == previous, HasMissingApp = missing > 0,
                 Icons = template.Take(MaxIcons).Select(a => new TemplateIcon(a.Name, a.ExecutablePath)).ToList(),
             };
         }
 
-        _all = categories
-            .Select((c, i) => Entry(c.Id, c.Name, i < 9 ? (i + 1).ToString() : null,
-                c.Hue is { } hue ? _themeService.CategoryColor(hue) : Muted(), _library.AppsOf(c)))
-            .Append(Entry(CategorySwitchService.Uncategorized, CategorySwitchService.UncategorizedName, "0", Muted(), []))
+        _all = _library.Categories.OrderBy(c => c.SortOrder)
+            .Select(c => Entry(c.Id, c))
+            .Append(Entry(CategorySwitchService.Uncategorized, null))
             .ToList();
     }
-
-    private Color Muted() => ThemeService.ToColor(_themeService.Current.Muted.ToRgb());
 
     partial void OnSearchTextChanged(string value) => UpdateResults();
 
@@ -146,7 +137,7 @@ public partial class CommandPaletteViewModel : ObservableObject
 
     /// <summary>Digits in an empty search box jump straight to that category (0 = Unsorted).</summary>
     public Task SwitchByNumberAsync(int number) =>
-        _all.FirstOrDefault(e => e.KeyText == number.ToString()) is { } entry ? SwitchTo(entry) : Task.CompletedTask;
+        _library.CategoryIdForKey(number) is { } id && _all.FirstOrDefault(e => e.Id == id) is { } entry ? SwitchTo(entry) : Task.CompletedTask;
 
     [RelayCommand]
     private async Task SwitchTo(PaletteEntry entry)

@@ -69,12 +69,7 @@ public partial class SettingsViewModel : ObservableObject
         _selectedTheme = Themes.First(t => t.Id == _savedThemeId);
     }
 
-    private static Brush Frozen(Oklch color)
-    {
-        var brush = new SolidColorBrush(ThemeService.ToColor(color.ToRgb()));
-        brush.Freeze();
-        return brush;
-    }
+    private static Brush Frozen(Oklch color) => ThemeService.FrozenBrush(ThemeService.ToColor(color.ToRgb()));
 
     /// <summary>Live preview: the whole app switches as soon as a theme is picked.</summary>
     partial void OnSelectedThemeChanged(ThemeOption value) => _themeService.Apply(value.Id);

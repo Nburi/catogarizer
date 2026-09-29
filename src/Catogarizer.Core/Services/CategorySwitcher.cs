@@ -81,17 +81,45 @@ public sealed class CategorySwitcher
         }
     }
 
-    public void ApplyPinnedApps() => _switch.ApplyPinnedApps();
+    // Pin and held-back edits go through here, so the running app follows the library right away.
 
-    /// <summary>Re-applies the active category's blocklist after it was edited.</summary>
-    public void RefreshBlocking()
+    public void PinApp(string name, string processNameOrPath)
+    {
+        _library.AddPinnedApp(name, processNameOrPath);
+        _switch.ApplyPinnedApps();
+    }
+
+    public void Unpin(Guid pinnedAppId)
+    {
+        _library.RemovePinnedApp(pinnedAppId);
+        _switch.ApplyPinnedApps();
+    }
+
+    public void HoldBack(Guid categoryId, string name, string processNameOrPath)
     {
         lock (_lock)
         {
-            var active = _library.Categories.FirstOrDefault(c => c.Id == _switch.ActiveCategoryId);
-            if (active is not null)
-                _blocking.ActivateCategory(active.Id, _library.BlockedAppsOf(active));
+            var blocked = _library.AddOrReuseBlockedApp(name, processNameOrPath);
+            _library.AddBlockedAppToCategory(categoryId, blocked.Id);
+            RefreshBlocking();
         }
+    }
+
+    public void StopHoldingBack(Guid categoryId, Guid blockedAppId)
+    {
+        lock (_lock)
+        {
+            _library.RemoveBlockedAppFromCategory(categoryId, blockedAppId);
+            RefreshBlocking();
+        }
+    }
+
+    /// <summary>Re-applies the active category's blocklist after it was edited. Caller holds _lock.</summary>
+    private void RefreshBlocking()
+    {
+        var active = _library.Categories.FirstOrDefault(c => c.Id == _switch.ActiveCategoryId);
+        if (active is not null)
+            _blocking.ActivateCategory(active.Id, _library.BlockedAppsOf(active));
     }
 
     public void ShowAllAndReset()

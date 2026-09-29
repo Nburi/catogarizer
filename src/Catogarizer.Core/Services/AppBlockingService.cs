@@ -60,11 +60,10 @@ public sealed class AppBlockingService : IAppBlockingService, IDisposable
     private static bool Matches(BlockedApp blocked, RunningProcessInfo info)
     {
         var pattern = blocked.ProcessNameOrPath.Trim();
-        if (pattern.Contains('\\') || pattern.Contains('/'))
+        if (ProcessPattern.IsPath(pattern))
             return info.ExecutablePath is not null && string.Equals(info.ExecutablePath, pattern, StringComparison.OrdinalIgnoreCase);
 
-        var patternName = Path.GetFileNameWithoutExtension(pattern);
-        return string.Equals(info.ProcessName, patternName, StringComparison.OrdinalIgnoreCase);
+        return string.Equals(info.ProcessName, ProcessPattern.ProcessName(pattern), StringComparison.OrdinalIgnoreCase);
     }
 
     private static void DefaultKillProcess(int pid)

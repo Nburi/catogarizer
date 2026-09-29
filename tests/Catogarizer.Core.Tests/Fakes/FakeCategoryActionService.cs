@@ -25,15 +25,6 @@ public sealed class FakeCategoryActionService : ICategoryActionService
             : new AppActionResult(a, AppActionOutcome.Opened, WindowHandle: LaunchHandles.TryGetValue(a.Name, out var h) ? h : null)).ToList());
     }
 
-    public CategoryActionResult Minimize(IReadOnlyList<AppEntry> apps) =>
-        new(apps.Select(a => new AppActionResult(a, AppActionOutcome.Minimized)).ToList());
-
-    public CategoryActionResult Close(IReadOnlyList<AppEntry> apps)
-    {
-        Calls.Add($"Close:{string.Join(",", apps.Select(a => a.Name))}");
-        return new CategoryActionResult(apps.Select(a => new AppActionResult(a, AppActionOutcome.Closed)).ToList());
-    }
-
     public AppActionResult OpenApp(AppEntry app)
     {
         Calls.Add($"OpenApp:{app.Name}");

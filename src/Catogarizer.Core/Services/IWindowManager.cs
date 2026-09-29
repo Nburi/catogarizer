@@ -56,7 +56,7 @@ public interface IWindowManager
 
     bool IsMinimized(IntPtr handle);
 
-    /// <summary>Activates the window. Works when Catogarizer itself has the foreground (a click in its UI).</summary>
+    /// <summary>Restores the window if it is minimized, then activates it. Activation works when Catogarizer itself has the foreground (a click in its UI).</summary>
     void BringToFront(IntPtr handle);
 
     /// <summary>Owning process id, or 0 if the window is gone.</summary>
