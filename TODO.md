@@ -554,7 +554,7 @@ categories with charmap/msinfo32, Claude pinned; config restored afterwards):
       the footer, theme radius. Deviation: built without a separate preview
       because the user asked not to stop between steps; screenshots sent
       instead. Verified live (preselection, "tb" → Test B, "2" switched).
-- [ ] 8. Review rounds 0–4 (fs-* agents, each with `tools/livetest/` setup/
+- [x] 8. Review rounds 0–4 (fs-* agents, each with `tools/livetest/` setup/
       teardown so the user's real windows and config are always restored).
   - [x] Round 0 (requirements) - fixed in 4b096c4.
   - [x] Round 1 (flow: empty/full/misused) - fixed in 4010945 (tray crash,
@@ -563,5 +563,6 @@ categories with charmap/msinfo32, Claude pinned; config restored afterwards):
   - [x] Round 3 (where the UI lies) - part 1 in a40e3d6, part 2 fixed (hero rows clickable,
         missing-exe editor rows, Automation labels/empty Run now, Save enabled only after a change).
         Left open (low): tiles say "Opens 2 apps" after "Show all hidden windows".
-  - [ ] Round 4 (user simulation, fs-nutzer-simulant, unexpected role).
+  - [~] Round 4 (user simulation) - skipped: the fs-nutzer-simulant agent was blocked by an
+        API safeguard error on Sonnet and Opus (2026-09-29); user chose to move on.
 - [ ] 9. Docs, code review, user review, merge, deploy.
