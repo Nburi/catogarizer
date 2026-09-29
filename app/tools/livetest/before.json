@@ -1,0 +1,138 @@
+﻿[
+    {
+        "Handle":  69632,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "WINWORD",
+        "Class":  "OpusApp",
+        "Title":  "NWK-Bewerbung_2027_fürKadermitglieder - Word"
+    },
+    {
+        "Handle":  921190,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "Arc",
+        "Class":  "WinUIDesktopWin32WindowClass",
+        "Title":  "Arc"
+    },
+    {
+        "Handle":  133988,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "WhatsApp.Root",
+        "Class":  "WinUIDesktopWin32WindowClass",
+        "Title":  "WhatsApp"
+    },
+    {
+        "Handle":  200012,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "claude",
+        "Class":  "Chrome_WidgetWin_1",
+        "Title":  "Claude"
+    },
+    {
+        "Handle":  12849498,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "RtkUWP",
+        "Class":  "Windows.UI.Core.CoreWindow",
+        "Title":  "Realtek Audio Console"
+    },
+    {
+        "Handle":  201642,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "ApplicationFrameHost",
+        "Class":  "ApplicationFrameWindow",
+        "Title":  "Realtek Audio Console"
+    },
+    {
+        "Handle":  1967902,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "msedge",
+        "Class":  "Chrome_WidgetWin_1",
+        "Title":  "nothing-to-do - Einstellungen · nothing-to-do"
+    },
+    {
+        "Handle":  594054,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "Dia",
+        "Class":  "WinUIDesktopWin32WindowClass",
+        "Title":  "T-PAK"
+    },
+    {
+        "Handle":  197858,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "explorer",
+        "Class":  "CabinetWClass",
+        "Title":  "2026-09 Korsika – Datei-Explorer"
+    },
+    {
+        "Handle":  197646,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "Spotify",
+        "Class":  "Chrome_WidgetWin_1",
+        "Title":  "Spotify Premium"
+    },
+    {
+        "Handle":  1117744,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "SystemSettings",
+        "Class":  "Windows.UI.Core.CoreWindow",
+        "Title":  "Einstellungen"
+    },
+    {
+        "Handle":  131434,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "ApplicationFrameHost",
+        "Class":  "ApplicationFrameWindow",
+        "Title":  "Einstellungen"
+    },
+    {
+        "Handle":  197908,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "TextInputHost",
+        "Class":  "Windows.UI.Core.CoreWindow",
+        "Title":  "Windows-Eingabeerfahrung"
+    },
+    {
+        "Handle":  66116,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "PowerToys.QuickAccess",
+        "Class":  "WinUIDesktopWin32WindowClass",
+        "Title":  "PowerToys Quick Access (Preview)"
+    },
+    {
+        "Handle":  65996,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "NVIDIA Overlay",
+        "Class":  "CEF-OSC-WIDGET",
+        "Title":  "NVIDIA GeForce Overlay"
+    },
+    {
+        "Handle":  68610,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "msedgewebview2",
+        "Class":  "Chrome_WidgetWin_1",
+        "Title":  "(4) WhatsApp"
+    },
+    {
+        "Handle":  66016,
+        "Visible":  true,
+        "Exists":  true,
+        "Process":  "explorer",
+        "Class":  "Progman",
+        "Title":  "Program Manager"
+    }
+]
