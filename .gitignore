@@ -26,3 +26,12 @@ Thumbs.db
 
 ## Website tooling
 node_modules/
+
+## AI assistant files (kept locally, not published)
+.claude/
+CLAUDE.md
+HANDOFF.md
+PLAN.md
+PRINCIPLES.md
+ERRORS.md
+TODO.md
