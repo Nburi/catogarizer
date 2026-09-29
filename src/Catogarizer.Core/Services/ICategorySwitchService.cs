@@ -68,6 +68,7 @@ public interface ICategorySwitchService : IDisposable
     /// <summary>
     /// After the pinned list changed: windows of now-pinned apps leave every session and are
     /// shown if they were parked, so pinning takes effect at once instead of on the next switch.
+    /// Windows of apps that are no longer pinned join the active category, so unpinning does too.
     /// </summary>
     void ApplyPinnedApps();
 }

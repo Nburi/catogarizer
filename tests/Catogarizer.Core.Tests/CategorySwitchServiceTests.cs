@@ -454,6 +454,20 @@ public sealed class CategorySwitchServiceTests
     }
 
     [Fact]
+    public void ApplyPinnedApps_AfterUnpinning_TheAppsWindowJoinsTheActiveCategory()
+    {
+        _pinnedApps.Add(new PinnedApp { Name = "Spotify", ProcessNameOrPath = "spotify" });
+        _windowFinder.RunningWindows.Add(Window(1, "Spotify"));
+        _service.Initialize();
+
+        _pinnedApps.Clear();
+        _service.ApplyPinnedApps();
+        _service.SwitchTo(Guid.NewGuid(), []);
+
+        Assert.Contains(new IntPtr(1), _windowManager.HideCalls);
+    }
+
+    [Fact]
     public void SwitchTo_NeverHidesAWindowWhoseAppWasPinnedAfterItWasTracked()
     {
         _windowFinder.RunningWindows.Add(Window(1, "WhatsApp"));

@@ -27,16 +27,37 @@
         <Border Grid.Row="1" Margin="0,0,0,14" CornerRadius="10" Padding="12,10"
                 Background="{DynamicResource SurfaceBrush}" BorderThickness="1"
                 Visibility="{Binding Notice, Converter={StaticResource NullToCollapsedConverter}}">
-            <Border.BorderBrush>
-                <SolidColorBrush Color="{DynamicResource DangerColor}"/>
-            </Border.BorderBrush>
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush2}"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding NoticeIsError}" Value="True">
+                            <Setter Property="BorderBrush">
+                                <Setter.Value>
+                                    <SolidColorBrush Color="{DynamicResource DangerColor}"/>
+                                </Setter.Value>
+                            </Setter>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{Binding Notice}" TextWrapping="Wrap"
-                           Foreground="{DynamicResource DangerBrush}" FontSize="12.5" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="0" Text="{Binding Notice}" TextWrapping="Wrap" FontSize="12.5" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding NoticeIsError}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
                 <Button Grid.Column="1" Content="✕" Style="{StaticResource GhostIconButtonStyle}"
                         Command="{Binding DismissNoticeCommand}" ToolTip="Dismiss"/>
             </Grid>

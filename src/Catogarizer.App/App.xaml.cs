@@ -101,7 +101,7 @@ public partial class App : Application
         var categoryActionService = new CategoryActionService(processLauncher, windowFinder, windowManager, monitorService, new SystemDelay());
         var autostartService = new AutostartService();
         var processWatcher = new ProcessWatcher();
-        var appBlockingService = new AppBlockingService(processWatcher);
+        var appBlockingService = new AppBlockingService(processWatcher, parentProcessName: ProcessTree.GetParentProcessName);
         appBlockingService.Start();
         _library = library;
         _appBlockingService = appBlockingService;

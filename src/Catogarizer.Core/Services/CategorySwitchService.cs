@@ -230,10 +230,17 @@ public sealed class CategorySwitchService : ICategorySwitchService
             foreach (var window in pinned.Where(w => _windowManager.IsWindowOpen(w.Handle) && !_windowManager.IsWindowVisible(w.Handle)))
                 _windowManager.Show(window.Handle);
 
+            // Unpinned apps' windows were never tracked, and the watcher won't report them as new.
+            var visible = _windowFinder.FindAllAppWindows().Where(IsTrackable).ToList();
+
             lock (_lock)
             {
                 foreach (var window in pinned) _hidden.Remove(window.Handle);
                 PersistHidden();
+
+                var tracked = _sessions.Values.SelectMany(s => s).Select(w => w.Handle).ToHashSet();
+                foreach (var window in visible.Where(w => !tracked.Contains(w.Handle)))
+                    Session(ActiveCategoryId).Add(window);
             }
         }
         StateChanged?.Invoke();

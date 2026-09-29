@@ -96,4 +96,16 @@ public sealed class AppBlockingServiceTests
 
         Assert.Equal([1, 2], _killedPids);
     }
+
+    [Fact]
+    public void ProcessStart_HelperOfAnAlreadyRunningInstance_IsNotKilled()
+    {
+        var service = new AppBlockingService(_watcher, pid => _killedPids.Add(pid), pid => pid == 200 ? "chrome" : "explorer");
+        service.ActivateCategory(Guid.NewGuid(), [MakeBlocked("Chrome", "chrome")]);
+
+        _watcher.RaiseProcessStarted(new RunningProcessInfo(200, "chrome", @"C:\chrome.exe"));
+        _watcher.RaiseProcessStarted(new RunningProcessInfo(300, "chrome", @"C:\chrome.exe"));
+
+        Assert.Equal([300], _killedPids);
+    }
 }

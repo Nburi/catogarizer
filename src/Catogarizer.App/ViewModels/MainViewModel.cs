@@ -366,6 +366,7 @@ public partial class MainViewModel : ObservableObject
     private void Unpin(PinnedRow row)
     {
         _library.RemovePinnedApp(row.Id);
+        Task.Run(_switcher.ApplyPinnedApps);
         Refresh();
     }
 

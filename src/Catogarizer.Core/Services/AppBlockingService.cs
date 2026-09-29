@@ -12,15 +12,17 @@ public sealed class AppBlockingService : IAppBlockingService, IDisposable
 {
     private readonly IProcessWatcher _watcher;
     private readonly Action<int> _killProcess;
+    private readonly Func<int, string?> _parentProcessName;
     private readonly Dictionary<Guid, IReadOnlyList<BlockedApp>> _activeCategoryBlocklists = new();
     private readonly object _lock = new();
 
     public event Action<string>? AppBlocked;
 
-    public AppBlockingService(IProcessWatcher watcher, Action<int>? killProcess = null)
+    public AppBlockingService(IProcessWatcher watcher, Action<int>? killProcess = null, Func<int, string?>? parentProcessName = null)
     {
         _watcher = watcher;
         _killProcess = killProcess ?? DefaultKillProcess;
+        _parentProcessName = parentProcessName ?? (_ => null);
         _watcher.ProcessStarted += OnProcessStarted;
     }
 
@@ -45,6 +47,11 @@ public sealed class AppBlockingService : IAppBlockingService, IDisposable
             match = _activeCategoryBlocklists.Values.SelectMany(list => list).FirstOrDefault(b => Matches(b, info));
         }
         if (match is null) return;
+
+        // A helper process spawned by an instance that's already running (Chrome renderers, Electron
+        // helpers) isn't a fresh start. That instance may be parked in another category, and killing
+        // its helpers would crash the session waiting there (PRINCIPLES.md, value 1).
+        if (string.Equals(_parentProcessName(info.ProcessId), info.ProcessName, StringComparison.OrdinalIgnoreCase)) return;
 
         _killProcess(info.ProcessId);
         AppBlocked?.Invoke(match.Name);
