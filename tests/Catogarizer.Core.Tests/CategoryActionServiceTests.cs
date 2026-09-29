@@ -46,6 +46,20 @@ public sealed class CategoryActionServiceTests
     }
 
     [Fact]
+    public void OpenApp_WhenAlreadyRunning_BringsItToFrontInsteadOfLaunching()
+    {
+        var service = CreateService();
+        var app = MakeApp(path: @"C:\charmap.exe");
+        var hwnd = new IntPtr(44);
+        _windowFinder.RunningWindows.Add(new OpenWindowInfo(hwnd, "Zeichentabelle", "charmap", 997));
+
+        service.OpenApp(app);
+
+        Assert.Contains(hwnd, _windowManager.BringToFrontCalls);
+        Assert.Empty(_launcher.LaunchCalls);
+    }
+
+    [Fact]
     public void OpenApp_WhenNotRunning_LaunchesAndFindsWindow()
     {
         var service = CreateService();

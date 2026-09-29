@@ -16,6 +16,70 @@ public sealed class LibraryServiceTests
     }
 
     [Fact]
+    public void Settings_DefaultThemeIsFjord() =>
+        Assert.Equal("fjord", _service.Settings.Theme);
+
+    [Fact]
+    public void SetTheme_StoresTheCanonicalIdAndPersists()
+    {
+        _service.SetTheme("Slate");
+
+        Assert.Equal("slate", _service.Settings.Theme);
+        Assert.Equal(1, _store.SaveCount);
+    }
+
+    [Fact]
+    public void SetTheme_UnknownTheme_Throws() =>
+        Assert.Throws<ArgumentException>(() => _service.SetTheme("neon"));
+
+    [Fact]
+    public void AddPinnedApp_AddsPersistsAndReusesTheSameProcess()
+    {
+        var first = _service.AddPinnedApp("Spotify", "Spotify.exe");
+        var second = _service.AddPinnedApp("Spotify again", "spotify.exe");
+
+        Assert.Same(first, second);
+        Assert.Single(_service.PinnedApps);
+        Assert.Equal(1, _store.SaveCount);
+    }
+
+    [Fact]
+    public void AddPinnedApp_ReplacesTheListSoReadersHoldingTheOldOneAreUnaffected()
+    {
+        var before = _service.PinnedApps;
+
+        _service.AddPinnedApp("Spotify", "Spotify.exe");
+
+        Assert.Empty(before);
+        Assert.Single(_service.PinnedApps);
+    }
+
+    [Fact]
+    public void RemovePinnedApp_RemovesIt()
+    {
+        var pinned = _service.AddPinnedApp("WhatsApp", "WhatsApp.exe");
+
+        _service.RemovePinnedApp(pinned.Id);
+
+        Assert.Empty(_service.PinnedApps);
+    }
+
+    [Fact]
+    public void AppsOf_ReturnsTheCategorysAppsInOrderSkippingDeletedOnes()
+    {
+        var category = _service.AddCategory("Deep Work");
+        var code = _service.AddApp("Code", @"C:\code.exe");
+        var gone = _service.AddApp("Gone", @"C:\gone.exe");
+        var obsidian = _service.AddApp("Obsidian", @"C:\obsidian.exe");
+        _service.AddAppToCategory(category.Id, code.Id);
+        _service.AddAppToCategory(category.Id, gone.Id);
+        _service.AddAppToCategory(category.Id, obsidian.Id);
+        _service.DeleteApp(gone.Id);
+
+        Assert.Equal(["Code", "Obsidian"], _service.AppsOf(category).Select(a => a.Name));
+    }
+
+    [Fact]
     public void AddCategory_AddsAndPersists()
     {
         var category = _service.AddCategory("Deep Work");

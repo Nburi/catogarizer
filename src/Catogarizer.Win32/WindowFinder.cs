@@ -22,11 +22,11 @@ public sealed class WindowFinder : IWindowFinder
         EnumWindows((hWnd, _) =>
         {
             if (!IsWindowVisible(hWnd)) return true;
-            var title = GetTitle(hWnd);
+            var title = ReadWindowTitle(hWnd);
             if (title.Length == 0) return true;
 
             GetWindowThreadProcessId(hWnd, out var pid);
-            var procName = TryGetProcessName(pid);
+            var procName = Processes.NameOf(pid);
 
             var processMatches = processNameCandidates.Any(c => string.Equals(c, procName, StringComparison.OrdinalIgnoreCase));
             var titleMatches = titleCandidates.Any(c => title.Contains(c, StringComparison.OrdinalIgnoreCase));
@@ -39,20 +39,41 @@ public sealed class WindowFinder : IWindowFinder
         return results;
     }
 
-    public IReadOnlyList<OpenWindowInfo> FindAllVisibleWindows()
+    private static readonly HashSet<string> ShellWindowClasses = new(StringComparer.Ordinal)
+    {
+        "Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd",
+    };
+
+    public IReadOnlyList<OpenWindowInfo> FindAllAppWindows()
     {
         var results = new List<OpenWindowInfo>();
         EnumWindows((hWnd, _) =>
         {
-            if (!IsWindowVisible(hWnd)) return true;
-            var title = GetTitle(hWnd);
+            if (!IsAltTabWindow(hWnd)) return true;
+            var title = ReadWindowTitle(hWnd);
             if (title.Length == 0) return true;
 
             GetWindowThreadProcessId(hWnd, out var pid);
-            results.Add(new OpenWindowInfo(hWnd, title, TryGetProcessName(pid), pid));
+            results.Add(new OpenWindowInfo(hWnd, title, Processes.NameOf(pid), pid));
             return true;
         }, IntPtr.Zero);
         return results;
+    }
+
+    private static bool IsAltTabWindow(IntPtr hWnd)
+    {
+        if (!IsWindowVisible(hWnd)) return false;
+        if (GetWindow(hWnd, GW_OWNER) != IntPtr.Zero) return false;
+
+        var exStyle = GetWindowLongPtr(hWnd, GWL_EXSTYLE).ToInt64();
+        if ((exStyle & WS_EX_TOOLWINDOW) != 0 && (exStyle & WS_EX_APPWINDOW) == 0) return false;
+
+        // Suspended UWP apps and windows on other virtual desktops report visible but are cloaked.
+        if (DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, out var cloaked, sizeof(int)) == 0 && cloaked != 0) return false;
+
+        var className = new StringBuilder(64);
+        GetClassName(hWnd, className, className.Capacity);
+        return !ShellWindowClasses.Contains(className.ToString());
     }
 
     private static IntPtr? FindByProcessHandle(int processId, TimeSpan timeout)
@@ -91,7 +112,7 @@ public sealed class WindowFinder : IWindowFinder
             EnumWindows((hWnd, _) =>
             {
                 if (!IsWindowVisible(hWnd)) return true;
-                var title = GetTitle(hWnd);
+                var title = ReadWindowTitle(hWnd);
                 if (title.Length == 0) return true;
                 if (titleCandidates.Any(c => title.Contains(c, StringComparison.OrdinalIgnoreCase)))
                 {
@@ -105,20 +126,5 @@ public sealed class WindowFinder : IWindowFinder
             Thread.Sleep(80);
         }
         return null;
-    }
-
-    private static string GetTitle(IntPtr hWnd)
-    {
-        int len = GetWindowTextLength(hWnd);
-        if (len == 0) return "";
-        var sb = new StringBuilder(len + 1);
-        GetWindowText(hWnd, sb, sb.Capacity);
-        return sb.ToString();
-    }
-
-    private static string TryGetProcessName(int pid)
-    {
-        try { return Process.GetProcessById(pid).ProcessName; }
-        catch (ArgumentException) { return "?"; }
     }
 }

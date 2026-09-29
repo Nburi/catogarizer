@@ -1,250 +1,433 @@
 <Window x:Class="Catogarizer.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Catogarizer" Height="720" Width="1080"
-        MinHeight="450" MinWidth="600"
+        xmlns:c="clr-namespace:Catogarizer.App.Controls"
+        Title="Catogarizer" Height="760" Width="1080"
+        MinHeight="480" MinWidth="620"
         Icon="Assets/app.ico"
-        Background="{StaticResource BgBrush}"
-        FontFamily="{StaticResource UiFont}">
+        Background="{DynamicResource BgBrush}"
+        FontFamily="{StaticResource UiFont}"
+        PreviewKeyDown="Window_PreviewKeyDown" SizeChanged="Window_SizeChanged">
+    <Window.Resources>
+        <Geometry x:Key="ShieldGeometry">M8,1.8 L13,3.6 L13,7.7 C13,10.7 10.9,12.9 8,14.2 C5.1,12.9 3,10.7 3,7.7 L3,3.6 Z</Geometry>
 
-    <Grid>
-        <Grid Margin="28">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+        <Style x:Key="BoxStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource ControlRadius}"/>
+            <Setter Property="Padding" Value="14,12"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
 
-            <Grid Grid.Row="0" Margin="0,0,0,20">
+        <!-- A small app label: icon + name. -->
+        <Style x:Key="ChipStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush2}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="13"/>
+            <Setter Property="Padding" Value="4,3,10,3"/>
+            <Setter Property="Margin" Value="0,0,6,6"/>
+        </Style>
+
+        <!-- Shelf tile: the whole tile switches; its border takes the category color on hover. -->
+        <Style x:Key="ShelfTileStyle" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Margin" Value="0,0,12,12"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource ThemedFocusVisual}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Tile" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}"
+                                BorderThickness="1" CornerRadius="{DynamicResource CardRadius}" Padding="14,12,12,12">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="Lift"/>
+                            </Border.RenderTransform>
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Tile" Property="BorderBrush" Value="{Binding Color}"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Lift" Storyboard.TargetProperty="Y" To="-2" Duration="0:0:0.12"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Lift" Storyboard.TargetProperty="Y" To="0" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Tile" Property="Background" Value="{DynamicResource SurfaceAltBrush}"/>
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsUnsorted}" Value="True">
+                                <Setter TargetName="Tile" Property="Background" Value="Transparent"/>
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto" Focusable="False">
+        <StackPanel Margin="28,20,28,24">
+
+            <!-- Header -->
+            <Grid Margin="0,0,0,18">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <Border Width="26" Height="26" CornerRadius="7" Background="{StaticResource AccentBrush}" Margin="0,0,10,0"/>
-                    <TextBlock Text="Catogarizer" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"
-                               VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="26" Height="26" CornerRadius="7" Background="{DynamicResource AccentBrush}" Margin="0,0,10,0">
+                        <TextBlock Text="C" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource AccentInkBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="Catogarizer" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="⚙" Style="{StaticResource GhostIconButtonStyle}" Width="36" Height="36" FontSize="15"
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Switch from anywhere" Style="{StaticResource MutedTextStyle}" FontSize="12"
+                               VerticalAlignment="Center" Margin="0,0,8,0" x:Name="HotkeyHintLabel"/>
+                    <ItemsControl ItemsSource="{Binding HotkeyKeys}" ItemTemplate="{StaticResource KeycapTemplate}" VerticalAlignment="Center"
+                                  Margin="0,0,14,0" Focusable="False" x:Name="HotkeyHintKeys">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    <Button Content="&#x2699;" Style="{StaticResource GhostIconButtonStyle}" Width="34" Height="34" FontSize="15"
                             Margin="0,0,8,0" Command="{Binding OpenSettingsCommand}" ToolTip="Settings"
                             AutomationProperties.Name="Settings"/>
-                    <Button Content="+ New category" Style="{StaticResource PrimaryButtonStyle}"
-                            Command="{Binding AddCategoryCommand}"
-                            Visibility="{Binding HasCategories, Converter={StaticResource BoolToVis}}"/>
+                    <Button Content="+ New category" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding NewCategoryCommand}"/>
                 </StackPanel>
             </Grid>
 
-            <!-- Notice banner (errors from open/minimize/close) -->
-            <Border Grid.Row="1" Margin="0,0,0,16" CornerRadius="10" Padding="12,10"
-                    Background="{StaticResource SurfaceBrush}" BorderThickness="1"
+            <!-- Problems (launch failures etc.) -->
+            <Border Margin="0,0,0,14" CornerRadius="{DynamicResource ControlRadius}" Padding="14,10"
+                    Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1"
                     Visibility="{Binding Notice, Converter={StaticResource NullToCollapsedConverter}}">
-                <Border.BorderBrush>
-                    <SolidColorBrush Color="{StaticResource DangerColor}"/>
-                </Border.BorderBrush>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Notice}" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" FontSize="12.5" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="Open editor" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5" Margin="12,0,6,0"
+                            VerticalAlignment="Center" Command="{Binding EditNoticeCategoryCommand}"
+                            Visibility="{Binding NoticeCanEdit, Converter={StaticResource BoolToVis}}"/>
+                    <Button Grid.Column="2" Content="&#x2715;" Style="{StaticResource GhostIconButtonStyle}"
+                            Command="{Binding DismissNoticeCommand}" ToolTip="Dismiss" AutomationProperties.Name="Dismiss"/>
+                </Grid>
+            </Border>
+
+            <!-- First launch: explain before any term (Unsorted, parked, held back) shows up. -->
+            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                    CornerRadius="{DynamicResource CardRadius}" Padding="24,20" Margin="0,0,0,16"
+                    Visibility="{Binding HasCategories, Converter={StaticResource InverseBoolToVis}}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="{Binding Notice}" TextWrapping="Wrap"
-                               Foreground="{StaticResource DangerBrush}" FontSize="12.5" VerticalAlignment="Center"/>
-                    <Button Grid.Column="1" Content="✕" Style="{StaticResource GhostIconButtonStyle}"
-                            Command="{Binding DismissNoticeCommand}" ToolTip="Dismiss"/>
+                    <StackPanel Margin="0,0,20,0">
+                        <TextBlock Text="One keystroke between kinds of work" FontFamily="{DynamicResource HeadingFont}" FontSize="19"
+                                   FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                        <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12.5" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Text="Make a category for each kind of work, like Deep Work or Comms. Switching to one parks the windows you don't need (hidden, never closed) and brings its own back exactly as you left them."/>
+                        <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12.5" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Text="Until then, everything you have open is in Unsorted - that's what you see below."/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Make your first category" Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Center"
+                            Command="{Binding NewCategoryCommand}"/>
                 </Grid>
             </Border>
 
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                <StackPanel>
+            <!-- Now -->
+            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1"
+                    CornerRadius="{DynamicResource CardRadius}">
+                <Grid>
+                    <Border Background="{Binding HeroTint}" CornerRadius="{DynamicResource CardRadius}"/>
+                    <Grid x:Name="HeroGrid" Margin="26,22,26,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.45*"/>
+                            <ColumnDefinition Width="26"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                    <!-- Empty state -->
-                    <StackPanel Margin="0,80,0,0" HorizontalAlignment="Center"
-                                Visibility="{Binding HasCategories, Converter={StaticResource InverseBoolToVis}}">
-                        <TextBlock Text="No categories yet" FontSize="17" FontWeight="SemiBold"
-                                   Foreground="{StaticResource InkBrush}" HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                        <TextBlock Text="Group the apps you use together into a category you can open with one click."
-                                   Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Center" Margin="0,0,0,16"/>
-                        <Button Content="+ New category" Style="{StaticResource PrimaryButtonStyle}"
-                                Command="{Binding AddCategoryCommand}" HorizontalAlignment="Center"/>
-                    </StackPanel>
+                        <StackPanel x:Name="NowColumn" Grid.Column="0" Margin="0,0,0,8">
+                            <TextBlock Text="YOU'RE IN" Style="{StaticResource SectionLabelStyle}"/>
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Ellipse Width="13" Height="13" Fill="{Binding ActiveColor}" VerticalAlignment="Center" Margin="0,4,12,0"/>
+                                <TextBlock Grid.Column="1" Text="{Binding ActiveName}" FontFamily="{DynamicResource HeadingFont}" FontSize="34"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"/>
+                                <Button Grid.Column="2" Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Padding="12,6"
+                                        VerticalAlignment="Center" Margin="12,0,0,0" Command="{Binding EditActiveCommand}"
+                                        AutomationProperties.Name="Edit this category"
+                                        Visibility="{Binding ActiveIsUnsorted, Converter={StaticResource InverseBoolToVis}}"/>
+                            </Grid>
+                            <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12.5" Margin="25,6,0,14">
+                                <Run Text="{Binding ActiveSinceText, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding WindowCountText, Mode=OneWay}"/>
+                            </TextBlock>
 
-                    <!-- Category cards -->
-                    <ItemsControl ItemsSource="{Binding Categories}"
-                                  Visibility="{Binding HasCategories, Converter={StaticResource BoolToVis}}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush2}"
-                                        BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,0,14,14" Width="240"
-                                        AutomationProperties.Name="{Binding Name}">
-                                    <StackPanel>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Button Grid.Column="0" Style="{StaticResource GhostRowButtonStyle}"
-                                                    HorizontalContentAlignment="Stretch"
-                                                    Command="{Binding DataContext.SelectCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
-                                                <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
-                                                           Foreground="{StaticResource InkBrush}" VerticalAlignment="Center"
-                                                           HorizontalAlignment="Stretch"
-                                                           TextTrimming="CharacterEllipsis"/>
+                            <ItemsControl ItemsSource="{Binding ActiveWindows}" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1"
+                                                CornerRadius="{DynamicResource ControlRadius}" Margin="0,0,0,6">
+                                            <Button Style="{StaticResource GhostRowButtonStyle}" Padding="10,7"
+                                                    AutomationProperties.Name="{Binding Title}" ToolTip="Bring to front"
+                                                    Command="{Binding DataContext.BringToFrontCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}" HorizontalContentAlignment="Stretch">
+                                                <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <c:AppIconView ProcessId="{Binding ProcessId}" DisplayName="{Binding AppName}" IconSize="20"
+                                                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12.5" Foreground="{DynamicResource InkBrush}"
+                                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding AppLabel}" Style="{StaticResource MutedTextStyle}" FontSize="11.5"
+                                                           VerticalAlignment="Center" Margin="10,0,0,0" MaxWidth="160" TextTrimming="CharacterEllipsis"/>
+                                            </Grid>
                                             </Button>
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                <Button Content="✎" Style="{StaticResource GhostIconButtonStyle}"
-                                                        Command="{Binding DataContext.RenameCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}" ToolTip="Rename"/>
-                                                <Button Content="✕" Style="{StaticResource GhostIconButtonStyle}"
-                                                        Command="{Binding DataContext.DeleteCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}" ToolTip="Delete"/>
-                                            </StackPanel>
-                                        </Grid>
-                                        <TextBlock Text="{Binding AppIds.Count, StringFormat={}{0} apps}"
-                                                   Style="{StaticResource MutedTextStyle}" Margin="0,4,0,10"/>
-                                        <Button Content="▶  Open" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Stretch"
-                                                Command="{Binding DataContext.OpenCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}"/>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- Selected category detail -->
-                    <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource AccentBrush}"
-                            BorderThickness="1" CornerRadius="14" Padding="20" Margin="0,10,0,0"
-                            Visibility="{Binding HasSelectedCategory, Converter={StaticResource BoolToVis}}">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,14">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{Binding SelectedCategory.Name}" FontSize="16" FontWeight="SemiBold"
-                                           Foreground="{StaticResource InkBrush}" VerticalAlignment="Center"
-                                           TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Button Content="Minimize all" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
-                                            Command="{Binding MinimizeCategoryCommand}" CommandParameter="{Binding SelectedCategory}"/>
-                                    <Button Content="Close all" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
-                                            Command="{Binding CloseCategoryCommand}" CommandParameter="{Binding SelectedCategory}"/>
-                                    <Button Content="+ Add app" Style="{StaticResource SecondaryButtonStyle}"
-                                            Command="{Binding AddAppToCategoryCommand}"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <TextBlock Text="No apps in this category yet." Style="{StaticResource MutedTextStyle}"
-                                       Visibility="{Binding SelectedCategoryApps.Count, Converter={StaticResource ZeroToVisibleConverter}}"/>
-
-                            <ItemsControl ItemsSource="{Binding SelectedCategoryApps}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush2}"
-                                                BorderThickness="1" CornerRadius="9" Padding="10,8" Margin="0,0,0,6"
-                                                AutomationProperties.Name="{Binding Name}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                                    <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
-                                                               Foreground="{StaticResource InkBrush}" TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Text="{Binding ExecutablePath}" Style="{StaticResource MutedTextStyle}" FontSize="11"
-                                                               TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Text="{Binding Placement, Converter={StaticResource PlacementStatusConverter}}"
-                                                               Style="{StaticResource MutedTextStyle}" FontSize="11" TextTrimming="CharacterEllipsis"/>
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                    <Button Content="▶" Style="{StaticResource GhostIconButtonStyle}"
-                                                            Command="{Binding DataContext.OpenAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}" ToolTip="Open"/>
-                                                    <Button Content="—" Style="{StaticResource GhostIconButtonStyle}"
-                                                            Command="{Binding DataContext.MinimizeAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}" ToolTip="Minimize"/>
-                                                    <Button Content="⏹" Style="{StaticResource GhostIconButtonStyle}"
-                                                            Command="{Binding DataContext.CloseAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}" ToolTip="Close"/>
-                                                    <Button Content="⛶" Style="{StaticResource GhostIconButtonStyle}"
-                                                            Command="{Binding DataContext.SetPlacementCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}" ToolTip="Set window position"/>
-                                                    <Button Content="✎" Style="{StaticResource GhostIconButtonStyle}"
-                                                            Command="{Binding DataContext.EditAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}" ToolTip="Edit"/>
-                                                    <Button Content="✕" Style="{StaticResource GhostIconButtonStyle}"
-                                                            Command="{Binding DataContext.RemoveAppFromCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}" ToolTip="Remove from category"/>
-                                                </StackPanel>
-                                            </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-
-                            <Grid Margin="0,20,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Blocked while this category is open" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="{StaticResource InkBrush}"/>
-                                    <TextBlock Text="These apps get closed automatically if they start while this category is active."
-                                               Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,2,0,0"/>
-                                </StackPanel>
-                                <Button Grid.Column="1" Content="+ Block app" Style="{StaticResource SecondaryButtonStyle}"
-                                        Command="{Binding AddBlockedAppToCategoryCommand}" VerticalAlignment="Top"/>
-                            </Grid>
-
-                            <TextBlock Text="No blocked apps for this category." Style="{StaticResource MutedTextStyle}"
-                                       Visibility="{Binding SelectedCategoryBlockedApps.Count, Converter={StaticResource ZeroToVisibleConverter}}"/>
-
-                            <ItemsControl ItemsSource="{Binding SelectedCategoryBlockedApps}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource DangerBrush}"
-                                                BorderThickness="1" CornerRadius="9" Padding="10,8" Margin="0,0,0,6"
-                                                AutomationProperties.Name="{Binding Name}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                                    <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
-                                                               Foreground="{StaticResource InkBrush}" TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Text="{Binding ProcessNameOrPath}" Style="{StaticResource MutedTextStyle}" FontSize="11"
-                                                               TextTrimming="CharacterEllipsis"/>
-                                                </StackPanel>
-                                                <Button Grid.Column="1" Content="✕" Style="{StaticResource GhostIconButtonStyle}"
-                                                        Command="{Binding DataContext.RemoveBlockedAppFromCategoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}" ToolTip="Unblock"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <Button Content="{Binding MoreWindowsText}" Style="{StaticResource GhostRowButtonStyle}" Padding="6,3" HorizontalAlignment="Left"
+                                    Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold"
+                                    Command="{Binding ToggleAllWindowsCommand}"
+                                    Visibility="{Binding MoreWindowsText, Converter={StaticResource NullToCollapsedConverter}}"/>
+                            <Border BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1" CornerRadius="{DynamicResource ControlRadius}"
+                                    Padding="14,12" Visibility="{Binding NoWindowsText, Converter={StaticResource NullToCollapsedConverter}}">
+                                <TextBlock Text="{Binding NoWindowsText}" Style="{StaticResource MutedTextStyle}" FontSize="12.5" TextWrapping="Wrap"/>
+                            </Border>
                         </StackPanel>
-                    </Border>
 
-                </StackPanel>
-            </ScrollViewer>
-        </Grid>
+                        <StackPanel x:Name="SideColumn" Grid.Column="2">
+                            <!-- Held back -->
+                            <Border Style="{StaticResource BoxStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="HELD BACK WHILE YOU'RE HERE" Style="{StaticResource SectionLabelStyle}" Margin="0,0,0,8"/>
+                                    <ItemsControl ItemsSource="{Binding HeldBack}" Focusable="False">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Style="{StaticResource ChipStyle}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <c:AppIconView ExecutablePath="{Binding IconPath}" ProcessId="{Binding IconProcessId}" DisplayName="{Binding Name}" IconSize="18" Margin="0,0,6,0"/>
+                                                        <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding HeldBackEmptyText}" Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap"
+                                               Visibility="{Binding HeldBackEmptyText, Converter={StaticResource NullToCollapsedConverter}}"/>
+                                    <TextBlock Text="{Binding LastBlockedText}" Style="{StaticResource MutedTextStyle}" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,0"
+                                               Visibility="{Binding LastBlockedText, Converter={StaticResource NullToCollapsedConverter}}"/>
+                                </StackPanel>
+                            </Border>
 
-        <!-- Busy overlay -->
-        <Border Background="#B0FFFFFF" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <ProgressBar IsIndeterminate="True" Width="220" Height="4" Margin="0,0,0,12"
-                             Foreground="{StaticResource AccentBrush}" Background="{StaticResource SurfaceAltBrush}" BorderThickness="0"/>
-                <TextBlock Text="{Binding BusyMessage}" Foreground="{StaticResource InkBrush}" FontSize="13.5"
-                           FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            <!-- Always visible -->
+                            <Border Style="{StaticResource BoxStyle}">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock Text="ALWAYS VISIBLE" Style="{StaticResource SectionLabelStyle}" VerticalAlignment="Center"/>
+                                        <Button Content="+ Pin app" Style="{StaticResource GhostRowButtonStyle}" Padding="6,2" HorizontalAlignment="Right"
+                                                Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold"
+                                                Command="{Binding PinAppCommand}" AutomationProperties.Name="Pin an app"/>
+                                    </Grid>
+                                    <ItemsControl ItemsSource="{Binding Pinned}" Focusable="False">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Style="{StaticResource ChipStyle}" Padding="4,2,2,2">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <c:AppIconView ExecutablePath="{Binding IconPath}" ProcessId="{Binding IconProcessId}" DisplayName="{Binding Name}" IconSize="18" Margin="0,0,6,0"/>
+                                                        <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"/>
+                                                        <Button Content="&#x2715;" Style="{StaticResource GhostIconButtonStyle}" Width="20" Height="20" FontSize="9"
+                                                                Margin="4,0,0,0" ToolTip="Unpin" AutomationProperties.Name="Unpin"
+                                                                Command="{Binding DataContext.UnpinCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="Pin music or chat apps to keep them on screen in every category."
+                                               Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap"
+                                               Visibility="{Binding Pinned.Count, Converter={StaticResource ZeroToVisibleConverter}}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Back -->
+                            <Button Style="{StaticResource GhostRowButtonStyle}" HorizontalContentAlignment="Stretch" Margin="0,0,0,8"
+                                    Command="{Binding SwitchBackCommand}" AutomationProperties.Name="{Binding BackTitle}"
+                                    Visibility="{Binding HasPrevious, Converter={StaticResource BoolToVis}}">
+                                <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1"
+                                        CornerRadius="{DynamicResource ControlRadius}" Padding="12,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="&#x2190;" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                                   VerticalAlignment="Center" Margin="0,-2,10,0"/>
+                                        <Ellipse Grid.Column="1" Width="9" Height="9" Fill="{Binding BackColor}" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                        <StackPanel Grid.Column="2" Grid.ColumnSpan="2">
+                                            <TextBlock Text="{Binding BackTitle}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding BackDetail}" Style="{StaticResource MutedTextStyle}" FontSize="11.5"/>
+                                            <TextBlock Text="{Binding BackHint}" Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,2,0,0"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Shelf -->
+            <TextBlock Text="SWITCH TO" Style="{StaticResource SectionLabelStyle}" Margin="2,24,0,10"/>
+
+            <TextBlock Text="Your categories show up here." Style="{StaticResource MutedTextStyle}" FontSize="12.5" Margin="2,0,0,12"
+                       Visibility="{Binding HasCategories, Converter={StaticResource InverseBoolToVis}}"/>
+
+            <ItemsControl x:Name="ShelfList" ItemsSource="{Binding Shelf}" Focusable="False" Margin="0,0,-12,0">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <!-- Columns follow the window width (code-behind), so tiles fill the row instead of leaving a gap. -->
+                        <UniformGrid Columns="{Binding ShelfColumns, RelativeSource={RelativeSource AncestorType=Window}}" VerticalAlignment="Top"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Style="{StaticResource ShelfTileStyle}" AutomationProperties.Name="{Binding AutomationName}"
+                                Command="{Binding DataContext.SwitchToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse Width="9" Height="9" Fill="{Binding Color}" VerticalAlignment="Top" Margin="0,6,8,0"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                               TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="38" VerticalAlignment="Top"
+                                               ToolTip="{Binding Name}"/>
+                                    <Button Grid.Column="2" Content="&#x270E;" Style="{StaticResource GhostIconButtonStyle}" Width="24" Height="24" FontSize="11"
+                                            Margin="4,-4,2,-4" ToolTip="Edit" AutomationProperties.Name="{Binding Name, StringFormat=Edit {0}}"
+                                            Command="{Binding DataContext.EditCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Visibility="{Binding IsUnsorted, Converter={StaticResource InverseBoolToVis}}"/>
+                                    <Border Grid.Column="3" Style="{StaticResource KeycapStyle}" VerticalAlignment="Top"
+                                            Visibility="{Binding KeyText, Converter={StaticResource NullToCollapsedConverter}}">
+                                        <TextBlock Text="{Binding KeyText}" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" Height="24" Margin="0,12,0,12">
+                                    <ItemsControl ItemsSource="{Binding Icons}" Focusable="False">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <c:AppIconView ExecutablePath="{Binding ExecutablePath}" DisplayName="{Binding Name}" IconSize="22"
+                                                               Margin="0,0,5,0" ToolTip="{Binding Name}"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding MoreIconsText}" Style="{StaticResource MutedTextStyle}" FontSize="11.5" VerticalAlignment="Center"
+                                               Visibility="{Binding MoreIconsText, Converter={StaticResource NullToCollapsedConverter}}"/>
+                                </StackPanel>
+
+                                <Grid>
+                                    <Border CornerRadius="10" Padding="8,2" HorizontalAlignment="Left" Background="{DynamicResource SurfaceAltBrush}">
+                                        <TextBlock FontSize="11.5" FontWeight="SemiBold">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="{Binding StateText}"/>
+                                                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasMissingApp}" Value="True">
+                                                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsSwitching}" Value="True">
+                                                            <Setter Property="Text" Value="Opening..."/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Border>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                ToolTip="{Binding BlockedTooltip}"
+                                                Visibility="{Binding HasBlocked, Converter={StaticResource BoolToVis}}">
+                                        <Path Data="{StaticResource ShieldGeometry}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.4"
+                                              Width="12" Height="13" Stretch="Uniform" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{Binding BlockedCount}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Footer -->
+            <StackPanel Orientation="Horizontal" Margin="2,8,0,0">
+                <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12" VerticalAlignment="Center" Margin="0,0,14,0"
+                           Visibility="{Binding NextTriggerText, Converter={StaticResource NullToCollapsedConverter}}">
+                    <Run Text="Next:"/> <Run Text="{Binding NextTriggerText, Mode=OneWay}"/>
+                </TextBlock>
+                <Button Content="Automation..." Style="{StaticResource GhostRowButtonStyle}" Padding="6,3"
+                        Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold"
+                        Command="{Binding OpenAutomationCommand}"/>
+                <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12" VerticalAlignment="Center" Margin="14,0,0,0"
+                           Text="In this window, number keys 1–9 switch to a category and 0 to Unsorted."
+                           Visibility="{Binding HasCategories, Converter={StaticResource BoolToVis}}"/>
             </StackPanel>
-        </Border>
-    </Grid>
+        </StackPanel>
+    </ScrollViewer>
 </Window>

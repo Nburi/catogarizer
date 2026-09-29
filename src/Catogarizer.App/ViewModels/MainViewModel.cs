@@ -1,266 +1,364 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Media;
+using System.Windows.Threading;
 using Catogarizer.App.Services;
 using Catogarizer.Core.Automation;
 using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
+using Catogarizer.Core.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Catogarizer.App.ViewModels;
 
+/// <summary>
+/// The "Now + Shelf" home (PRINCIPLES.md, value 5): where am I, what's parked where, what's
+/// held back - at a glance. Editing lives in the category editor, not here.
+/// </summary>
 public partial class MainViewModel : ObservableObject
 {
+    private const int MaxWindowRows = 6;
+    private const int MaxShelfIcons = 3;
+
+    private readonly EditorServices _services;
     private readonly LibraryService _library;
-    private readonly IInstalledAppFinder _installedAppFinder;
+    private readonly CategorySwitcher _switcher;
+    private readonly ThemeService _themeService;
     private readonly IDialogService _dialogService;
-    private readonly IProcessLauncher _processLauncher;
-    private readonly IWindowFinder _windowFinder;
-    private readonly IWindowManager _windowManager;
-    private readonly IMonitorService _monitorService;
-    private readonly ICategoryActionService _categoryActionService;
-    private readonly IAppBlockingService _appBlockingService;
-    private readonly IAutostartService _autostartService;
-    private readonly TriggerRunner _triggerRunner;
     private readonly Action<string> _onHotkeyChanged;
+    private readonly Dispatcher _dispatcher;
+    private readonly DispatcherTimer _refreshDebounce;
+    private (string Name, DateTime At, Guid CategoryId)? _lastBlocked;
+    private Guid? _noticeCategoryId;
 
-    public ObservableCollection<Category> Categories { get; } = new();
-    public ObservableCollection<AppEntry> SelectedCategoryApps { get; } = new();
-    public ObservableCollection<BlockedApp> SelectedCategoryBlockedApps { get; } = new();
+    // ---- Now ----
+    [ObservableProperty] private string _activeName = "";
+    [ObservableProperty] private bool _activeIsUnsorted;
+    [ObservableProperty] private Brush _activeColor = Brushes.Gray;
+    [ObservableProperty] private Brush _heroTint = Brushes.Transparent;
+    [ObservableProperty] private string _activeSinceText = "";
+    [ObservableProperty] private string _windowCountText = "";
+    [ObservableProperty] private string? _moreWindowsText;
+    [ObservableProperty] private string? _noWindowsText;
+    [ObservableProperty] private string? _heldBackEmptyText;
+    [ObservableProperty] private string? _lastBlockedText;
 
-    public bool HasCategories => Categories.Count > 0;
+    public ObservableCollection<WindowRow> ActiveWindows { get; } = new();
+    public ObservableCollection<HeldBackRow> HeldBack { get; } = new();
+    public ObservableCollection<PinnedRow> Pinned { get; } = new();
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelectedCategory))]
-    private Category? _selectedCategory;
+    // ---- Back ----
+    [ObservableProperty] private bool _hasPrevious;
+    [ObservableProperty] private string _backTitle = "";
+    [ObservableProperty] private string _backDetail = "";
+    [ObservableProperty] private string _backHint = "";
+    [ObservableProperty] private bool _showAllWindows;
+    [ObservableProperty] private bool _noticeCanEdit;
+    [ObservableProperty] private Brush _backColor = Brushes.Gray;
 
-    public bool HasSelectedCategory => SelectedCategory is not null;
+    // ---- Shelf ----
+    public ObservableCollection<ShelfItem> Shelf { get; } = new();
+    [ObservableProperty] private bool _hasCategories;
 
-    [ObservableProperty]
-    private bool _isBusy;
+    // ---- Footer / chrome ----
+    [ObservableProperty] private string? _nextTriggerText;
+    [ObservableProperty] private IReadOnlyList<string> _hotkeyKeys = [];
+    [ObservableProperty] private string? _notice;
 
-    [ObservableProperty]
-    private string? _busyMessage;
-
-    [ObservableProperty]
-    private string? _notice;
-
-    [ObservableProperty]
-    private bool _noticeIsError;
-
-    public MainViewModel(LibraryService library, IInstalledAppFinder installedAppFinder, IDialogService dialogService,
-        IProcessLauncher processLauncher, IWindowFinder windowFinder, IWindowManager windowManager,
-        IMonitorService monitorService, ICategoryActionService categoryActionService, IAppBlockingService appBlockingService,
-        IAutostartService autostartService, TriggerRunner triggerRunner, Action<string> onHotkeyChanged)
+    public MainViewModel(EditorServices services, CategorySwitcher switcher, ThemeService themeService,
+        IAppBlockingService appBlockingService, Action<string> onHotkeyChanged)
     {
-        _library = library;
-        _installedAppFinder = installedAppFinder;
-        _dialogService = dialogService;
-        _processLauncher = processLauncher;
-        _windowFinder = windowFinder;
-        _windowManager = windowManager;
-        _monitorService = monitorService;
-        _categoryActionService = categoryActionService;
-        _appBlockingService = appBlockingService;
-        _autostartService = autostartService;
-        _triggerRunner = triggerRunner;
+        _services = services;
+        _library = services.Library;
+        _dialogService = services.Dialogs;
+        _switcher = switcher;
+        _themeService = themeService;
         _onHotkeyChanged = onHotkeyChanged;
-        RefreshCategories();
-    }
+        _dispatcher = Dispatcher.CurrentDispatcher;
 
-    private void RefreshCategories()
-    {
-        var previouslySelectedId = SelectedCategory?.Id;
-
-        Categories.Clear();
-        foreach (var category in _library.Categories.OrderBy(c => c.SortOrder))
-            Categories.Add(category);
-        OnPropertyChanged(nameof(HasCategories));
-
-        SelectedCategory = previouslySelectedId is null ? null : Categories.FirstOrDefault(c => c.Id == previouslySelectedId);
-        // Category doesn't implement INotifyPropertyChanged (it's a plain Core model), so a
-        // rename that mutates the same instance in place won't raise change notifications on
-        // its own - force one so anything bound to SelectedCategory.* (the detail panel header)
-        // picks up the new value even when SelectedCategory is reference-equal to before.
-        OnPropertyChanged(nameof(SelectedCategory));
-        RefreshSelectedCategoryApps();
-        RefreshSelectedCategoryBlockedApps();
-    }
-
-    private void RefreshSelectedCategoryApps()
-    {
-        SelectedCategoryApps.Clear();
-        if (SelectedCategory is null) return;
-        foreach (var appId in SelectedCategory.AppIds)
+        _refreshDebounce = new DispatcherTimer(TimeSpan.FromMilliseconds(120), DispatcherPriority.Background, (_, _) =>
         {
-            var app = _library.Apps.FirstOrDefault(a => a.Id == appId);
-            if (app is not null) SelectedCategoryApps.Add(app);
+            _refreshDebounce!.Stop();
+            Refresh();
+        }, _dispatcher);
+        _refreshDebounce.Stop();
+
+        switcher.StateChanged += RequestRefresh;
+        themeService.ThemeChanged += RequestRefresh;
+        appBlockingService.AppBlocked += name =>
+        {
+            _lastBlocked = (name, DateTime.Now, _switcher.ActiveCategoryId);
+            RequestRefresh();
+        };
+
+        Refresh();
+    }
+
+    /// <summary>
+    /// Set by the view. While the home sits hidden in the tray, events don't refresh it - windows
+    /// appear all day - and showing it refreshes once instead.
+    /// </summary>
+    public bool IsViewVisible { get; set; }
+
+    /// <summary>Safe from any thread; bursts of events collapse into one refresh.</summary>
+    public void RequestRefresh() => _dispatcher.BeginInvoke(() =>
+    {
+        if (!IsViewVisible) return;
+        _refreshDebounce.Stop();
+        _refreshDebounce.Start();
+    });
+
+    public void Refresh()
+    {
+        var sessions = _switcher.GetSessions();
+        var activeId = _switcher.ActiveCategoryId;
+        var categories = _library.Categories.OrderBy(c => c.SortOrder).ToList();
+        var active = categories.FirstOrDefault(c => c.Id == activeId);
+
+        HasCategories = categories.Count > 0;
+        HotkeyKeys = _library.Settings.CommandPaletteHotkey.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+        RefreshNow(active, sessions);
+        RefreshBack(categories, sessions);
+        RefreshShelf(categories, activeId, sessions);
+        RefreshPinned();
+        RefreshNextTrigger(categories);
+    }
+
+    private void RefreshNow(Category? active, IReadOnlyDictionary<Guid, IReadOnlyList<OpenWindowInfo>> sessions)
+    {
+        var activeId = _switcher.ActiveCategoryId;
+        ActiveIsUnsorted = active is null;
+        ActiveName = _library.NameOf(activeId);
+        var color = _themeService.ColorFor(active);
+        ActiveColor = ThemeService.FrozenBrush(color);
+        // Unsorted has no color of its own; a gray tint would only muddy the theme.
+        HeroTint = active is null ? Brushes.Transparent : HeroGradient(color);
+
+        var since = _switcher.ActiveSince;
+        var elapsed = DateTime.Now - since;
+        ActiveSinceText = elapsed.TotalMinutes < 1 ? $"since {since:HH:mm}" : $"since {since:HH:mm} · {Duration(elapsed)}";
+
+        var windows = sessions.TryGetValue(activeId, out var list) ? list : [];
+        var opening = _switcher.IsOpeningApps && active is not null;
+        WindowCountText = opening ? "opening apps..." : windows.Count switch { 0 => "No windows", 1 => "1 window", var n => $"{n} windows" };
+        var shown = ShowAllWindows ? windows.Count : MaxWindowRows;
+        Replace(ActiveWindows, windows.Take(shown).Select(w => new WindowRow(w.Title, AppNames.ForProcess(w.ProcessId, w.ProcessName), w.ProcessId, w.Handle)));
+        MoreWindowsText = windows.Count <= MaxWindowRows ? null
+            : ShowAllWindows ? "Show fewer"
+            : $"Show {windows.Count - MaxWindowRows} more";
+        NoWindowsText = windows.Count > 0 ? null
+            : opening ? $"Opening {string.Join(", ", _library.AppsOf(active!).Select(a => a.Name))}..."
+            : active is null ? "Nothing open outside your categories."
+            : "Windows you open now join this category.";
+
+        // A launch problem belongs to the switch that caused it; the next switch clears it.
+        if (Notice is not null && _noticeCategoryId != activeId) Notice = null;
+
+        var blocked = active is null ? [] : _library.BlockedAppsOf(active);
+        Replace(HeldBack, blocked.Select(b => new HeldBackRow(b.Name, PathOrNull(b.ProcessNameOrPath), RunningProcessOf(b.ProcessNameOrPath))));
+        HeldBackEmptyText = blocked.Count > 0 ? null
+            : active is null ? "Unsorted never holds anything back."
+            : "Nothing is held back here. Add distracting apps in the editor.";
+        // Only for this visit: coming back later, an old attempt would read like a new one.
+        LastBlockedText = _lastBlocked is { } last && last.CategoryId == activeId && last.At >= _switcher.ActiveSince
+            ? $"{last.Name} tried to open at {last.At:HH:mm} and was closed."
+            : null;
+    }
+
+    private void RefreshBack(List<Category> categories, IReadOnlyDictionary<Guid, IReadOnlyList<OpenWindowInfo>> sessions)
+    {
+        var previousId = _switcher.PreviousCategoryId;
+        var previous = categories.FirstOrDefault(c => c.Id == previousId);
+        HasPrevious = previousId is not null && (previous is not null || previousId == CategorySwitchService.Uncategorized);
+        if (!HasPrevious) return;
+
+        BackTitle = $"Back to {_library.NameOf(previousId!.Value)}";
+        BackHint = $"or press {_library.Settings.CommandPaletteHotkey} twice";
+        var parked = sessions.TryGetValue(previousId.Value, out var w) ? w.Count : 0;
+        var missing = parked > 0 || previous is null ? 0 : _library.MissingAppCount(previous);
+        BackDetail = CategoryStateText.Describe(parked, missing, previous?.AppIds.Count ?? 0, previous is null);
+        BackColor = ThemeService.FrozenBrush(_themeService.ColorFor(previous));
+    }
+
+    private void RefreshShelf(List<Category> categories, Guid activeId, IReadOnlyDictionary<Guid, IReadOnlyList<OpenWindowInfo>> sessions)
+    {
+        var items = new List<ShelfItem>();
+        foreach (var category in categories.Where(c => c.Id != activeId))
+        {
+            var apps = _library.AppsOf(category);
+            var parked = sessions.TryGetValue(category.Id, out var w) ? w.Count : 0;
+            var missing = parked > 0 ? 0 : _library.MissingAppCount(category);
+            items.Add(new ShelfItem
+            {
+                Id = category.Id,
+                Name = category.Name,
+                KeyText = _library.KeyOf(category.Id),
+                Color = ThemeService.FrozenBrush(_themeService.ColorFor(category)),
+                IsUnsorted = false,
+                Icons = apps.Take(MaxShelfIcons).Select(a => new TemplateIcon(a.Name, a.ExecutablePath)).ToList(),
+                MoreIconsText = apps.Count > MaxShelfIcons ? $"+{apps.Count - MaxShelfIcons}" : null,
+                StateText = CategoryStateText.Describe(parked, missing, apps.Count, isUnsorted: false),
+                HasParkedWindows = parked > 0,
+                BlockedCount = category.BlockedAppIds.Count,
+                TemplateCount = apps.Count,
+                HasMissingApp = missing > 0,
+            });
+        }
+
+        if (activeId != CategorySwitchService.Uncategorized)
+        {
+            var parkedWindows = sessions.TryGetValue(CategorySwitchService.Uncategorized, out var w) ? w : [];
+            var parked = parkedWindows.Count;
+            // Unsorted has no template, so it shows what's parked there instead.
+            var parkedApps = parkedWindows
+                .Select(pw => (Window: pw, Path: AppNames.ExecutableOf(pw.ProcessId)))
+                .Where(x => x.Path is not null)
+                .DistinctBy(x => x.Path, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            items.Add(new ShelfItem
+            {
+                Id = CategorySwitchService.Uncategorized,
+                Name = CategorySwitchService.UncategorizedName,
+                KeyText = _library.KeyOf(CategorySwitchService.Uncategorized),
+                Color = ThemeService.FrozenBrush(_themeService.ColorFor(null)),
+                IsUnsorted = true,
+                Icons = parkedApps.Take(MaxShelfIcons).Select(x => new TemplateIcon(AppNames.ForProcess(x.Window.ProcessId, x.Window.ProcessName), x.Path!)).ToList(),
+                MoreIconsText = parkedApps.Count > MaxShelfIcons ? $"+{parkedApps.Count - MaxShelfIcons}" : null,
+                StateText = CategoryStateText.Describe(parked, 0, 0, isUnsorted: true),
+                HasParkedWindows = parked > 0,
+                BlockedCount = 0,
+                TemplateCount = 0,
+                HasMissingApp = false,
+            });
+        }
+
+        // Keep the item a switch is running on, so its "Opening..." state survives refreshes.
+        var switching = Shelf.FirstOrDefault(s => s.IsSwitching)?.Id;
+        Replace(Shelf, items);
+        if (switching is { } id && Shelf.FirstOrDefault(s => s.Id == id) is { } still) still.IsSwitching = true;
+    }
+
+    private void RefreshPinned() =>
+        Replace(Pinned, _library.PinnedApps.Select(p => new PinnedRow(p.Id, p.Name, PathOrNull(p.ProcessNameOrPath), RunningProcessOf(p.ProcessNameOrPath))));
+
+    private static string? PathOrNull(string value) => ProcessPattern.IsPath(value) ? value : null;
+
+    /// <summary>For bare process names ("claude"): a running process to take the icon from, or 0.</summary>
+    private static int RunningProcessOf(string value)
+    {
+        if (ProcessPattern.IsPath(value)) return 0;
+        var processes = System.Diagnostics.Process.GetProcessesByName(ProcessPattern.ProcessName(value));
+        try
+        {
+            return processes.FirstOrDefault()?.Id ?? 0;
+        }
+        finally
+        {
+            foreach (var p in processes) p.Dispose();
         }
     }
 
-    private void RefreshSelectedCategoryBlockedApps()
+    private void RefreshNextTrigger(List<Category> categories)
     {
-        SelectedCategoryBlockedApps.Clear();
-        if (SelectedCategory is null) return;
-        foreach (var blocked in ResolveBlockedApps(SelectedCategory))
-            SelectedCategoryBlockedApps.Add(blocked);
+        var next = TriggerPreview.Next(_library.Triggers, DateTime.Now);
+        if (next is null)
+        {
+            NextTriggerText = null;
+            return;
+        }
+        var target = next.Trigger.Actions
+            .Where(a => a.Type == TriggerActionType.OpenCategory)
+            .Select(a => categories.FirstOrDefault(c => c.Id == a.CategoryId)?.Name)
+            .FirstOrDefault(n => n is not null);
+        var when = next.At.Date == DateTime.Today ? $"at {next.At:HH:mm}" : $"tomorrow at {next.At:HH:mm}";
+        NextTriggerText = target is null
+            ? $"“{next.Trigger.Name}” runs {when}"
+            : $"“{next.Trigger.Name}” switches to {target} {when}";
     }
 
-    private List<AppEntry> ResolveApps(Category category) =>
-        category.AppIds
-            .Select(id => _library.Apps.FirstOrDefault(a => a.Id == id))
-            .Where(a => a is not null)
-            .Cast<AppEntry>()
-            .ToList();
-
-    private List<BlockedApp> ResolveBlockedApps(Category category) =>
-        category.BlockedAppIds
-            .Select(id => _library.BlockedApps.FirstOrDefault(b => b.Id == id))
-            .Where(b => b is not null)
-            .Cast<BlockedApp>()
-            .ToList();
+    // ---------------- Commands ----------------
 
     [RelayCommand]
-    private void SelectCategory(Category category)
+    private async Task SwitchToAsync(ShelfItem item)
     {
-        SelectedCategory = category;
-        RefreshSelectedCategoryApps();
-        RefreshSelectedCategoryBlockedApps();
+        Notice = null;
+        // A restore is instant; only a fresh template launch gets the "Opening..." state.
+        item.IsSwitching = !item.HasParkedWindows && !item.IsUnsorted && item.TemplateCount > 0;
+        try
+        {
+            var result = await Task.Run(() => _switcher.SwitchTo(item.Id));
+            ShowFailures(result);
+        }
+        finally
+        {
+            item.IsSwitching = false;
+        }
     }
 
     [RelayCommand]
-    private void AddCategory()
+    private async Task SwitchBackAsync()
     {
-        var vm = new CategoryEditDialogViewModel(_library.Categories);
-        var name = _dialogService.ShowCategoryEdit(vm);
+        Notice = null;
+        ShowFailures(await Task.Run(_switcher.SwitchBack));
+    }
+
+    /// <summary>Number keys on the home: 1-9 are categories in order, 0 is Unsorted.</summary>
+    public async Task SwitchByNumberAsync(int number)
+    {
+        if (_library.CategoryIdForKey(number) is not { } id) return;
+        Notice = null;
+        ShowFailures(await Task.Run(() => _switcher.SwitchTo(id)));
+    }
+
+    [RelayCommand]
+    private void NewCategory()
+    {
+        var name = _dialogService.ShowCategoryEdit(new CategoryEditDialogViewModel(_library.Categories));
         if (name is null) return;
-
         var category = _library.AddCategory(name);
-        RefreshCategories();
-        SelectCategory(Categories.First(c => c.Id == category.Id));
+        Refresh();
+        OpenEditor(category.Id, suggestOpenApps: true);
     }
 
     [RelayCommand]
-    private void RenameCategory(Category category)
+    private void EditActive()
     {
-        var vm = new CategoryEditDialogViewModel(_library.Categories, category);
-        var name = _dialogService.ShowCategoryEdit(vm);
-        if (name is null) return;
-
-        _library.RenameCategory(category.Id, name);
-        RefreshCategories();
+        if (!ActiveIsUnsorted) OpenEditor(_switcher.ActiveCategoryId);
     }
 
     [RelayCommand]
-    private void DeleteCategory(Category category)
+    private void EditCategory(ShelfItem item)
     {
-        var confirmed = _dialogService.ShowConfirm(
-            "Delete category?",
-            $"\"{category.Name}\" will be removed. Its apps stay in your library and can be added to another category.");
-        if (!confirmed) return;
+        if (!item.IsUnsorted) OpenEditor(item.Id);
+    }
 
-        _library.DeleteCategory(category.Id);
-        RefreshCategories();
+    private void OpenEditor(Guid categoryId, bool suggestOpenApps = false)
+    {
+        _dialogService.ShowCategoryEditor(new CategoryEditorViewModel(_services, _switcher, _themeService, categoryId) { SuggestOpenApps = suggestOpenApps });
+        Refresh();
     }
 
     [RelayCommand]
-    private void AddAppToCategory()
+    private async Task PinAppAsync()
     {
-        if (SelectedCategory is null) return;
-
-        var vm = new AppEditDialogViewModel(_installedAppFinder);
+        var vm = new AppEditDialogViewModel(_services.InstalledAppFinder, headingOverride: "Keep an app always visible", relaxedValidation: true);
         var result = _dialogService.ShowAppEdit(vm);
         if (result is null) return;
-
-        var app = _library.AddOrReuseApp(result.Value.Name, result.Value.ExecutablePath, result.Value.Arguments);
-        _library.AddAppToCategory(SelectedCategory.Id, app.Id);
-        RefreshSelectedCategoryApps();
+        await Task.Run(() => _switcher.PinApp(result.Value.Name, result.Value.ExecutablePath));
+        Refresh();
     }
 
     [RelayCommand]
-    private void EditApp(AppEntry app)
+    private async Task UnpinAsync(PinnedRow row)
     {
-        var vm = new AppEditDialogViewModel(app);
-        var result = _dialogService.ShowAppEdit(vm);
-        if (result is null) return;
-
-        _library.UpdateApp(app.Id, result.Value.Name, result.Value.ExecutablePath, result.Value.Arguments);
-        RefreshCategories();
+        await Task.Run(() => _switcher.Unpin(row.Id));
+        Refresh();
     }
-
-    [RelayCommand]
-    private void RemoveAppFromCategory(AppEntry app)
-    {
-        if (SelectedCategory is null) return;
-        _library.RemoveAppFromCategory(SelectedCategory.Id, app.Id);
-        RefreshSelectedCategoryApps();
-    }
-
-    [RelayCommand]
-    private void AddBlockedAppToCategory()
-    {
-        if (SelectedCategory is null) return;
-
-        var vm = new AppEditDialogViewModel(_installedAppFinder, headingOverride: "Block app", relaxedValidation: true);
-        var result = _dialogService.ShowAppEdit(vm);
-        if (result is null) return;
-
-        var blocked = _library.AddOrReuseBlockedApp(result.Value.Name, result.Value.ExecutablePath);
-        _library.AddBlockedAppToCategory(SelectedCategory.Id, blocked.Id);
-        RefreshSelectedCategoryBlockedApps();
-    }
-
-    [RelayCommand]
-    private void RemoveBlockedAppFromCategory(BlockedApp blocked)
-    {
-        if (SelectedCategory is null) return;
-        _library.RemoveBlockedAppFromCategory(SelectedCategory.Id, blocked.Id);
-        RefreshSelectedCategoryBlockedApps();
-    }
-
-    [RelayCommand]
-    private void SetPlacement(AppEntry app)
-    {
-        var vm = new PlacementDialogViewModel(app, _processLauncher, _windowFinder, _windowManager, _monitorService);
-        var (saved, placement) = _dialogService.ShowPlacement(vm);
-        if (!saved) return;
-
-        _library.SetAppPlacement(app.Id, placement);
-        RefreshCategories();
-    }
-
-    [RelayCommand]
-    private Task OpenCategoryAsync(Category category)
-    {
-        // Active before launching, not after, so anything the category's own apps
-        // trigger as a side effect is caught too.
-        _appBlockingService.ActivateCategory(category.Id, ResolveBlockedApps(category));
-        return RunBusyAsync($"Opening \"{category.Name}\"...", () => _categoryActionService.Open(ResolveApps(category)));
-    }
-
-    [RelayCommand]
-    private Task MinimizeCategoryAsync(Category category) =>
-        RunBusyAsync($"Minimizing \"{category.Name}\"...", () => _categoryActionService.Minimize(ResolveApps(category)));
-
-    [RelayCommand]
-    private async Task CloseCategoryAsync(Category category)
-    {
-        await RunBusyAsync($"Closing \"{category.Name}\"...", () => _categoryActionService.Close(ResolveApps(category)));
-        _appBlockingService.DeactivateCategory(category.Id);
-    }
-
-    [RelayCommand]
-    private Task OpenAppAsync(AppEntry app) =>
-        RunBusyAsync($"Opening \"{app.Name}\"...", () => new CategoryActionResult([_categoryActionService.OpenApp(app)]));
-
-    [RelayCommand]
-    private Task MinimizeAppAsync(AppEntry app) =>
-        RunBusyAsync($"Minimizing \"{app.Name}\"...", () => new CategoryActionResult([_categoryActionService.MinimizeApp(app)]));
-
-    [RelayCommand]
-    private Task CloseAppAsync(AppEntry app) =>
-        RunBusyAsync($"Closing \"{app.Name}\"...", () => new CategoryActionResult([_categoryActionService.CloseApp(app)]));
 
     [RelayCommand]
     private void DismissNotice() => Notice = null;
@@ -268,40 +366,88 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenSettings()
     {
-        var vm = new SettingsViewModel(_library, _autostartService);
-        vm.RequestOpenTriggers += (_, _) => OpenTriggers();
+        var vm = new SettingsViewModel(_library, _services.Autostart, _themeService, _switcher.ShowAllAndReset);
+        vm.RequestOpenTriggers += (_, _) => OpenAutomation();
         var saved = _dialogService.ShowSettings(vm);
         if (saved && vm.HotkeyChanged)
             _onHotkeyChanged(_library.Settings.CommandPaletteHotkey);
+        Refresh();
     }
 
     [RelayCommand]
-    private void OpenTriggers()
+    private void OpenAutomation()
     {
-        var vm = new TriggersViewModel(_library, _dialogService, _installedAppFinder, _triggerRunner);
-        _dialogService.ShowTriggers(vm);
+        _dialogService.ShowTriggers(new TriggersViewModel(_library, _dialogService, _services.InstalledAppFinder, _services.TriggerRunner));
+        Refresh();
     }
 
-    private async Task RunBusyAsync(string busyMessage, Func<CategoryActionResult> action)
+    // ---------------- Helpers ----------------
+
+    private void ShowFailures(SwitchResult? result)
     {
-        IsBusy = true;
-        BusyMessage = busyMessage;
-        Notice = null;
-        try
+        if (result is not { Failures.Count: > 0 }) return;
+        _noticeCategoryId = result.CategoryId;
+        NoticeCanEdit = result.CategoryId != CategorySwitchService.Uncategorized;
+        Notice = DescribeFailures(result.Failures);
+        NoticeRaised?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The view scrolls the banner into sight - a problem the user can't see isn't reported.</summary>
+    public event EventHandler? NoticeRaised;
+
+    [RelayCommand]
+    private void EditNoticeCategory()
+    {
+        if (_noticeCategoryId is { } id && _library.Categories.Any(c => c.Id == id))
         {
-            var result = await Task.Run(action);
-            if (result.Failures.Count > 0)
-            {
-                Notice = result.Failures.Count == 1
-                    ? result.Failures[0].ErrorMessage
-                    : $"{result.Failures.Count} apps had a problem: {string.Join(" ", result.Failures.Select(f => f.ErrorMessage))}";
-                NoticeIsError = true;
-            }
+            Notice = null;
+            OpenEditor(id);
         }
-        finally
-        {
-            IsBusy = false;
-            BusyMessage = null;
-        }
+    }
+
+    /// <summary>A window row in the hero brings that window forward (restoring it if minimized).</summary>
+    [RelayCommand]
+    private void BringToFront(WindowRow row)
+    {
+        if (_services.WindowManager.IsWindowOpen(row.Handle))
+            _services.WindowManager.BringToFront(row.Handle);
+    }
+
+    [RelayCommand]
+    private void ToggleAllWindows()
+    {
+        ShowAllWindows = !ShowAllWindows;
+        Refresh();
+    }
+
+    public static string? DescribeFailures(IReadOnlyList<AppActionResult> failures) => failures.Count switch
+    {
+        0 => null,
+        1 => failures[0].ErrorMessage,
+        _ => $"{failures.Count} apps had a problem: {string.Join(" ", failures.Select(f => f.ErrorMessage))}",
+    };
+
+    private static Brush HeroGradient(Color color)
+    {
+        var brush = new LinearGradientBrush(
+            Color.FromArgb(0x2A, color.R, color.G, color.B),
+            Color.FromArgb(0x06, color.R, color.G, color.B),
+            new System.Windows.Point(0, 0), new System.Windows.Point(1, 1));
+        brush.Freeze();
+        return brush;
+    }
+
+    private static string Duration(TimeSpan span) => span.TotalMinutes switch
+    {
+        < 60 => $"{(int)span.TotalMinutes} min",
+        _ => span.Minutes == 0 ? $"{(int)span.TotalHours} h" : $"{(int)span.TotalHours} h {span.Minutes} min",
+    };
+
+    private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> items)
+    {
+        var list = items.ToList();
+        if (target.SequenceEqual(list)) return; // records compare by value: unchanged rows keep their visuals
+        target.Clear();
+        foreach (var item in list) target.Add(item);
     }
 }

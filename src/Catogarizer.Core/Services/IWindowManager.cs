@@ -50,4 +50,15 @@ public interface IWindowManager
     void Show(IntPtr handle);
 
     bool IsWindowVisible(IntPtr handle);
+
+    /// <summary>Current title, or an empty string if the window is gone.</summary>
+    string GetTitle(IntPtr handle);
+
+    bool IsMinimized(IntPtr handle);
+
+    /// <summary>Restores the window if it is minimized, then activates it. Activation works when Catogarizer itself has the foreground (a click in its UI).</summary>
+    void BringToFront(IntPtr handle);
+
+    /// <summary>Owning process id, or 0 if the window is gone.</summary>
+    int GetProcessId(IntPtr handle);
 }

@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Catogarizer.App.Services;
 using Catogarizer.App.ViewModels;
@@ -20,7 +21,7 @@ public partial class App : Application
 {
     private const string SingleInstanceMutexName = "Catogarizer.SingleInstance.9F3B2E7A";
     private const string ShowSignalEventName = "Catogarizer.ShowSignal.9F3B2E7A";
-    private const string TriggerRunPipeName = "Catogarizer.TriggerRun.9F3B2E7A";
+    private const string CliPipeName = "Catogarizer.Cli.9F3B2E7A";
 
     private Mutex? _singleInstanceMutex;
     private bool _ownsSingleInstanceMutex;
@@ -28,10 +29,15 @@ public partial class App : Application
     private GlobalHotkeyService? _hotkeyService;
     private TrayIconController? _trayIconController;
     private LibraryService? _library;
-    private ICategoryActionService? _categoryActionService;
     private IAppBlockingService? _appBlockingService;
     private TriggerSchedulerService? _triggerScheduler;
+    private CategorySwitchService? _switchService;
+    private CategorySwitcher? _switcher;
     private CommandPaletteWindow? _paletteWindow;
+    private SwitchPillWindow? _pill;
+    private ThemeService? _themeService;
+    private readonly DoubleTapDetector _doubleTap = new();
+    private bool _handlingHotkey;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -46,12 +52,12 @@ public partial class App : Application
         _ownsSingleInstanceMutex = createdNew;
         if (!createdNew)
         {
-            if (command is CliCommand.Run run)
+            if (command.IsRelayed)
             {
-                // "catogarizer run <name>" while the app is already open - relay the request
-                // over the named pipe instead of the show-signal, so this stays headless/
-                // scriptable rather than popping the main window.
-                SendTriggerRunRequest(run.TriggerName);
+                // "catogarizer switch/run/back" while the app is already open - relay it over the
+                // named pipe instead of the show-signal, so this stays headless/scriptable rather
+                // than popping the main window.
+                SendCliRequest(command);
             }
             else
             {
@@ -79,9 +85,13 @@ public partial class App : Application
         }
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += (_, _) => RestoreHiddenWindows();
 
-        var configStore = new JsonConfigStore(ConfigFilePath());
+        var configStore = new JsonConfigStore(DataFilePath("config.json"));
         var library = new LibraryService(configStore);
+        var themeService = new ThemeService(Resources);
+        themeService.Apply(library.Settings.Theme);
+        _themeService = themeService;
         var installedAppFinder = new InstalledAppFinder();
         var dialogService = new DialogService();
         var processLauncher = new ProcessLauncher();
@@ -91,75 +101,110 @@ public partial class App : Application
         var categoryActionService = new CategoryActionService(processLauncher, windowFinder, windowManager, monitorService, new SystemDelay());
         var autostartService = new AutostartService();
         var processWatcher = new ProcessWatcher();
-        var appBlockingService = new AppBlockingService(processWatcher);
+        var appBlockingService = new AppBlockingService(processWatcher, parentProcessName: Processes.ParentNameOf);
         appBlockingService.Start();
         _library = library;
-        _categoryActionService = categoryActionService;
         _appBlockingService = appBlockingService;
 
-        var triggerRunner = new TriggerRunner(categoryActionService);
-        var triggerScheduler = new TriggerSchedulerService(new SystemClock(), trigger => Task.Run(() => triggerRunner.Run(trigger, library)));
+        // Before anything can hide a window: shows whatever a crashed run left hidden, then
+        // snapshots what's open into Unsorted.
+        var switchService = new CategorySwitchService(windowManager, windowFinder, new WindowWatcher(windowFinder),
+            categoryActionService, () => library.PinnedApps, new SystemClock(), new JsonHiddenWindowStore(DataFilePath("hidden.json")));
+        switchService.Initialize();
+        var switcher = new CategorySwitcher(library, switchService, appBlockingService);
+        _switchService = switchService;
+        _switcher = switcher;
+
+        var triggerRunner = new TriggerRunner(categoryActionService, switcher.SwitchTo);
+        var triggerScheduler = new TriggerSchedulerService(new SystemClock(),
+            trigger => Task.Run(() => ReportFailures(trigger.Name, triggerRunner.Run(trigger, library))));
         triggerScheduler.Start(() => library.Triggers);
         _triggerScheduler = triggerScheduler;
 
-        var mainWindow = new MainWindow(library, installedAppFinder, dialogService, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService, appBlockingService, autostartService, triggerRunner, RegisterGlobalHotkey);
-        // An explicit "run <name>" launch stays headless regardless of the StartMinimized
+        var editorServices = new EditorServices(library, dialogService, installedAppFinder, processLauncher, windowFinder,
+            windowManager, monitorService, categoryActionService, autostartService, triggerRunner);
+        var mainWindow = new MainWindow(editorServices, switcher, themeService, appBlockingService, RegisterGlobalHotkey);
+        // A relayed command (switch/run/back) stays headless regardless of the StartMinimized
         // setting - it's a background request (script/hotkey tool), not a user opening the app.
-        if (!library.Settings.StartMinimized && command is not CliCommand.Run)
+        if (!library.Settings.StartMinimized && !command.IsRelayed)
             mainWindow.Show();
 
-        _trayIconController = new TrayIconController(library, categoryActionService, appBlockingService, autostartService, mainWindow);
+        _trayIconController = new TrayIconController(library, switcher, appBlockingService, autostartService, mainWindow, OnSwitched);
 
         RegisterGlobalHotkey(library.Settings.CommandPaletteHotkey);
         ListenForShowSignal();
-        ListenForTriggerRunRequests(triggerRunner, library);
-        DispatchCliCommand(command, triggerRunner, library);
+        ListenForCliRequests(triggerRunner);
+        Task.Run(() => ExecuteCliCommand(command, triggerRunner));
     }
 
-    private static void DispatchCliCommand(CliCommand command, TriggerRunner triggerRunner, LibraryService library)
+    private void ExecuteCliCommand(CliCommand command, TriggerRunner triggerRunner)
     {
+        var library = _library!;
+        var switcher = _switcher!;
         switch (command)
         {
             case CliCommand.Start:
-                Task.Run(() =>
-                {
-                    foreach (var trigger in library.Triggers.Where(t => t.IsEnabled && t.Type == TriggerType.Startup))
-                        triggerRunner.Run(trigger, library);
-                });
+                foreach (var trigger in library.Triggers.Where(t => t.IsEnabled && t.Type == TriggerType.Startup))
+                    ReportFailures(trigger.Name, triggerRunner.Run(trigger, library));
                 break;
             case CliCommand.Run run:
-                Task.Run(() =>
-                {
-                    var trigger = library.Triggers.FirstOrDefault(t => string.Equals(t.Name, run.TriggerName, StringComparison.OrdinalIgnoreCase));
-                    if (trigger is not null) triggerRunner.Run(trigger, library);
-                });
+                var named = library.Triggers.FirstOrDefault(t => string.Equals(t.Name, run.TriggerName, StringComparison.OrdinalIgnoreCase));
+                if (named is null) ShowProblem("Trigger not found", $"There is no trigger named \"{run.TriggerName}\".");
+                else ReportFailures(named.Name, triggerRunner.Run(named, library));
+                break;
+            case CliCommand.Switch s:
+                var result = switcher.SwitchByName(s.CategoryName);
+                if (result is null) ShowProblem("Category not found", $"There is no category named \"{s.CategoryName}\".");
+                else OnSwitched(result);
+                break;
+            case CliCommand.Back:
+                if (switcher.SwitchBack() is { } back) OnSwitched(back);
+                break;
+            case CliCommand.ShowAll:
+                switcher.ShowAllAndReset();
                 break;
         }
     }
 
-    /// <summary>
-    /// Background listener for "catogarizer run &lt;name&gt;" requests relayed from a second
-    /// process invocation - mirrors ListenForShowSignal's always-on background thread, but
-    /// carries a payload (the trigger name) so it uses a named pipe instead of a bare event.
-    /// </summary>
-    private void ListenForTriggerRunRequests(TriggerRunner triggerRunner, LibraryService library)
+    /// <summary>Launch problems from a switch the user started outside the main window.</summary>
+    private void OnSwitched(SwitchResult result)
     {
-        var thread = new Thread(() =>
+        if (result.Failures.Count == 0) return;
+        ShowProblem($"{_library!.NameOf(result.CategoryId)}: not everything opened", MainViewModel.DescribeFailures(result.Failures)!);
+    }
+
+    private void ReportFailures(string triggerName, IReadOnlyList<AppActionResult> results)
+    {
+        var failures = results.Where(r => r.Outcome == AppActionOutcome.Failed).ToList();
+        if (failures.Count > 0)
+            ShowProblem($"Trigger \"{triggerName}\" had a problem", MainViewModel.DescribeFailures(failures)!);
+    }
+
+    private void ShowProblem(string title, string message) =>
+        Dispatcher.BeginInvoke(() => _trayIconController?.ShowProblem(title, message));
+
+    /// <summary>
+    /// Background listener for "catogarizer switch/run/back" requests relayed from a second
+    /// process invocation - mirrors ListenForShowSignal's always-on background thread, but
+    /// carries a payload so it uses a named pipe instead of a bare event.
+    /// </summary>
+    private void ListenForCliRequests(TriggerRunner triggerRunner)
+    {
+        // The listener only reads and queues, so a slow switch (a template launch) never keeps
+        // the pipe closed long enough for the next quick command to time out and be lost.
+        var queue = new System.Collections.Concurrent.BlockingCollection<CliCommand>();
+
+        var listener = new Thread(() =>
         {
             while (true)
             {
                 try
                 {
-                    using var server = new NamedPipeServerStream(TriggerRunPipeName, PipeDirection.In);
+                    using var server = new NamedPipeServerStream(CliPipeName, PipeDirection.In);
                     server.WaitForConnection();
                     using var reader = new StreamReader(server, Encoding.UTF8);
-                    var triggerName = reader.ReadLine();
-                    if (!string.IsNullOrWhiteSpace(triggerName))
-                    {
-                        var trigger = library.Triggers.FirstOrDefault(t => string.Equals(t.Name, triggerName, StringComparison.OrdinalIgnoreCase));
-                        if (trigger is not null) triggerRunner.Run(trigger, library);
-                    }
+                    var command = CliCommand.FromPipeMessage(reader.ReadLine());
+                    if (command.IsRelayed) queue.Add(command);
                 }
                 catch
                 {
@@ -170,19 +215,34 @@ public partial class App : Application
         })
         {
             IsBackground = true,
-            Name = "Catogarizer-TriggerRunListener",
+            Name = "Catogarizer-CliListener",
         };
-        thread.Start();
+
+        var worker = new Thread(() =>
+        {
+            foreach (var command in queue.GetConsumingEnumerable())
+            {
+                try { ExecuteCliCommand(command, triggerRunner); }
+                catch { /* one failed command must not stop the ones after it */ }
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Catogarizer-CliWorker",
+        };
+
+        listener.Start();
+        worker.Start();
     }
 
-    private static void SendTriggerRunRequest(string triggerName)
+    private static void SendCliRequest(CliCommand command)
     {
         try
         {
-            using var client = new NamedPipeClientStream(".", TriggerRunPipeName, PipeDirection.Out);
-            client.Connect(2000);
+            using var client = new NamedPipeClientStream(".", CliPipeName, PipeDirection.Out);
+            client.Connect(5000);
             using var writer = new StreamWriter(client, Encoding.UTF8) { AutoFlush = true };
-            writer.WriteLine(triggerName);
+            writer.WriteLine(command.ToPipeMessage());
         }
         catch
         {
@@ -223,29 +283,91 @@ public partial class App : Application
         if (_hotkeyService is null)
         {
             _hotkeyService = new GlobalHotkeyService();
-            _hotkeyService.HotkeyPressed += () => Dispatcher.Invoke(ShowCommandPalette);
+            // Tap timing is taken here, on the hotkey thread, so a busy UI thread can't stretch or
+            // squash the gap. BeginInvoke (not Invoke) queues the taps in order instead of letting
+            // the second one run nested inside the first one's palette Show().
+            _hotkeyService.HotkeyPressed += () =>
+            {
+                var isDoubleTap = _doubleTap.RegisterTap();
+                Dispatcher.BeginInvoke(() => OnHotkeyPressed(isDoubleTap));
+            };
         }
         _hotkeyService.Register(modifiers, vk);
         // Registration can fail (combo claimed by another app); the app still works fine
         // without the fast-path palette, so this isn't treated as an error.
     }
 
-    private void ShowCommandPalette()
+    /// <summary>
+    /// One tap toggles the palette right away (no waiting to see if a second tap follows - that
+    /// would slow down the everyday path). A quick second tap dismisses the half-faded-in
+    /// palette and goes back to the previous category instead.
+    /// </summary>
+    private void OnHotkeyPressed(bool isDoubleTap)
     {
-        if (_paletteWindow is { IsVisible: true })
+        if (_handlingHotkey)
         {
-            _paletteWindow.Activate();
+            Dispatcher.BeginInvoke(() => OnHotkeyPressed(isDoubleTap), DispatcherPriority.Background);
             return;
         }
 
-        var vm = new CommandPaletteViewModel(_library!, _categoryActionService!, _appBlockingService!);
-        _paletteWindow = new CommandPaletteWindow(vm);
-        _paletteWindow.Show();
-        _paletteWindow.Activate();
+        _handlingHotkey = true;
+        try
+        {
+            if (isDoubleTap)
+            {
+                GoBack();
+                return;
+            }
+
+            if (_paletteWindow is { IsOpen: true })
+            {
+                _paletteWindow.Dismiss();
+                return;
+            }
+
+            var vm = new CommandPaletteViewModel(_library!, _switcher!, _themeService!, OnSwitched);
+            _paletteWindow = new CommandPaletteWindow(vm);
+            _paletteWindow.Show();
+            _paletteWindow.Activate();
+        }
+        finally
+        {
+            _handlingHotkey = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        _paletteWindow?.Dismiss();
+        _pill ??= new SwitchPillWindow();
+
+        if (_switcher!.PreviousCategoryId is not { } previous)
+        {
+            _pill.Flash("Nothing to go back to yet", null, showBackArrow: false);
+            return;
+        }
+
+        _pill.Flash(_library!.NameOf(previous), CategoryColor(previous), showBackArrow: true);
+        Task.Run(() =>
+        {
+            if (_switcher.SwitchBack() is { } result) OnSwitched(result);
+        });
+    }
+
+    private Color CategoryColor(Guid id) =>
+        _themeService!.ColorFor(_library!.Categories.FirstOrDefault(c => c.Id == id));
+
+    /// <summary>Never leave a window hidden behind when Catogarizer stops (PRINCIPLES.md, value 1).</summary>
+    private void RestoreHiddenWindows()
+    {
+        try { _switcher?.ShowAllAndReset(); }
+        catch { /* shutting down anyway; hidden.json lets the next start finish the job */ }
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        RestoreHiddenWindows();
+        _switchService?.Dispose();
         _hotkeyService?.Dispose();
         _trayIconController?.Dispose();
         _triggerScheduler?.Dispose();
@@ -255,18 +377,19 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    private static string ConfigFilePath()
+    private static string DataFilePath(string fileName)
     {
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Catogarizer");
-        return Path.Combine(dir, "config.json");
+        return Path.Combine(dir, fileName);
     }
 
-    private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
+        RestoreHiddenWindows();
         // Same reasoning as above: last-resort safety net, kept deliberately native/simple
         // rather than routed through the app's own (possibly-broken) UI.
         MessageBox.Show(
-            $"Catogarizer ran into a problem and needs to close:\n\n{e.Exception.Message}",
+            $"Catogarizer ran into a problem and needs to close. All windows it had hidden are visible again.\n\n{e.Exception.Message}",
             "Catogarizer",
             MessageBoxButton.OK,
             MessageBoxImage.Error);

@@ -12,15 +12,17 @@ public sealed class AppBlockingService : IAppBlockingService, IDisposable
 {
     private readonly IProcessWatcher _watcher;
     private readonly Action<int> _killProcess;
+    private readonly Func<int, string?> _parentProcessName;
     private readonly Dictionary<Guid, IReadOnlyList<BlockedApp>> _activeCategoryBlocklists = new();
     private readonly object _lock = new();
 
     public event Action<string>? AppBlocked;
 
-    public AppBlockingService(IProcessWatcher watcher, Action<int>? killProcess = null)
+    public AppBlockingService(IProcessWatcher watcher, Action<int>? killProcess = null, Func<int, string?>? parentProcessName = null)
     {
         _watcher = watcher;
         _killProcess = killProcess ?? DefaultKillProcess;
+        _parentProcessName = parentProcessName ?? (_ => null);
         _watcher.ProcessStarted += OnProcessStarted;
     }
 
@@ -46,6 +48,11 @@ public sealed class AppBlockingService : IAppBlockingService, IDisposable
         }
         if (match is null) return;
 
+        // A helper process spawned by an instance that's already running (Chrome renderers, Electron
+        // helpers) isn't a fresh start. That instance may be parked in another category, and killing
+        // its helpers would crash the session waiting there (PRINCIPLES.md, value 1).
+        if (string.Equals(_parentProcessName(info.ProcessId), info.ProcessName, StringComparison.OrdinalIgnoreCase)) return;
+
         _killProcess(info.ProcessId);
         AppBlocked?.Invoke(match.Name);
     }
@@ -53,11 +60,10 @@ public sealed class AppBlockingService : IAppBlockingService, IDisposable
     private static bool Matches(BlockedApp blocked, RunningProcessInfo info)
     {
         var pattern = blocked.ProcessNameOrPath.Trim();
-        if (pattern.Contains('\\') || pattern.Contains('/'))
+        if (ProcessPattern.IsPath(pattern))
             return info.ExecutablePath is not null && string.Equals(info.ExecutablePath, pattern, StringComparison.OrdinalIgnoreCase);
 
-        var patternName = Path.GetFileNameWithoutExtension(pattern);
-        return string.Equals(info.ProcessName, patternName, StringComparison.OrdinalIgnoreCase);
+        return string.Equals(info.ProcessName, ProcessPattern.ProcessName(pattern), StringComparison.OrdinalIgnoreCase);
     }
 
     private static void DefaultKillProcess(int pid)

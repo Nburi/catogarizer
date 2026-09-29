@@ -8,6 +8,7 @@ using Catogarizer.Win32;
 // Usage:
 //   dotnet run -- hide-show <title-or-process-substring>
 //   dotnet run -- watch
+//   dotnet run -- list        (read-only: what a switch would track)
 
 if (args.Length == 0)
 {
@@ -26,6 +27,10 @@ switch (args[0])
     case "watch":
         RunWatch(finder);
         break;
+    case "list":
+        foreach (var w in finder.FindAllAppWindows())
+            Console.WriteLine($"[{w.ProcessName}] \"{w.Title}\"");
+        break;
     default:
         PrintUsage();
         break;
@@ -40,7 +45,7 @@ static void PrintUsage()
 
 static void RunHideShow(IWindowFinder finder, IWindowManager manager, string needle)
 {
-    var matches = finder.FindAllVisibleWindows()
+    var matches = finder.FindAllAppWindows()
         .Where(w => w.Title.Contains(needle, StringComparison.OrdinalIgnoreCase)
                  || w.ProcessName.Contains(needle, StringComparison.OrdinalIgnoreCase))
         .ToList();

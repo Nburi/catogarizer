@@ -28,24 +28,27 @@ public sealed class CategoryActionService : ICategoryActionService
     }
 
     public CategoryActionResult Open(IReadOnlyList<AppEntry> apps) => new(apps.Select(OpenApp).ToList());
-    public CategoryActionResult Minimize(IReadOnlyList<AppEntry> apps) => new(apps.Select(MinimizeApp).ToList());
-    public CategoryActionResult Close(IReadOnlyList<AppEntry> apps) => new(apps.Select(CloseApp).ToList());
 
     public AppActionResult OpenApp(AppEntry app)
     {
         if (!_fileExists(app.ExecutablePath))
-            return Fail(app, $"\"{app.Name}\" wasn't found at {app.ExecutablePath}. It may have been moved or uninstalled.");
+            return Fail(app, $"\"{app.Name}\" wasn't found at {app.ExecutablePath}. It may have been moved or uninstalled. Use the pencil to point to the new location, or remove it.");
 
         try
         {
-            var hwnd = FindRunningWindows(app).FirstOrDefault()?.Handle ?? LaunchAndFind(app);
+            var running = FindRunningWindows(app).FirstOrDefault()?.Handle;
+            var hwnd = running ?? LaunchAndFind(app);
             if (hwnd is null)
                 return Fail(app, $"\"{app.Name}\" didn't open a window in time.");
+
+            // Already running: "open" means show it - a minimized window would otherwise stay invisible.
+            if (running is { } existing)
+                _windowManager.BringToFront(existing);
 
             if (app.Placement is not null)
                 Position(hwnd.Value, app.Placement);
 
-            return new AppActionResult(app, AppActionOutcome.Opened);
+            return new AppActionResult(app, AppActionOutcome.Opened, WindowHandle: hwnd);
         }
         catch (Exception ex)
         {
@@ -86,21 +89,8 @@ public sealed class CategoryActionService : ICategoryActionService
         _positioning.PositionWithRetry(hwnd, x, y, width, height);
     }
 
-    private IReadOnlyList<OpenWindowInfo> FindRunningWindows(AppEntry app)
-    {
-        var processName = Path.GetFileNameWithoutExtension(app.ExecutablePath);
-        return _windowFinder.FindAllRunningWindows(ProcessNameCandidates(processName), [app.Name]);
-    }
-
-    /// <summary>
-    /// A PWA's shortcut launches a short-lived stub (msedge_proxy.exe/chrome_proxy.exe)
-    /// that relaunches the real browser and exits - the actual window ends up owned by
-    /// the unsuffixed browser process, so that name is included as a second candidate.
-    /// </summary>
-    private static IReadOnlyList<string> ProcessNameCandidates(string processName) =>
-        processName.EndsWith("_proxy", StringComparison.OrdinalIgnoreCase)
-            ? [processName, processName[..^"_proxy".Length]]
-            : [processName];
+    private IReadOnlyList<OpenWindowInfo> FindRunningWindows(AppEntry app) =>
+        _windowFinder.FindAllRunningWindows(AppWindowMatcher.ProcessNameCandidates(app), [app.Name]);
 
     private static AppActionResult Fail(AppEntry app, string message) => new(app, AppActionOutcome.Failed, message);
 }

@@ -428,23 +428,149 @@ around a command-palette-first interaction, per the updated CONCEPT.md.
       principles in `PRINCIPLES.md`.
 
 Build plan (branch `feature/v2-switching-ui`, one commit per step):
-- [ ] 1. Safety net + session state (Core, test-first): persist hidden
-      windows to `hidden.json`, restore on exit and on next start (after a
-      crash), tray "Show all hidden windows". Switch service exposes
-      `ActiveCategoryChanged`, `PreviousCategoryId`, active-since time and a
-      per-category session snapshot (count + titles).
-- [ ] 2. Wire switching into the running app: composition root, tray,
-      palette, CLI `catogarizer switch "<name>"`, blocking follows the
-      active category, trigger action "Open category" becomes a switch. Old
-      category-level Open/Close/Minimize removed; per-app actions stay.
-- [ ] 3. Signature moment: double-tap hotkey → previous category, pill in
-      the category color.
-- [ ] 4. Theme system: one token dictionary per theme + shared controls
-      (`DynamicResource`), theme choice in Settings, Fjord default.
-- [ ] 5. Category color (`Category.Hue`, additive) + real app icons
-      (`SHGetFileInfo`, cached, letter tile fallback).
-- [ ] 6. New "Now + Shelf" home + separate category editor window; empty,
-      first-launch and error states.
-- [ ] 7. Palette v2 (preview shown to the user before building).
-- [ ] 8. Review rounds 0–4 (fs-* agents).
+- [x] 1. Safety net + session state (Core, test-first). `IHiddenWindowStore`/
+      `JsonHiddenWindowStore` ledger written *before* every hide; `Initialize`
+      shows windows a crashed run left hidden (handle + pid must both match,
+      so a handle reused after reboot is never shown); `ShowAllAndReset` for
+      exit and the tray emergency item (wired in step 2). Switch service now
+      has `PreviousCategoryId`, `ActiveSince`, `StateChanged`, `GetSessions()`
+      (live titles) and returns a `SwitchResult`. Also fixed while in there:
+      Catogarizer never tracks its own windows; template-launched windows are
+      attributed immediately (closes the 350 ms race); a parked window that
+      re-shows itself moves to the active category. **Real bug found:**
+      `FindAllVisibleWindows` included the desktop ("Program Manager"),
+      cloaked UWP windows and tool windows - a switch would have hidden the
+      desktop icons. Renamed to `FindAllAppWindows` with an Alt-Tab filter;
+      verified read-only on the real desktop (spike `list` mode). 126/126.
+      Tray "Show all hidden windows" is wired in step 2.
+- [x] 2. Wire switching into the running app. New Core `CategorySwitcher` is
+      the single switching path (home, palette, tray, CLI, triggers):
+      resolves template/blocklist from the library, lifts the outgoing
+      blocklist *before* the incoming template launches (else Deep Work
+      blocking Slack would kill the Slack Comms opens), `SwitchBack`,
+      `SwitchByName` ("Unsorted" included), `DeleteCategory` (windows of a
+      deleted category move to Unsorted via `ReleaseCategory` - never
+      stranded hidden), `RefreshBlocking` after blocklist edits. CLI gains
+      `switch "<name>"` and `back`, relayed over one generalized named pipe.
+      Tray: switch list with the active one checked, Unsorted, "Show all
+      hidden windows", tooltip names the active category. Exit, crash and
+      unhandled background exceptions restore every hidden window.
+      Trigger action relabeled "Switch to category". Launch failures from
+      palette/tray/CLI/triggers show as a tray notification. Pinned-app CRUD
+      in `LibraryService` (copy-on-write, read from the watcher thread).
+      155/155. **Not yet verified in the running app** - needs the user's
+      go-ahead (switching hides real windows on their desktop).
+- [x] 3. Signature moment: double-tap hotkey → previous category. Pure
+      `DoubleTapDetector` (Core, 350 ms window, third tap starts a new
+      sequence, tested). First tap opens the palette *immediately* (no
+      waiting for a possible second tap - that would slow the everyday
+      path); it fades in over 140 ms, so a quick second tap dismisses it
+      before it's fully visible and `SwitchPillWindow` rises from the
+      taskbar edge: "← Comms" with a dot and tint in the category color,
+      back-eased lift + arrow nudge, ~0.9 s hold, fade out. Click-through,
+      never activates, not in Alt-Tab (`OverlayWindowStyle`). Reduced motion
+      → fade only. "Nothing to go back to yet" when there's no previous
+      category. A tap while the palette is open now closes it (toggle).
+      Mouse path: tray "← Back to …". Pill uses the accent color until
+      step 5 adds category colors.
+
+Live test 2026-09-28 (debug build, backup of the user's config, test
+categories with charmap/msinfo32, Claude pinned; config restored afterwards):
+- [x] Switch hides exactly the Alt-Tab windows of Unsorted; pinned Claude,
+      desktop, input host, overlays untouched; ledger written before hiding.
+- [x] Blocklist order: A blocks msinfo32, B launches it → survives A→B.
+- [x] `back` restores in 202 ms *including* starting the CLI process.
+- [x] Hard kill with 8 windows hidden → all still hidden → restart shows all
+      8 again, ledger emptied.
+- [x] Crash handler (hit for real, see ERRORS.md) restored every hidden
+      window before closing.
+- [x] **Bug found + fixed:** double-tap crash (Show while closing) - hotkey now
+      `BeginInvoke` + reentrancy guard + idempotent palette close.
+- [x] **Bug found + fixed:** switching after startup launched a second copy
+      of an already-open template app - Unsorted windows are now claimed.
+      Re-verified live: one charmap, taken over.
+- [x] Double-tap pill re-verified with the PC unlocked: switched back, no
+      crash, pill "← ● Test A" centered above the taskbar (captured via
+      `PrintWindow`, which also works for layered windows).
+- [ ] Graceful exit via tray "Exit" restores windows (needs the UI).
+- [x] 4. Theme system. Palettes live in Core (`Theming/ThemeCatalog`, OKLCH
+      values identical to `design/concepts-v2.html`) with an `Oklch`→sRGB
+      converter and a unit test that checks text contrast for every theme
+      (it caught Slate Dusk's error red at < 4.5:1 - fixed). `ThemeService`
+      builds the WPF resources at runtime and swaps them live; every color
+      reference in the views is now `DynamicResource`; radii and the heading
+      font are theme tokens too. `DaylightStudio.xaml` → `Controls.xaml`
+      (styles only). Settings: theme tiles with a mini preview, live preview
+      on click, Cancel/close reverts, Save persists (`AppSettings.Theme`,
+      Fjord default). Title bars tinted per theme (Win11 DWM caption/text/
+      border color + dark mode). Verified live: Fjord, Graphite and Night
+      Shift on main window + settings, Cancel reverts. Found + fixed while
+      testing: native white checkboxes on dark themes (new implicit themed
+      CheckBox style, square even on round themes), WPF's dotted focus
+      rectangle (themed accent focus ring on all buttons), a truncated theme
+      description. Still placeholder: blue app/tray icon (branding task).
+- [x] 5. Category color + real app icons. `Category.Hue` (OKLCH hue; the theme
+      sets lightness/chroma so colors stay readable in every theme). New
+      categories get the palette hue farthest from those in use
+      (`CategoryHues.Next`); configs from before colors existed get hues
+      assigned once at load (additive, saved once); `SetCategoryHue` for the
+      editor. Pill now uses the real category color. Icons: `ShellIcons`
+      (Win32, `PrivateExtractIcons` at 64 px for sharp 200 % DPI, shell icon
+      fallback, exe path of a running process via
+      `QueryFullProcessImageName` - works for elevated ones too),
+      `AppIconCache` (background load, cached per exe/pid), `AppIconView`
+      control (neutral letter tile at once, real icon fades in; cached icons
+      appear without fade). Known limit: a PWA shows its browser's icon (the
+      PWA's own icon lives in its Start Menu shortcut, which `AppEntry`
+      doesn't keep). Verified live together with step 6.
+- [x] 6. New "Now + Shelf" home + separate category editor window.
+      Home: hero "You're in" (category tint, heading-font name, since/
+      duration, live windows with real icons and friendly app names, "+N
+      more"), side column (held back + last blocked attempt, always-visible
+      pins with "+ Pin app"/unpin, "← Back to …" card), shelf of tiles (color,
+      number key, template icons - Unsorted shows its parked apps' icons -,
+      parked/fresh/empty state, "Opening..." only for fresh launches, held-
+      back count, hover lift in the category color, edit pencil), first-run
+      card, next time-trigger line, number keys 1-9/0 switch, narrow layout
+      stacks the side column. Editor: inline name with live validation,
+      10 color swatches, template apps (open/minimize/close, set position,
+      edit, remove), "From open windows" (plain version of the
+      build-from-what's-open idea), held-back apps, delete with confirmation.
+      Also: pinning applies at once (`ApplyPinnedApps`, pinned windows never
+      hidden at switch time), `TriggerPreview` (Core, tested), CLI `show-all`,
+      themed thin scrollbars, dialogs open over the active window.
+      Deviation from the blueprint: no separate "switch receipt" toast on
+      every switch - it would compete with the signature pill; the home and
+      tray tooltip already show the result. Verified live in Fjord and
+      Graphite (home, switch, editor, narrow layout). **Test cleanup bug**
+      (not an app bug): see ERRORS.md - a user window stayed hidden after a
+      force-kill + deleted ledger; fixed the procedure, added `show-all`.
+- [x] 7. Palette v2: "Switch to..." placeholder, rows with number key, color
+      dot, template icons and state (you're here / N parked / starts fresh /
+      empty), selection starts on the previous category ("last used"),
+      ↑/↓ + Enter, digits in an empty box jump (0 = Unsorted), hover
+      selects, smarter matching (`CategoryMatcher`, Core, tested: prefix >
+      word prefix > initials "dw" → Deep Work > contains), pinned apps in
+      the footer, theme radius. Deviation: built without a separate preview
+      because the user asked not to stop between steps; screenshots sent
+      instead. Verified live (preselection, "tb" → Test B, "2" switched).
+- [x] 8. Review rounds 0–4 (fs-* agents, each with `tools/livetest/` setup/
+      teardown so the user's real windows and config are always restored).
+  - [x] Round 0 (requirements) - fixed in 4b096c4.
+  - [x] Round 1 (flow: empty/full/misused) - fixed in 4010945 (tray crash,
+        lost CLI commands) and 4e21122 (UI).
+  - [x] Round 2 (fix verification) - 21/26 fixed, leftovers fixed in 0d589c5.
+  - [x] Round 3 (where the UI lies) - part 1 in a40e3d6, part 2 fixed (hero rows clickable,
+        missing-exe editor rows, Automation labels/empty Run now, Save enabled only after a change).
+        Left open (low): tiles say "Opens 2 apps" after "Show all hidden windows".
+  - [~] Round 4 (user simulation) - skipped: the fs-nutzer-simulant agent was blocked by an
+        API safeguard error on Sonnet and Opus (2026-09-29); user chose to move on.
 - [ ] 9. Docs, code review, user review, merge, deploy.
+  - [x] Docs: USER_GUIDE.md rewritten, CHANGELOG.md, STACK.md (3a7d540).
+  - [x] code-review: unpin, blocked helper processes, notice colour fixed (696802d).
+  - [x] security-review (manual; the skill needs a git remote): named pipe, hidden.json, launching - nothing to fix.
+  - [x] simplify: shared lookups, Reveal helper, Win32 cleanup, dead code (ba1fe02).
+  - [ ] User review, then merge and deploy (only when the user says so).
+  - Later (skipped in simplify, bigger refactors): ShelfItem value equality so the shelf isn't rebuilt every
+    5 s; derive "Opening..." from the switch service instead of ShelfItem.IsSwitching; a Switched(SwitchResult)
+    event instead of threading onSwitched through tray/palette/CLI; one window scan at startup; cache File.Exists.

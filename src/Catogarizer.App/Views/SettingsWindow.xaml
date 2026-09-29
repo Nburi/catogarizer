@@ -1,33 +1,113 @@
 <Window x:Class="Catogarizer.App.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Catogarizer" Width="420" SizeToContent="Height"
+        Title="Settings" Width="460" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
-        Background="{StaticResource BgBrush}" FontFamily="{StaticResource UiFont}">
+        Background="{DynamicResource BgBrush}" FontFamily="{StaticResource UiFont}">
+    <Window.Resources>
+        <!-- A theme tile: a mini preview of the theme's own surfaces, so you pick by look, not by name. -->
+        <Style x:Key="ThemeTileStyle" TargetType="RadioButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,0,8,8"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Frame" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}"
+                                BorderThickness="1" CornerRadius="{DynamicResource ControlRadius}" Padding="8">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="40" Height="32" CornerRadius="6" Background="{Binding Background}"
+                                        BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1" Margin="0,0,10,0">
+                                    <Grid Margin="5">
+                                        <Border Background="{Binding Surface}" CornerRadius="3" Width="18" HorizontalAlignment="Left"/>
+                                        <Border Background="{Binding Accent}" CornerRadius="3" Width="10" Height="10"
+                                                HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                                        <Border Background="{Binding Ink}" CornerRadius="1" Width="10" Height="2"
+                                                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,5,0,0"/>
+                                    </Grid>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                                    <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="140"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Frame" Property="Background" Value="{DynamicResource SurfaceAltBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="Frame" Property="BorderThickness" Value="2"/>
+                                <Setter TargetName="Frame" Property="Padding" Value="7"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <StackPanel Margin="22">
         <TextBlock Text="Settings" FontSize="16" FontWeight="SemiBold"
-                   Foreground="{StaticResource InkBrush}" Margin="0,0,0,18"/>
+                   Foreground="{DynamicResource InkBrush}" Margin="0,0,0,18"/>
+
+        <TextBlock Text="Theme" Style="{StaticResource FieldLabelStyle}"/>
+        <TextBlock Text="Changes apply right away. Cancel takes you back to the one you had."
+                   Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,0,0,8"/>
+        <ItemsControl ItemsSource="{Binding Themes}" Margin="0,0,-8,10" KeyboardNavigation.DirectionalNavigation="Cycle">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="2"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <RadioButton Style="{StaticResource ThemeTileStyle}" GroupName="Theme"
+                                 AutomationProperties.Name="{Binding Name}"
+                                 Checked="ThemeTile_Checked" Loaded="ThemeTile_Loaded"/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
         <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}"
-                   Foreground="{StaticResource InkBrush}" FontSize="13.5" Margin="0,0,0,12"/>
+                   Foreground="{DynamicResource InkBrush}" FontSize="13.5" Margin="0,0,0,12"/>
         <CheckBox Content="Start minimized to tray" IsChecked="{Binding StartMinimized}"
-                   Foreground="{StaticResource InkBrush}" FontSize="13.5" Margin="0,0,0,18"/>
+                   Foreground="{DynamicResource InkBrush}" FontSize="13.5" Margin="0,0,0,18"/>
 
         <TextBlock Text="Command palette shortcut" Style="{StaticResource FieldLabelStyle}"/>
-        <Border x:Name="HotkeyCaptureBox" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush2}"
-                BorderThickness="1" CornerRadius="8" Padding="10,8" Focusable="True"
-                PreviewKeyDown="HotkeyCaptureBox_PreviewKeyDown"
-                GotFocus="HotkeyCaptureBox_GotFocus" LostFocus="HotkeyCaptureBox_LostFocus">
-            <TextBlock x:Name="HotkeyDisplayText" Text="{Binding HotkeyText}" Foreground="{StaticResource InkBrush}" FontSize="13.5"/>
-        </Border>
-        <TextBlock Text="Click the box above, then press the key combination you want."
+        <!-- A read-only TextBox, not a Border: it takes focus on click and screen readers announce it as a field. -->
+        <TextBox x:Name="HotkeyCaptureBox" Style="{StaticResource ThemedTextBoxStyle}" IsReadOnly="True" IsReadOnlyCaretVisible="False"
+                 Text="{Binding HotkeyText, Mode=OneWay}" FontSize="13.5" Cursor="Hand"
+                 AutomationProperties.Name="Command palette shortcut"
+                 AutomationProperties.HelpText="Press the key combination you want, including Ctrl, Alt, Shift or Win."
+                 PreviewKeyDown="HotkeyCaptureBox_PreviewKeyDown"
+                 GotKeyboardFocus="HotkeyCaptureBox_GotFocus" LostKeyboardFocus="HotkeyCaptureBox_LostFocus"/>
+        <TextBlock x:Name="HotkeyHelp" Text="Click the box above, then press the key combination you want."
                    Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,5,0,0"/>
+
+        <TextBlock Text="Lost a window?" Style="{StaticResource FieldLabelStyle}" Margin="0,20,0,5"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Brings back every window Catogarizer has parked, in every category, and switches to Unsorted."
+                       Style="{StaticResource MutedTextStyle}" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,12,0" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="Show all hidden windows" Style="{StaticResource SecondaryButtonStyle}"
+                    Command="{Binding ShowAllHiddenWindowsCommand}"/>
+        </Grid>
+        <TextBlock Text="{Binding ShowAllDoneText}" Style="{StaticResource MutedTextStyle}" FontSize="11.5" Margin="0,6,0,0"
+                   Visibility="{Binding ShowAllDoneText, Converter={StaticResource NullToCollapsedConverter}}"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
             <Button Content="Automation..." Style="{StaticResource SecondaryButtonStyle}"
                     Command="{Binding OpenTriggersCommand}" Margin="0,0,8,0"/>
             <Button Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Width="90" Margin="0,0,8,0"
-                    Command="{Binding CancelCommand}"/>
+                    Command="{Binding CancelCommand}" IsCancel="True"/>
             <Button Content="Save" Style="{StaticResource PrimaryButtonStyle}" Width="90"
                     Command="{Binding SaveCommand}" IsDefault="True"/>
         </StackPanel>

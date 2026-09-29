@@ -8,6 +8,7 @@ public partial class ConfirmWindow : Window
     {
         InitializeComponent();
         HeadingText.Text = heading;
+        Title = heading;
         MessageText.Text = message;
         ConfirmButton.Content = confirmText;
     }

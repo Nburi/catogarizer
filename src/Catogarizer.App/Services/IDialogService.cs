@@ -10,6 +10,8 @@ public interface IDialogService
 
     string? ShowCategoryEdit(CategoryEditDialogViewModel viewModel);
 
+    void ShowCategoryEditor(CategoryEditorViewModel viewModel);
+
     bool ShowConfirm(string heading, string message, string confirmText = "Delete");
 
     /// <returns>(true, placement) if saved (placement may itself be null - "cleared"), (false, _) if cancelled.</returns>

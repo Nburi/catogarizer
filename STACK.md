@@ -64,6 +64,26 @@ Apps`, already on `%PATH%`) expects.
 - **App search picker**: Start Menu `.lnk` shortcuts (both per-user and
   all-users folders) plus registry `Uninstall` keys as a secondary source.
 - **Config/persistence**: local JSON file.
+- **Category switching (v2)**: windows are parked with `ShowWindow(SW_HIDE)`
+  and brought back with `SW_SHOW`, never closed. Only Alt-Tab-eligible
+  top-level windows are tracked (no tool windows, no desktop, never
+  Catogarizer's own). Every hide is first written to `hidden.json` next to
+  the config, so a crash or power loss can't strand a window: the next
+  start shows everything in that ledger. Hide/show was chosen over moving
+  windows off-screen or to virtual desktops because it's instant (~200 ms
+  for a full restore), needs no undocumented APIs and leaves the window's
+  own state untouched.
+- **CLI relay**: a second process started with `switch`/`back`/`show-all`/
+  `run` hands the command to the running instance over a named pipe; the
+  instance queues it on a worker thread so the pipe listener never blocks
+  on a switch.
+- **Themes**: palettes are data in Core (`Theming/ThemeCatalog`, defined in
+  OKLCH so lightness steps stay even across hues), converted to WPF brushes
+  at runtime by `ThemeService`; contrast is unit-tested. XAML only uses
+  `DynamicResource` so themes switch live. Title bars follow via
+  `DwmSetWindowAttribute` (immersive dark mode).
+- **App icons**: `PrivateExtractIcons` for crisp exe icons, `SHGetFileInfo`
+  as fallback, cached per path.
 - **Tests**: xUnit, with interfaces around every Win32-touching service
   (window manager, process launcher, hotkey registrar, blocklist watcher)
   so core logic is unit-testable without mocking real OS calls.

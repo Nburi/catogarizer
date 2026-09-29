@@ -15,6 +15,17 @@ public sealed class CategoryValidatorTests
         Assert.False(result.IsValid);
     }
 
+    [Theory]
+    [InlineData("Unsorted")]
+    [InlineData(" unsorted ")]
+    public void ValidateName_RejectsTheBuiltInUnsortedName(string name)
+    {
+        var result = CategoryValidator.ValidateName(name, []);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("built in", result.ErrorMessage);
+    }
+
     [Fact]
     public void ValidateName_RejectsTooLong()
     {
@@ -31,7 +42,8 @@ public sealed class CategoryValidatorTests
         var result = CategoryValidator.ValidateName("deep work", existing);
 
         Assert.False(result.IsValid);
-        Assert.Contains("already exists", result.ErrorMessage);
+        // Quotes the existing category as it's actually written, not the user's input.
+        Assert.Contains("\"Deep Work\"", result.ErrorMessage);
     }
 
     [Fact]

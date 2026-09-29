@@ -10,27 +10,42 @@ public sealed class TriggerRunnerTests
     private readonly FakeCategoryActionService _categoryActions = new();
     private readonly LibraryService _library;
     private readonly TriggerRunner _runner;
+    private readonly List<Guid> _switchedTo = [];
+    private IReadOnlyList<AppActionResult> _switchFailures = [];
 
     public TriggerRunnerTests()
     {
         _library = new LibraryService(_store, fileExists: _ => true);
-        _runner = new TriggerRunner(_categoryActions);
+        _runner = new TriggerRunner(_categoryActions, id =>
+        {
+            _switchedTo.Add(id);
+            return new SwitchResult(id, false, 0, _switchFailures);
+        });
     }
 
     [Fact]
-    public void Run_OpenCategoryAction_OpensAllAppsInTheCategory()
+    public void Run_OpenCategoryAction_SwitchesToTheCategory()
     {
-        var app1 = _library.AddApp("VS Code", @"C:\code.exe");
-        var app2 = _library.AddApp("Slack", @"C:\slack.exe");
         var category = _library.AddCategory("Work");
-        _library.AddAppToCategory(category.Id, app1.Id);
-        _library.AddAppToCategory(category.Id, app2.Id);
         var trigger = MakeTrigger(new TriggerAction { Type = TriggerActionType.OpenCategory, CategoryId = category.Id });
 
         var results = _runner.Run(trigger, _library);
 
-        Assert.Equal(2, results.Count);
-        Assert.Contains("Open:VS Code,Slack", _categoryActions.Calls);
+        Assert.Equal([category.Id], _switchedTo);
+        Assert.Empty(results);
+    }
+
+    [Fact]
+    public void Run_OpenCategoryAction_ReportsLaunchFailuresFromTheSwitch()
+    {
+        var app = _library.AddApp("Zotero", @"C:\zotero.exe");
+        var category = _library.AddCategory("Research");
+        _switchFailures = [new AppActionResult(app, AppActionOutcome.Failed, "Zotero didn't open")];
+        var trigger = MakeTrigger(new TriggerAction { Type = TriggerActionType.OpenCategory, CategoryId = category.Id });
+
+        var results = _runner.Run(trigger, _library);
+
+        Assert.Equal("Zotero didn't open", Assert.Single(results).ErrorMessage);
     }
 
     [Fact]
@@ -80,6 +95,7 @@ public sealed class TriggerRunnerTests
         var results = _runner.Run(trigger, _library);
 
         Assert.Empty(results);
+        Assert.Empty(_switchedTo);
     }
 
     [Fact]

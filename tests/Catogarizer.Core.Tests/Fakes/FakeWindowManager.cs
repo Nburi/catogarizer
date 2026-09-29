@@ -67,6 +67,27 @@ public sealed class FakeWindowManager : IWindowManager
 
     public bool IsWindowVisible(IntPtr handle) => !_hiddenWindows.Contains(handle);
 
+    /// <summary>Live titles by handle; windows not listed report an empty title.</summary>
+    public Dictionary<IntPtr, string> Titles { get; } = new();
+
+    /// <summary>Owning process by handle; windows not listed default to pid == handle value.</summary>
+    public Dictionary<IntPtr, int> ProcessIds { get; } = new();
+
+    public string GetTitle(IntPtr handle) => Titles.TryGetValue(handle, out var t) ? t : "";
+
+    public HashSet<IntPtr> Minimized { get; } = new();
+    public List<IntPtr> BringToFrontCalls { get; } = new();
+
+    public bool IsMinimized(IntPtr handle) => Minimized.Contains(handle);
+
+    public void BringToFront(IntPtr handle) => BringToFrontCalls.Add(handle);
+
+    public int GetProcessId(IntPtr handle) =>
+        !IsWindowOpen(handle) ? 0 : ProcessIds.TryGetValue(handle, out var pid) ? pid : handle.ToInt32();
+
+    /// <summary>Test hook: a window that is already hidden before the service ever sees it (left over from a crashed run).</summary>
+    public void SimulateHidden(IntPtr handle) => _hiddenWindows.Add(handle);
+
     /// <summary>Test hook: simulates the user closing a window directly (not via this manager).</summary>
     public void SimulateClosedExternally(IntPtr handle) => _closedWindows.Add(handle);
 }

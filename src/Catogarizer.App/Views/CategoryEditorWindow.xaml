@@ -1,0 +1,291 @@
+<Window x:Class="Catogarizer.App.Views.CategoryEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="clr-namespace:Catogarizer.App.Controls"
+        Title="Edit category" Width="660" Height="760" MinWidth="520" MinHeight="460"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgBrush}" FontFamily="{StaticResource UiFont}">
+    <Window.Resources>
+        <!-- Live app actions make no sense when the exe is gone; Edit and Remove stay usable. -->
+        <Style x:Key="MissingAwareIconButtonStyle" TargetType="Button" BasedOn="{StaticResource GhostIconButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ExecutablePath, Converter={StaticResource MissingFileConverter}}" Value="True">
+                    <Setter Property="IsEnabled" Value="False"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SectionTitle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextStyle}">
+            <Setter Property="FontSize" Value="14.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style x:Key="RowCard" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush2}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource ControlRadius}"/>
+            <Setter Property="Padding" Value="12,9"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+        <Style x:Key="EmptyNote" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush2}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource ControlRadius}"/>
+            <Setter Property="Padding" Value="14,12"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Name and color -->
+        <StackPanel Grid.Row="0" Margin="28,22,28,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Ellipse Width="14" Height="14" Fill="{Binding Color}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBox x:Name="NameBox" Grid.Column="1" Style="{StaticResource ThemedTextBoxStyle}" MaxLength="60"
+                         Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                         FontFamily="{DynamicResource HeadingFont}" FontSize="20" FontWeight="SemiBold"
+                         AutomationProperties.Name="Category name"
+                         KeyDown="NameBox_KeyDown"/>
+            </Grid>
+            <TextBlock Text="{Binding NameError}" Style="{StaticResource ErrorTextStyle}" Margin="26,5,0,0"
+                       Visibility="{Binding NameError, Converter={StaticResource NullToCollapsedConverter}}"/>
+
+            <StackPanel Orientation="Horizontal" Margin="26,14,0,0">
+                <TextBlock Text="Color" Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <ItemsControl ItemsSource="{Binding Hues}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding DataContext.PickHueCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    CommandParameter="{Binding}" Cursor="Hand" Margin="0,0,6,0"
+                                    FocusVisualStyle="{StaticResource ThemedFocusVisual}"
+                                    AutomationProperties.Name="{Binding Name}" ToolTip="{Binding Name}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Grid Width="26" Height="26" Background="Transparent">
+                                            <Ellipse x:Name="Ring" Stroke="{DynamicResource InkBrush}" StrokeThickness="2" Visibility="Hidden"/>
+                                            <Ellipse Width="18" Height="18" Fill="{Binding Brush}"/>
+                                        </Grid>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Ring" Property="Visibility" Value="Visible"/>
+                                                <Setter TargetName="Ring" Property="Opacity" Value="0.45"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter TargetName="Ring" Property="Visibility" Value="Visible"/>
+                                                <Setter TargetName="Ring" Property="Opacity" Value="1"/>
+                                            </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="28,4,28,20">
+            <StackPanel>
+
+                <!-- Opens with -->
+                <Grid Margin="0,4,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="Opens with" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,0"
+                                   Text="When this category has no parked windows, switching here opens these apps and moves them where you placed them."/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Button Content="From open windows" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                                Command="{Binding ToggleOpenAppsCommand}"/>
+                        <Button Content="+ Add app" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding AddAppCommand}"/>
+                    </StackPanel>
+                </Grid>
+
+                <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="{DynamicResource ControlRadius}" Padding="12,10" Margin="0,0,0,12"
+                        Visibility="{Binding ShowOpenApps, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Open right now" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBlock Text="{Binding LastAddedText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"
+                                   TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Visibility="{Binding LastAddedText, Converter={StaticResource NullToCollapsedConverter}}"/>
+                        <TextBlock Text="Looking at your open windows..." Style="{StaticResource MutedTextStyle}" FontSize="12"
+                                   Visibility="{Binding IsLoadingOpenApps, Converter={StaticResource BoolToVis}}"/>
+                        <TextBlock Text="Every open app is already in this category, or nothing else is open."
+                                   Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap">
+                            <TextBlock.Visibility>
+                                <MultiBinding Converter="{StaticResource EmptyAndIdleToVisibleConverter}">
+                                    <Binding Path="OpenApps.Count"/>
+                                    <Binding Path="IsLoadingOpenApps"/>
+                                </MultiBinding>
+                            </TextBlock.Visibility>
+                        </TextBlock>
+                        <ItemsControl ItemsSource="{Binding OpenApps}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,4" AutomationProperties.Name="{Binding Name}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <c:AppIconView ExecutablePath="{Binding ExecutablePath}" DisplayName="{Binding Name}" IconSize="22"
+                                                       VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource InkBrush}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding WindowTitle}" Style="{StaticResource MutedTextStyle}" FontSize="11.5"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Content="+ Add" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5"
+                                                Command="{Binding DataContext.AddOpenAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource EmptyNote}" Visibility="{Binding Apps.Count, Converter={StaticResource ZeroToVisibleConverter}}">
+                    <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12.5" TextWrapping="Wrap"
+                               Text="No apps yet. Without any, switching here simply starts with an empty desktop, and whatever you open joins this category."/>
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding Apps}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource RowCard}" AutomationProperties.Name="{Binding Name}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <c:AppIconView ExecutablePath="{Binding ExecutablePath}" DisplayName="{Binding Name}" IconSize="28"
+                                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock FontSize="11.5" TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource MutedTextStyle}">
+                                                    <Setter Property="Text" Value="{Binding Placement, Converter={StaticResource PlacementStatusConverter}}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ExecutablePath, Converter={StaticResource MissingFileConverter}}" Value="True">
+                                                            <Setter Property="Text" Value="{Binding ExecutablePath, StringFormat='Not found at {0}'}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                            <Setter Property="ToolTip" Value="{Binding ExecutablePath}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="&#x25B6;" Style="{StaticResource MissingAwareIconButtonStyle}" ToolTip="Open now"
+                                                AutomationProperties.Name="Open now"
+                                                Command="{Binding DataContext.OpenAppCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                        <Button Content="&#x2014;" Style="{StaticResource MissingAwareIconButtonStyle}" ToolTip="Minimize"
+                                                AutomationProperties.Name="Minimize"
+                                                Command="{Binding DataContext.MinimizeAppCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                        <Button Content="&#x23F9;" Style="{StaticResource MissingAwareIconButtonStyle}" ToolTip="Close this app"
+                                                AutomationProperties.Name="Close this app"
+                                                Command="{Binding DataContext.CloseAppCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                        <Rectangle Width="1" Fill="{DynamicResource BorderBrush2}" Margin="6,5"/>
+                                        <Button Content="&#x26F6;" Style="{StaticResource MissingAwareIconButtonStyle}" ToolTip="Set where it opens"
+                                                AutomationProperties.Name="Set where it opens"
+                                                Command="{Binding DataContext.SetPlacementCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                        <Button Content="&#x270E;" Style="{StaticResource GhostIconButtonStyle}" ToolTip="Edit"
+                                                AutomationProperties.Name="Edit app"
+                                                Command="{Binding DataContext.EditAppCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                        <Button Content="Remove" Style="{StaticResource GhostRowButtonStyle}" Padding="8,4" Margin="2,0,0,0"
+                                                Foreground="{DynamicResource MutedBrush}" FontSize="12" FontWeight="SemiBold"
+                                                ToolTip="Take it out of this category (the app itself isn't touched)"
+                                                AutomationProperties.Name="Remove from this category"
+                                                Command="{Binding DataContext.RemoveAppCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="{Binding Notice}" Style="{StaticResource ErrorTextStyle}"
+                           Visibility="{Binding Notice, Converter={StaticResource NullToCollapsedConverter}}"/>
+
+                <!-- Held back -->
+                <Grid Margin="0,24,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="Held back while active" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,0"
+                                   Text="If one of these starts while you're in this category, it's closed right away and you get a notification."/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="+ Hold back app" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Top"
+                            Command="{Binding AddBlockedCommand}"/>
+                </Grid>
+
+                <Border Style="{StaticResource EmptyNote}" Visibility="{Binding Blocked.Count, Converter={StaticResource ZeroToVisibleConverter}}">
+                    <TextBlock Text="Nothing is held back." Style="{StaticResource MutedTextStyle}" FontSize="12.5"/>
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding Blocked}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource RowCard}" AutomationProperties.Name="{Binding Name}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <c:AppIconView ExecutablePath="{Binding ProcessNameOrPath}" DisplayName="{Binding Name}" IconSize="24"
+                                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding ProcessNameOrPath}" Style="{StaticResource MutedTextStyle}" FontSize="11.5"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Content="&#x2715;" Style="{StaticResource GhostIconButtonStyle}" ToolTip="Stop holding it back"
+                                            AutomationProperties.Name="Stop holding it back"
+                                            Command="{Binding DataContext.RemoveBlockedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="0,1,0,0" Padding="28,14">
+            <Grid>
+                <Button Content="Delete category" Style="{StaticResource SecondaryButtonStyle}" Foreground="{DynamicResource DangerBrush}"
+                        HorizontalAlignment="Left" Command="{Binding DeleteCommand}"/>
+                <Button Content="Done" Style="{StaticResource PrimaryButtonStyle}" Width="110" HorizontalAlignment="Right"
+                        Command="{Binding DoneCommand}"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -1,6 +1,9 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Media;
+using Catogarizer.App.Services;
 using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -8,15 +11,39 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Catogarizer.App.ViewModels;
 
+public sealed partial class PaletteEntry : ObservableObject
+{
+    public required Guid Id { get; init; }
+    public required string Name { get; init; }
+    public required string? KeyText { get; init; }
+    public required Brush Color { get; init; }
+    public required string StateText { get; init; }
+    public required bool IsActive { get; init; }
+    public required bool IsPrevious { get; init; }
+    public required bool HasMissingApp { get; init; }
+    public required IReadOnlyList<TemplateIcon> Icons { get; init; }
+
+    public string PreviousLabel => IsPrevious ? "   last used" : "";
+
+    [ObservableProperty] private bool _isSelected;
+
+    public override string ToString() => $"{Name}, {StateText}";
+}
+
 /// <summary>
-/// The fast path: search-as-you-type over categories, opened via a global
-/// hotkey from anywhere, so switching category doesn't need the main window.
+/// The everyday surface (PRINCIPLES.md, values 2 and 3): opened by the hotkey from anywhere.
+/// Digits jump straight to a category, typing filters, Enter switches the selection, which
+/// starts on the previous category - the most likely place to go.
 /// </summary>
 public partial class CommandPaletteViewModel : ObservableObject
 {
+    private const int MaxIcons = 3;
+
     private readonly LibraryService _library;
-    private readonly ICategoryActionService _categoryActionService;
-    private readonly IAppBlockingService _appBlockingService;
+    private readonly CategorySwitcher _switcher;
+    private readonly ThemeService _themeService;
+    private readonly Action<SwitchResult> _onSwitched;
+    private List<PaletteEntry> _all = [];
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -24,75 +51,118 @@ public partial class CommandPaletteViewModel : ObservableObject
     [ObservableProperty]
     private bool _isBusy;
 
-    public ObservableCollection<Category> Results { get; } = new();
+    public ObservableCollection<PaletteEntry> Results { get; } = new();
+
+    /// <summary>"Always visible: Spotify, WhatsApp", or null when nothing is pinned.</summary>
+    public string? PinnedText { get; }
 
     public event EventHandler? RequestClose;
 
-    public CommandPaletteViewModel(LibraryService library, ICategoryActionService categoryActionService, IAppBlockingService appBlockingService)
+    public CommandPaletteViewModel(LibraryService library, CategorySwitcher switcher, ThemeService themeService, Action<SwitchResult> onSwitched)
     {
         _library = library;
-        _categoryActionService = categoryActionService;
-        _appBlockingService = appBlockingService;
+        _switcher = switcher;
+        _themeService = themeService;
+        _onSwitched = onSwitched;
+        BuildEntries();
+        PinnedText = library.PinnedApps.Count == 0 ? null : "Always visible: " + string.Join(", ", library.PinnedApps.Select(p => p.Name));
         UpdateResults();
+    }
+
+    private void BuildEntries()
+    {
+        var sessions = _switcher.GetSessions();
+        var active = _switcher.ActiveCategoryId;
+        var previous = _switcher.PreviousCategoryId;
+
+        PaletteEntry Entry(Guid id, Category? category)
+        {
+            var template = category is null ? [] : _library.AppsOf(category);
+            var parked = sessions.TryGetValue(id, out var w) ? w.Count : 0;
+            var missing = id == active || parked > 0 || category is null ? 0 : _library.MissingAppCount(category);
+            return new PaletteEntry
+            {
+                Id = id, Name = _library.NameOf(id), KeyText = _library.KeyOf(id),
+                Color = ThemeService.FrozenBrush(_themeService.ColorFor(category)),
+                StateText = id == active ? "You're here" : CategoryStateText.Describe(parked, missing, template.Count, category is null),
+                IsActive = id == active, IsPrevious = id == previous, HasMissingApp = missing > 0,
+                Icons = template.Take(MaxIcons).Select(a => new TemplateIcon(a.Name, a.ExecutablePath)).ToList(),
+            };
+        }
+
+        _all = _library.Categories.OrderBy(c => c.SortOrder)
+            .Select(c => Entry(c.Id, c))
+            .Append(Entry(CategorySwitchService.Uncategorized, null))
+            .ToList();
     }
 
     partial void OnSearchTextChanged(string value) => UpdateResults();
 
     private void UpdateResults()
     {
-        Results.Clear();
         var query = SearchText.Trim();
         var matches = query.Length == 0
-            ? _library.Categories.AsEnumerable()
-            : _library.Categories.Where(c => c.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
-        foreach (var category in matches.OrderBy(c => c.SortOrder))
-            Results.Add(category);
+            ? _all
+            : _all.Select(e => (Entry: e, Score: CategoryMatcher.Score(e.Name, query)))
+                .Where(x => x.Score > 0)
+                .OrderByDescending(x => x.Score)
+                .Select(x => x.Entry)
+                .ToList();
+
+        Results.Clear();
+        foreach (var entry in matches)
+        {
+            entry.IsSelected = false;
+            Results.Add(entry);
+        }
+
+        // With nothing typed, start on the previous category (the usual destination); otherwise the best match.
+        var initial = query.Length == 0
+            ? Results.FirstOrDefault(e => e.IsPrevious) ?? Results.FirstOrDefault(e => !e.IsActive)
+            : Results.FirstOrDefault();
+        if (initial is not null) initial.IsSelected = true;
     }
 
-    [RelayCommand]
-    private Task Open(Category category)
+    public void MoveSelection(int delta)
     {
-        _appBlockingService.ActivateCategory(category.Id, ResolveBlockedApps(category));
-        return RunActionAsync(category, _categoryActionService.Open);
+        if (Results.Count == 0) return;
+        var index = Results.ToList().FindIndex(e => e.IsSelected);
+        var next = index < 0 ? 0 : (index + delta + Results.Count) % Results.Count;
+        foreach (var e in Results) e.IsSelected = false;
+        Results[next].IsSelected = true;
     }
 
-    [RelayCommand]
-    private Task Minimize(Category category) => RunActionAsync(category, _categoryActionService.Minimize);
+    public Task SwitchSelectedAsync() =>
+        Results.FirstOrDefault(e => e.IsSelected) is { } selected ? SwitchTo(selected) : Task.CompletedTask;
+
+    /// <summary>Digits in an empty search box jump straight to that category (0 = Unsorted).</summary>
+    public Task SwitchByNumberAsync(int number) =>
+        _library.CategoryIdForKey(number) is { } id && _all.FirstOrDefault(e => e.Id == id) is { } entry ? SwitchTo(entry) : Task.CompletedTask;
 
     [RelayCommand]
-    private async Task CloseCategory(Category category)
+    private async Task SwitchTo(PaletteEntry entry)
     {
-        await RunActionAsync(category, _categoryActionService.Close);
-        _appBlockingService.DeactivateCategory(category.Id);
-    }
-
-    [RelayCommand]
-    private void Close() => RequestClose?.Invoke(this, EventArgs.Empty);
-
-    private async Task RunActionAsync(Category category, Func<IReadOnlyList<AppEntry>, CategoryActionResult> action)
-    {
-        var apps = category.AppIds
-            .Select(id => _library.Apps.FirstOrDefault(a => a.Id == id))
-            .Where(a => a is not null)
-            .Cast<AppEntry>()
-            .ToList();
+        if (IsBusy) return;
+        if (entry.IsActive)
+        {
+            Close();
+            return;
+        }
 
         IsBusy = true;
+        SwitchResult? result;
         try
         {
-            await Task.Run(() => action(apps));
+            result = await Task.Run(() => _switcher.SwitchTo(entry.Id));
         }
         finally
         {
             IsBusy = false;
         }
+        if (result is not null) _onSwitched(result);
         Close();
     }
 
-    private List<BlockedApp> ResolveBlockedApps(Category category) =>
-        category.BlockedAppIds
-            .Select(id => _library.BlockedApps.FirstOrDefault(b => b.Id == id))
-            .Where(b => b is not null)
-            .Cast<BlockedApp>()
-            .ToList();
+    [RelayCommand]
+    private void Close() => RequestClose?.Invoke(this, EventArgs.Empty);
 }

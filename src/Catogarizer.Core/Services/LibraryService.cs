@@ -22,13 +22,57 @@ public sealed class LibraryService
         _configStore = configStore;
         _fileExists = fileExists ?? File.Exists;
         _config = configStore.Load();
+        AssignMissingHues();
+    }
+
+    /// <summary>Configs from before category colors existed get a color per category once, in their order.</summary>
+    private void AssignMissingHues()
+    {
+        var missing = _config.Categories.Where(c => c.Hue is null).OrderBy(c => c.SortOrder).ToList();
+        if (missing.Count == 0) return;
+        foreach (var category in missing)
+            category.Hue = Theming.CategoryHues.Next(_config.Categories.Where(c => c.Hue is not null).Select(c => c.Hue!.Value));
+        Save();
     }
 
     public IReadOnlyList<Category> Categories => _config.Categories;
     public IReadOnlyList<AppEntry> Apps => _config.Apps;
     public IReadOnlyList<BlockedApp> BlockedApps => _config.BlockedApps;
+    /// <summary>Read from the window watcher's thread; mutations replace the list instead of changing it.</summary>
+    public IReadOnlyList<PinnedApp> PinnedApps => _config.PinnedApps;
     public IReadOnlyList<Trigger> Triggers => _config.Triggers;
+
+    public IReadOnlyList<AppEntry> AppsOf(Category category) =>
+        category.AppIds.Select(id => _config.Apps.FirstOrDefault(a => a.Id == id)).OfType<AppEntry>().ToList();
+
+    public IReadOnlyList<BlockedApp> BlockedAppsOf(Category category) =>
+        category.BlockedAppIds.Select(id => _config.BlockedApps.FirstOrDefault(b => b.Id == id)).OfType<BlockedApp>().ToList();
     public AppSettings Settings => _config.Settings;
+
+    /// <summary>The category's name; the implicit Unsorted category (and a deleted one) reads "Unsorted".</summary>
+    public string NameOf(Guid categoryId) =>
+        _config.Categories.FirstOrDefault(c => c.Id == categoryId)?.Name ?? CategorySwitchService.UncategorizedName;
+
+    /// <summary>Number-key shortcut: 1-9 are the first nine categories in shelf order, 0 is Unsorted.</summary>
+    public string? KeyOf(Guid categoryId)
+    {
+        if (categoryId == CategorySwitchService.Uncategorized) return "0";
+        var index = OrderedCategories().FindIndex(c => c.Id == categoryId);
+        return index is >= 0 and < 9 ? (index + 1).ToString() : null;
+    }
+
+    /// <summary>The reverse of <see cref="KeyOf"/>; null if no category has that number.</summary>
+    public Guid? CategoryIdForKey(int number) => number switch
+    {
+        0 => CategorySwitchService.Uncategorized,
+        >= 1 and <= 9 => OrderedCategories().ElementAtOrDefault(number - 1)?.Id,
+        _ => null,
+    };
+
+    /// <summary>How many of the category's apps no longer exist at their path.</summary>
+    public int MissingAppCount(Category category) => AppsOf(category).Count(a => !_fileExists(a.ExecutablePath));
+
+    private List<Category> OrderedCategories() => _config.Categories.OrderBy(c => c.SortOrder).ToList();
 
     public void Reload() => _config = _configStore.Load();
 
@@ -44,6 +88,14 @@ public sealed class LibraryService
         Save();
     }
 
+    public void SetTheme(string themeId)
+    {
+        if (!Theming.ThemeCatalog.Exists(themeId))
+            throw new ArgumentException($"There is no theme called \"{themeId}\".", nameof(themeId));
+        _config.Settings.Theme = Theming.ThemeCatalog.Get(themeId).Id;
+        Save();
+    }
+
     // ---------------- Categories ----------------
 
     public Category AddCategory(string name)
@@ -51,7 +103,12 @@ public sealed class LibraryService
         var validation = CategoryValidator.ValidateName(name, _config.Categories);
         if (!validation.IsValid) throw new ArgumentException(validation.ErrorMessage, nameof(name));
 
-        var category = new Category { Name = name.Trim(), SortOrder = _config.Categories.Count };
+        var category = new Category
+        {
+            Name = name.Trim(),
+            SortOrder = _config.Categories.Count,
+            Hue = Theming.CategoryHues.Next(_config.Categories.Select(c => c.Hue).OfType<double>()),
+        };
         _config.Categories.Add(category);
         Save();
         return category;
@@ -64,6 +121,13 @@ public sealed class LibraryService
         if (!validation.IsValid) throw new ArgumentException(validation.ErrorMessage, nameof(newName));
 
         category.Name = newName.Trim();
+        Save();
+    }
+
+    public void SetCategoryHue(Guid categoryId, double hue)
+    {
+        var category = GetCategoryOrThrow(categoryId);
+        category.Hue = ((hue % 360) + 360) % 360;
         Save();
     }
 
@@ -165,6 +229,30 @@ public sealed class LibraryService
         foreach (var category in _config.Categories)
             category.BlockedAppIds.Remove(blockedAppId);
         _config.BlockedApps.Remove(blocked);
+        Save();
+    }
+
+    // ---------------- Pinned apps ----------------
+
+    public PinnedApp AddPinnedApp(string name, string processNameOrPath)
+    {
+        var nameValidation = BlockedAppValidator.ValidateName(name);
+        if (!nameValidation.IsValid) throw new ArgumentException(nameValidation.ErrorMessage, nameof(name));
+        var valueValidation = BlockedAppValidator.ValidateProcessNameOrPath(processNameOrPath);
+        if (!valueValidation.IsValid) throw new ArgumentException(valueValidation.ErrorMessage, nameof(processNameOrPath));
+
+        var existing = _config.PinnedApps.FirstOrDefault(p => string.Equals(p.ProcessNameOrPath, processNameOrPath, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null) return existing;
+
+        var pinned = new PinnedApp { Name = name.Trim(), ProcessNameOrPath = processNameOrPath };
+        _config.PinnedApps = [.. _config.PinnedApps, pinned];
+        Save();
+        return pinned;
+    }
+
+    public void RemovePinnedApp(Guid pinnedAppId)
+    {
+        _config.PinnedApps = _config.PinnedApps.Where(p => p.Id != pinnedAppId).ToList();
         Save();
     }
 

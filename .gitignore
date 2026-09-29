@@ -12,6 +12,10 @@ obj/
 ## Publish output
 publish/
 
+## Live-test scratch (the user's real config backup and window snapshots - personal, never commit)
+tools/livetest/*.json
+tools/livetest/*.png
+
 ## OS cruft
 Thumbs.db
 .DS_Store

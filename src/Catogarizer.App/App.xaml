@@ -7,13 +7,15 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Themes/DaylightStudio.xaml"/>
+                <ResourceDictionary Source="Themes/Controls.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis"/>
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <conv:NullToCollapsedConverter x:Key="NullToCollapsedConverter"/>
             <conv:ZeroToVisibleConverter x:Key="ZeroToVisibleConverter"/>
             <conv:PlacementStatusConverter x:Key="PlacementStatusConverter"/>
+            <conv:MissingFileConverter x:Key="MissingFileConverter"/>
+            <conv:EmptyAndIdleToVisibleConverter x:Key="EmptyAndIdleToVisibleConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

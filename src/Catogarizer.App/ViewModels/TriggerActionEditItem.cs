@@ -25,7 +25,7 @@ public sealed partial class TriggerActionEditItem : ObservableObject
     // binding, so this is exposed per-row even though the list itself never varies.
     public IReadOnlyList<ActionTypeOption> ActionTypeOptions { get; } =
     [
-        new(TriggerActionType.OpenCategory, "Open category"),
+        new(TriggerActionType.OpenCategory, "Switch to category"),
         new(TriggerActionType.OpenApp, "Open app"),
         new(TriggerActionType.CloseApps, "Close apps"),
     ];
