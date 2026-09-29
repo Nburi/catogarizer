@@ -139,10 +139,21 @@ of a flat rule list.
   separate Open button). Category cards stay simple: name, avatar-stack of
   its apps, a small "N windows parked" count. Deliberately no thumbnails or
   live previews — an overview to glance at, not a console to live in.
-- **Theme:** Daylight Studio direction carries over as a starting point,
-  open to revisiting alongside the UI rebuild.
-- Full layout/theme exploration tool: `design/concepts.html` (pre-pivot;
-  needs a v2 pass once the new layout is sketched).
+- **Home layout (decided 2026-09-28): "Now + Shelf".** The top half is the
+  present: the active category's name, time in it, its live windows, what it
+  holds back, pinned apps, and a "Back to <previous>" action. The other
+  categories (and Unsorted) sit on a shelf of tiles below; clicking a tile
+  switches. Editing moves out of the home into a separate category editor.
+- **Theme (decided 2026-09-28):** Fjord is the default; every theme from
+  `design/concepts-v2.html` is selectable in Settings.
+- **Signature moment (decided 2026-09-28):** double-tap the global hotkey to
+  jump back to the previous category without opening the palette; a small
+  pill in that category's color confirms it.
+- **Naming:** the UI is English and the implicit category is shown as
+  **Unsorted** ("Sonstiges" in earlier notes).
+- Binding product principles: `PRINCIPLES.md`. v2 design exploration:
+  `design/concepts-v2.html` (the pre-pivot `design/concepts.html` stays for
+  reference).
 
 ## Open technical questions
 Resolved during stack research (step 3) and the window-management prototype

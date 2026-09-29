@@ -421,11 +421,30 @@ around a command-palette-first interaction, per the updated CONCEPT.md.
 - [x] "Sonstiges" implicit category + per-app pinned/always-visible flag -
       `CategorySwitchService.Uncategorized` (`Guid.Empty`, no CRUD/UI needed
       since it's implicit) + `PinnedApp` model/`AppConfig.PinnedApps`.
-- [ ] Wire `CategorySwitchService` into the actual running app/CLI as the
-      primary action, replacing the Phase 5 `CategoryActionService`
-      category-level Open/Close/Minimize (per-app manual Open/Close/Minimize
-      stays as an override). Not done yet - the service exists and is
-      tested in isolation, but nothing in `Catogarizer.App`/the CLI calls it.
-- [ ] New UI: command palette as primary surface, minimalist dashboard as
-      secondary overview + click-to-switch (no thumbnails/previews).
-- [ ] `design/concepts.html` v2 pass once the new layout is sketched.
+- [x] `design/concepts-v2.html` v2 pass: 7 themes, 6 home designs, info
+      inventory, core values. Decided 2026-09-28: Fjord theme (all themes
+      selectable in Settings), "Now + Shelf" home, signature moment
+      "double-tap hotkey to go back", English UI with "Unsorted". Binding
+      principles in `PRINCIPLES.md`.
+
+Build plan (branch `feature/v2-switching-ui`, one commit per step):
+- [ ] 1. Safety net + session state (Core, test-first): persist hidden
+      windows to `hidden.json`, restore on exit and on next start (after a
+      crash), tray "Show all hidden windows". Switch service exposes
+      `ActiveCategoryChanged`, `PreviousCategoryId`, active-since time and a
+      per-category session snapshot (count + titles).
+- [ ] 2. Wire switching into the running app: composition root, tray,
+      palette, CLI `catogarizer switch "<name>"`, blocking follows the
+      active category, trigger action "Open category" becomes a switch. Old
+      category-level Open/Close/Minimize removed; per-app actions stay.
+- [ ] 3. Signature moment: double-tap hotkey → previous category, pill in
+      the category color.
+- [ ] 4. Theme system: one token dictionary per theme + shared controls
+      (`DynamicResource`), theme choice in Settings, Fjord default.
+- [ ] 5. Category color (`Category.Hue`, additive) + real app icons
+      (`SHGetFileInfo`, cached, letter tile fallback).
+- [ ] 6. New "Now + Shelf" home + separate category editor window; empty,
+      first-launch and error states.
+- [ ] 7. Palette v2 (preview shown to the user before building).
+- [ ] 8. Review rounds 0–4 (fs-* agents).
+- [ ] 9. Docs, code review, user review, merge, deploy.

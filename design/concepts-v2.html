@@ -1,0 +1,926 @@
+<title>Catogarizer v2 Blueprint</title>
+<meta name="description" content="Themes, home dashboard designs, core values and build plan for the v2 session-switching UI.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+/* ============ Page chrome tokens ============ */
+:root{
+  --bg:#F4F5F8; --surface:#FFFFFF; --surface-2:#ECEEF2; --ink:#14161B; --muted:#586072; --line:#DDE1E7;
+  --accent:#3144D0; --accent-soft:#E5E8FB; --accent-ink:#FFFFFF;
+  --warn:#8A5200; --warn-soft:#FFF0D8; --good:#1B7447; --good-soft:#DFF3E8;
+  --wall-a:#C9D3E3; --wall-b:#E7E0EE;
+  --f-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --f-body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E1014; --surface:#161920; --surface-2:#1E222A; --ink:#E6E8ED; --muted:#99A0AE; --line:#2A2F38;
+    --accent:#8C99FF; --accent-soft:#222746; --accent-ink:#0E1014;
+    --warn:#F0B45C; --warn-soft:#382812; --good:#5CC98E; --good-soft:#15301F;
+    --wall-a:#1A2130; --wall-b:#271E2E;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E1014; --surface:#161920; --surface-2:#1E222A; --ink:#E6E8ED; --muted:#99A0AE; --line:#2A2F38;
+  --accent:#8C99FF; --accent-soft:#222746; --accent-ink:#0E1014;
+  --warn:#F0B45C; --warn-soft:#382812; --good:#5CC98E; --good-soft:#15301F;
+  --wall-a:#1A2130; --wall-b:#271E2E;
+}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 var(--f-body);padding-inline:20px;padding-block:0 96px;margin:0}
+.wrap{max-width:1180px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(30px,5vw,46px);letter-spacing:-.02em}
+h2{font-size:clamp(24px,3.4vw,32px);letter-spacing:-.015em}
+h3{font-size:18px}
+p{margin:0}
+.lede{color:var(--muted);max-width:68ch;font-size:16px}
+.eyebrow{font:600 12px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+code,.mono{font-family:var(--f-mono);font-size:.9em}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+/* top */
+.top{padding-block:40px 18px;display:grid;gap:14px}
+.status{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:4px 11px;font:500 13px/1.4 var(--f-body);background:var(--surface-2);color:var(--ink)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.good{background:var(--good-soft);color:var(--good)}
+nav.toc{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-inline:-20px;padding-inline:20px}
+nav.toc .wrap{display:flex;gap:4px;overflow-x:auto;padding-block:8px;scrollbar-width:none}
+nav.toc a{flex:none;text-decoration:none;color:var(--muted);font:500 13.5px/1 var(--f-body);padding:8px 12px;border-radius:8px}
+nav.toc a:hover{background:var(--surface-2);color:var(--ink)}
+nav.toc a b{font-family:var(--f-mono);font-weight:600;color:var(--accent);margin-right:6px}
+
+section.sec{padding-block:48px 8px;display:grid;gap:22px;scroll-margin-top:60px}
+.sec-head{display:grid;gap:8px}
+.sec-head .num{font:600 13px/1 var(--f-mono);color:var(--accent)}
+
+/* pickers */
+.pickrow{display:grid;gap:10px}
+.pickrow .label{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap}
+.themes{display:flex;flex-wrap:wrap;gap:8px}
+.tbtn{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:8px 12px 8px 8px;cursor:pointer;font:500 14px/1.2 var(--f-body);text-align:left;transition:border-color .15s,box-shadow .15s}
+.tbtn:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.tbtn[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.tbtn small{display:block;color:var(--muted);font-size:12px}
+.swatch{width:34px;height:34px;border-radius:8px;display:grid;grid-template-columns:1fr 1fr;overflow:hidden;flex:none;border:1px solid rgba(0,0,0,.08)}
+.swatch i{display:block}
+.designs{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.dbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left;font:inherit;display:grid;gap:2px;transition:border-color .15s,box-shadow .15s}
+.dbtn:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.dbtn[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.dbtn b{font:600 15px/1.3 var(--f-body)}
+.dbtn b span{font-family:var(--f-mono);color:var(--accent);margin-right:6px}
+.dbtn small{color:var(--muted);font-size:12.5px;line-height:1.35}
+
+/* stage */
+.stage{position:relative;border-radius:16px;overflow:hidden;background:linear-gradient(135deg,var(--wall-a),var(--wall-b));border:1px solid var(--line)}
+.canvas{position:absolute;left:0;top:0;width:1120px;height:700px;transform-origin:0 0;padding:30px 40px}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:6px;align-content:start}
+.note .eyebrow{font-size:11px}
+.note p{font-size:14px}
+.effort{display:inline-flex;gap:3px;vertical-align:middle;margin-left:6px}
+.effort i{width:8px;height:8px;border-radius:2px;background:var(--line)}
+.effort i.on{background:var(--accent)}
+
+/* tables */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font:600 11.5px/1.3 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+td.id{font-family:var(--f-mono);color:var(--muted);width:44px;font-variant-numeric:tabular-nums}
+.grp td{background:var(--surface-2);font:600 13px/1.3 var(--f-body);color:var(--ink);padding-block:8px}
+.tag{display:inline-block;font:600 11px/1 var(--f-mono);padding:4px 6px;border-radius:5px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.tag.new{background:var(--warn-soft);color:var(--warn)}
+.tag.ok{background:var(--good-soft);color:var(--good)}
+.ways{display:flex;flex-wrap:wrap;gap:6px}
+.way{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:3px 8px;font-size:13px;background:var(--bg)}
+.way em{font:600 11px/1 var(--f-mono);font-style:normal;color:var(--accent)}
+
+/* product */
+.usp{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px;display:grid;gap:10px}
+.usp .big{font:600 clamp(19px,2.4vw,24px)/1.35 var(--f-display);max-width:60ch;text-wrap:balance}
+.values{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;counter-reset:v}
+.value{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:6px;align-content:start}
+.value h3{font-size:17px;display:flex;gap:10px;align-items:baseline}
+.value h3::before{counter-increment:v;content:counter(v);font:600 13px/1 var(--f-mono);color:var(--accent)}
+.value p{font-size:14px}
+.value .rule{font-size:13px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-top:2px}
+.reqs{display:grid;gap:8px}
+.req{display:grid;grid-template-columns:96px 1fr;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.req.guess{border-color:color-mix(in srgb,var(--warn) 55%,var(--line));background:color-mix(in srgb,var(--warn-soft) 55%,var(--surface))}
+.req .o{font:600 11.5px/1.2 var(--f-mono);padding-top:3px}
+.req.guess .o{color:var(--warn)}
+.req .o{color:var(--muted)}
+.req p{font-size:14px}
+.req p+p{color:var(--muted);font-size:13.5px}
+.sigs{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.sig{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:16px 18px;display:grid;gap:8px;cursor:pointer;text-align:left;font:inherit;color:inherit;align-content:start;transition:border-color .15s,box-shadow .15s}
+.sig:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.sig[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.sig .h{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.sig b{font:600 16px/1.3 var(--f-display)}
+.sig .where{font:600 11px/1.3 var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.sig p{font-size:14px}
+.sig .rec{font:600 11px/1 var(--f-mono);color:var(--good);background:var(--good-soft);padding:4px 7px;border-radius:5px;white-space:nowrap}
+.cols2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:8px;align-content:start}
+.box ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+
+/* build steps */
+.steps{display:grid;gap:10px;counter-reset:s}
+.step{display:grid;grid-template-columns:40px 1fr;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 18px}
+.step::before{counter-increment:s;content:counter(s);font:600 20px/1 var(--f-display);color:var(--accent);padding-top:2px}
+.step h3{font-size:16px;margin-bottom:4px}
+.step p{font-size:14px;color:var(--muted)}
+.step .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+
+/* questions */
+.q{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:6px}
+.q .guessline{font-size:14px;color:var(--muted)}
+
+/* pick bar */
+.pickbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding:10px 20px calc(10px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 24px rgba(0,0,0,.06)}
+.pickbar .wrap{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap}
+.pickbar .item{font-size:13.5px}
+.pickbar .item span{color:var(--muted);margin-right:4px}
+.pickbar .item b{font-weight:600}
+.pickbar .item b.empty{color:var(--warn);font-weight:500}
+.copy{margin-left:auto;border:0;background:var(--accent);color:var(--accent-ink);font:600 14px/1 var(--f-body);padding:10px 16px;border-radius:10px;cursor:pointer}
+.copy:hover{filter:brightness(1.08)}
+.copied{font-size:13px;color:var(--good)}
+@media (max-width:640px){.copy{margin-left:0}.req{grid-template-columns:1fr;gap:4px}}
+
+/* ============ Demo themes (the simulated app) ============ */
+.demo{
+  --radius:14px; --bw:1px; --head:inherit; --win-bg:var(--bg);
+  --cat-l:60%; --cat-c:.14; --ico-l:56%;
+  font-family:'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;
+  color:var(--ink); font-size:13px; line-height:1.35;
+}
+.demo[data-theme="daylight"]{--bg:oklch(98% .006 250);--surface:oklch(100% 0 0);--surface-2:oklch(95.5% .008 250);--ink:oklch(22% .02 250);--muted:oklch(45% .02 250);--border:oklch(89% .008 250);--accent:oklch(52% .16 260);--accent-ink:oklch(99% 0 0);--danger:oklch(55% .18 25);--shadow:0 1px 2px oklch(22% .02 250/.06),0 8px 20px oklch(22% .02 250/.06);--radius:14px;--cat-l:58%}
+.demo[data-theme="fjord"]{--bg:oklch(97.4% .011 195);--surface:oklch(99.6% .003 195);--surface-2:oklch(94% .016 195);--ink:oklch(25% .035 220);--muted:oklch(45% .03 215);--border:oklch(88% .018 200);--accent:oklch(49% .1 192);--accent-ink:oklch(99% 0 0);--danger:oklch(54% .18 25);--shadow:0 1px 2px oklch(25% .035 220/.05),0 10px 24px oklch(25% .035 220/.06);--radius:18px;--cat-l:57%;--cat-c:.12}
+.demo[data-theme="paperink"]{--bg:oklch(98.8% .002 80);--surface:oklch(100% 0 0);--surface-2:oklch(96.5% .003 80);--ink:oklch(19% .005 60);--muted:oklch(42% .005 60);--border:oklch(87% .004 60);--accent:oklch(38% .13 25);--accent-ink:oklch(98% 0 0);--danger:oklch(50% .19 25);--shadow:none;--radius:6px;--head:'Source Serif 4',Georgia,serif;--cat-l:52%;--cat-c:.12}
+.demo[data-theme="mono"]{--bg:oklch(100% 0 0);--surface:oklch(100% 0 0);--surface-2:oklch(94% 0 0);--ink:oklch(10% 0 0);--muted:oklch(33% 0 0);--border:oklch(40% 0 0);--accent:oklch(45% .15 255);--accent-ink:oklch(100% 0 0);--danger:oklch(45% .2 25);--shadow:none;--radius:4px;--bw:1.5px;--cat-l:46%;--cat-c:.16;--ico-l:42%}
+.demo[data-theme="nightshift"]{--bg:oklch(19% .014 55);--surface:oklch(23% .016 55);--surface-2:oklch(27.5% .018 55);--ink:oklch(93% .01 55);--muted:oklch(74% .02 55);--border:oklch(33% .02 55);--accent:oklch(76% .14 68);--accent-ink:oklch(18% .02 65);--danger:oklch(68% .18 25);--shadow:0 1px 0 oklch(0% 0 0/.3),0 12px 28px oklch(0% 0 0/.35);--radius:12px;--cat-l:72%;--cat-c:.12}
+.demo[data-theme="slate"]{--bg:oklch(27% .022 265);--surface:oklch(31.5% .024 265);--surface-2:oklch(36% .026 265);--ink:oklch(95% .008 265);--muted:oklch(79% .018 265);--border:oklch(42% .028 265);--accent:oklch(73% .13 300);--accent-ink:oklch(17% .03 300);--danger:oklch(68% .19 25);--shadow:0 1px 0 oklch(15% .02 265/.4),0 12px 28px oklch(15% .02 265/.35);--radius:12px;--cat-l:74%;--cat-c:.12}
+.demo[data-theme="graphite"]{--bg:oklch(21% .006 260);--win-bg:linear-gradient(165deg,oklch(25% .022 245),oklch(20.5% .008 260) 55%);--surface:oklch(100% 0 0/.055);--surface-2:oklch(100% 0 0/.085);--ink:oklch(96% .003 260);--muted:oklch(77% .008 260);--border:oklch(100% 0 0/.09);--accent:oklch(74% .12 240);--accent-ink:oklch(17% .03 240);--danger:oklch(70% .17 25);--shadow:0 1px 0 oklch(0% 0 0/.25);--radius:8px;--cat-l:74%;--cat-c:.12}
+
+.demo *{box-sizing:border-box}
+.win{width:1040px;height:640px;background:var(--win-bg);border-radius:10px;box-shadow:0 30px 70px rgba(10,14,25,.35),0 0 0 1px rgba(0,0,0,.14);overflow:hidden;display:flex;flex-direction:column}
+.tbar{height:32px;display:flex;align-items:center;padding-left:12px;font-size:12px;color:var(--muted);flex:none}
+.tbar .tlogo{width:14px;height:14px;border-radius:4px;background:var(--accent);margin-right:8px}
+.tbar .ctl{margin-left:auto;display:flex}
+.tbar .ctl span{width:46px;height:32px;display:grid;place-items:center;color:var(--muted)}
+.wbody{flex:1;min-height:0;position:relative}
+.dh{font-family:var(--head);font-weight:600;color:var(--ink)}
+
+.m-btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:calc(var(--radius)*.6);font-weight:600;font-size:12.5px;border:var(--bw) solid var(--border);background:var(--surface);color:var(--ink);white-space:nowrap}
+.m-btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.m-btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.m-ibtn{width:32px;height:32px;display:grid;place-items:center;border-radius:calc(var(--radius)*.6);color:var(--muted)}
+.kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:5px;border:1px solid var(--border);border-bottom-width:2px;background:var(--surface);color:var(--muted);font:600 10.5px/1 'Cascadia Mono',Consolas,ui-monospace,monospace}
+.keys{display:inline-flex;gap:3px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;background:oklch(var(--cat-l) var(--cat-c) var(--h))}
+.dot.hollow{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
+.ico{width:24px;height:24px;border-radius:6px;display:inline-grid;place-items:center;font-weight:700;font-size:9.5px;color:#fff;flex:none;letter-spacing:-.02em;background:oklch(var(--ico-l) var(--c) var(--h))}
+.ico.s{width:18px;height:18px;border-radius:5px;font-size:7.5px}
+.ico.l{width:30px;height:30px;border-radius:8px;font-size:11px}
+.stack{display:inline-flex;padding-left:5px}
+.stack .ico{box-shadow:0 0 0 2px var(--surface);margin-left:-5px}
+.stack .more{background:var(--surface-2);color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:99px;font-size:11.5px;font-weight:600;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.chip.on{background:oklch(var(--cat-l) var(--cat-c) var(--h)/.2);color:var(--ink)}
+.chip.on::before{content:"";width:6px;height:6px;border-radius:50%;background:oklch(var(--cat-l) var(--cat-c) var(--h))}
+.chip.fresh{background:transparent;box-shadow:inset 0 0 0 1px var(--border)}
+.blk{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-size:11.5px;font-weight:600}
+.sm{font-size:11.5px}
+.mut{color:var(--muted)}
+.m-card{background:var(--surface);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:15px}
+.brand .logo{width:22px;height:22px;border-radius:calc(var(--radius)*.45);background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-size:12px;font-weight:700}
+.searchbar{display:flex;align-items:center;gap:8px;height:34px;padding:0 8px 0 12px;border-radius:calc(var(--radius)*.6);background:var(--surface);border:var(--bw) solid var(--border);color:var(--muted);font-size:12.5px}
+.searchbar .keys{margin-left:auto}
+.sep{width:1px;align-self:stretch;background:var(--border)}
+.lbl{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+
+/* A — Rooms */
+.lA{padding:20px 26px;display:flex;flex-direction:column;gap:14px;height:100%}
+.a-hdr{display:flex;align-items:center;gap:14px}
+.a-hdr .searchbar{width:320px;margin-left:auto}
+.a-hdr .r{display:flex;gap:6px;align-items:center}
+.a-pins{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.a-pins .pin{display:inline-flex;align-items:center;gap:6px;color:var(--ink);font-weight:600;background:var(--surface);border:var(--bw) solid var(--border);border-radius:99px;padding:2px 10px 2px 3px}
+.a-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.a-card{padding:14px 16px;display:flex;flex-direction:column;gap:12px;position:relative}
+.a-card.act{grid-column:span 2;border-color:oklch(var(--cat-l) var(--cat-c) var(--h));box-shadow:0 0 0 1px oklch(var(--cat-l) var(--cat-c) var(--h)),var(--shadow);background:linear-gradient(180deg,oklch(var(--cat-l) var(--cat-c) var(--h)/.07),transparent 60%),var(--surface)}
+.a-top{display:flex;align-items:center;gap:8px}
+.a-top .dh{font-size:15px}
+.a-top .kbd{margin-left:auto}
+.a-wins{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.a-win{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:calc(var(--radius)*.5);background:var(--surface-2);min-width:0}
+.a-win .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.a-foot{display:flex;align-items:center;gap:8px;margin-top:auto}
+.a-foot .blk{margin-left:auto}
+.a-card .hint{position:absolute;right:14px;bottom:13px;font-size:11.5px;font-weight:600;color:var(--accent);display:none}
+.a-card.hover{border-color:var(--accent)}
+.a-card.hover .hint{display:block}
+.a-card.hover .blk{visibility:hidden}
+.a-uns{display:flex;align-items:center;gap:10px;padding:10px 14px;border:var(--bw) dashed var(--border);border-radius:var(--radius);color:var(--muted);font-size:12.5px}
+.a-uns b{color:var(--ink)}
+.a-uns .m-btn{margin-left:auto;height:28px}
+.a-bottom{margin-top:auto;display:flex;gap:18px;align-items:center;font-size:12px;color:var(--muted)}
+.a-bottom span{display:inline-flex;gap:6px;align-items:center}
+
+/* B — Switchboard */
+.lB{padding:20px 26px;display:flex;flex-direction:column;gap:12px;height:100%}
+.b-hdr{display:flex;align-items:center;gap:12px}
+.b-hdr .searchbar{flex:1;max-width:460px;margin-left:18px}
+.b-hdr .r{margin-left:auto;display:flex;gap:6px}
+.b-list{display:flex;flex-direction:column}
+.b-row{display:grid;grid-template-columns:30px 14px 1fr 130px 170px 110px 44px;align-items:center;gap:10px;padding:0 12px;height:44px;border-radius:calc(var(--radius)*.6)}
+.b-row+.b-row{margin-top:2px}
+.b-row .dh{font-size:14px;font-weight:600;font-family:inherit}
+.b-row.head{height:26px;color:var(--muted)}
+.b-row.act{background:var(--surface);box-shadow:inset 3px 0 0 oklch(var(--cat-l) var(--cat-c) var(--h)),var(--shadow);border:var(--bw) solid var(--border);border-radius:calc(var(--radius)*.6) calc(var(--radius)*.6) 0 0}
+.b-row.hov{background:var(--surface-2)}
+.b-exp{background:var(--surface);border:var(--bw) solid var(--border);border-top:0;border-radius:0 0 calc(var(--radius)*.6) calc(var(--radius)*.6);box-shadow:inset 3px 0 0 oklch(var(--cat-l) var(--cat-c) var(--h)),var(--shadow);padding:4px 16px 14px 66px;display:grid;gap:10px;margin-bottom:6px}
+.b-wins{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.b-win{display:flex;gap:8px;align-items:center;min-width:0;font-size:12px}
+.b-win span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.b-held{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.b-row.uns .dh{color:var(--muted)}
+.b-foot{margin-top:auto;display:flex;align-items:center;gap:16px;font-size:12px;color:var(--muted);border-top:var(--bw) solid var(--border);padding-top:12px}
+.b-foot span{display:inline-flex;align-items:center;gap:6px}
+.b-foot .r{margin-left:auto}
+
+/* C — Now + Shelf */
+.lC{padding:18px 26px;display:flex;flex-direction:column;gap:16px;height:100%}
+.c-hdr{display:flex;align-items:center;gap:12px}
+.c-hdr .r{margin-left:auto;display:flex;gap:6px;align-items:center}
+.c-hero{padding:22px 24px;display:grid;grid-template-columns:1.45fr 1fr;gap:26px;background:linear-gradient(135deg,oklch(var(--cat-l) var(--cat-c) var(--h)/.13),oklch(var(--cat-l) var(--cat-c) var(--h)/.02) 70%),var(--surface)}
+.c-now{display:grid;gap:14px;align-content:start}
+.c-big{font-family:var(--head);font-size:36px;font-weight:650;letter-spacing:-.01em;line-height:1.05}
+.c-sub{display:flex;gap:12px;align-items:center;color:var(--muted);font-size:12.5px}
+.c-wins{display:grid;gap:6px}
+.c-win{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:calc(var(--radius)*.5);background:var(--surface);border:var(--bw) solid var(--border)}
+.c-win .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+.c-side{display:flex;flex-direction:column;gap:12px}
+.c-held{padding:12px 14px;border-radius:calc(var(--radius)*.6);background:var(--surface-2);display:grid;gap:8px}
+.c-held .row{display:flex;gap:8px;align-items:center;font-size:12.5px}
+.c-held .ev{font-size:11.5px;color:var(--muted)}
+.c-back{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:calc(var(--radius)*.6);border:var(--bw) solid var(--border);background:var(--surface)}
+.c-back .t{flex:1;font-size:12.5px}
+.c-back .t b{display:block;font-size:13px}
+.c-shelf{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.c-tile{padding:12px 13px;display:grid;gap:9px}
+.c-tile .top{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px}
+.c-tile .top .kbd{margin-left:auto}
+.c-tile.uns{background:transparent;border-style:dashed;box-shadow:none}
+.c-foot{margin-top:auto;display:flex;gap:18px;font-size:12px;color:var(--muted);align-items:center}
+.c-foot span{display:inline-flex;gap:6px;align-items:center}
+
+/* D — Day */
+.lD{display:grid;grid-template-columns:214px 1fr;height:100%}
+.d-side{border-right:var(--bw) solid var(--border);padding:18px 12px;display:flex;flex-direction:column;gap:4px;background:color-mix(in oklab,var(--surface-2) 45%,transparent)}
+.d-side .brand{padding:0 8px 14px}
+.d-item{display:flex;align-items:center;gap:9px;padding:0 10px;height:34px;border-radius:calc(var(--radius)*.55);font-size:13px}
+.d-item .n{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600}
+.d-item.act{background:var(--surface);box-shadow:var(--shadow);border:var(--bw) solid var(--border);font-weight:600}
+.d-item.act .n{color:var(--ink)}
+.d-side .lbl{padding:14px 10px 6px}
+.d-side .bottom{margin-top:auto;display:flex;gap:4px;padding:0 4px}
+.d-main{padding:18px 24px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.d-hdr{display:flex;align-items:center;gap:12px}
+.d-hdr .dh{font-size:19px}
+.d-hdr .searchbar{margin-left:auto;width:280px}
+.d-tl{padding:14px 18px 12px}
+.d-tl .h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.d-track{position:relative;height:30px;border-radius:7px;background:var(--surface-2)}
+.d-seg{position:absolute;top:0;bottom:0;border-radius:6px;background:oklch(var(--cat-l) var(--cat-c) var(--h));display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:700;color:oklch(20% .03 var(--h));white-space:nowrap;overflow:hidden}
+.d-seg.live{background:repeating-linear-gradient(-45deg,oklch(var(--cat-l) var(--cat-c) var(--h)) 0 6px,oklch(var(--cat-l) var(--cat-c) var(--h)/.82) 6px 12px)}
+.d-now{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink);border-radius:2px}
+.d-now::after{content:"10:00";position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--ink)}
+.d-trig{position:absolute;top:-4px;bottom:-4px;width:0;border-left:2px dashed var(--muted)}
+.d-trig span{position:absolute;bottom:-20px;left:4px;font-size:10.5px;color:var(--muted);white-space:nowrap}
+.d-axis{position:relative;height:30px;margin-top:4px}
+.d-axis span{position:absolute;top:18px;font-size:10px;color:var(--muted);transform:translateX(-50%);font-variant-numeric:tabular-nums}
+.d-cols{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;flex:1;min-height:0}
+.d-card{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.d-card .h{display:flex;align-items:center;gap:8px}
+.d-card .h .chip{margin-left:auto}
+.d-win{display:flex;align-items:center;gap:10px;font-size:12.5px;padding:4px 0}
+.d-win .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.d-bar{display:grid;grid-template-columns:86px 1fr 44px;gap:10px;align-items:center;font-size:12.5px}
+.d-bar i{display:block;height:8px;border-radius:4px;background:oklch(var(--cat-l) var(--cat-c) var(--h))}
+.d-bar b{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.d-held{margin-top:auto;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;border-top:var(--bw) solid var(--border);padding-top:10px}
+
+/* E — Dock */
+.screen{width:1040px;height:640px;border-radius:10px;overflow:hidden;position:relative;background:linear-gradient(160deg,#5b6f8f,#8a7aa3 55%,#c69a8c);box-shadow:0 30px 70px rgba(10,14,25,.35)}
+.ghost{position:absolute;background:rgba(255,255,255,.82);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.18);overflow:hidden}
+.ghost .gt{height:26px;background:rgba(0,0,0,.05)}
+.ghost .gl{height:8px;border-radius:4px;background:rgba(0,0,0,.08);margin:10px 14px}
+.taskbar{position:absolute;left:0;right:0;bottom:0;height:40px;background:rgba(20,22,28,.72);display:flex;justify-content:center;align-items:center;gap:8px}
+.taskbar i{width:22px;height:22px;border-radius:5px;background:rgba(255,255,255,.22)}
+.dock{position:absolute;left:50%;bottom:58px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:7px;background:var(--win-bg);border-radius:calc(var(--radius) + 4px);box-shadow:0 18px 44px rgba(0,0,0,.35),0 0 0 1px var(--border);white-space:nowrap}
+.demo[data-theme="graphite"] .dock{background:oklch(24% .01 255/.96)}
+.dock .logo{width:30px;height:30px;border-radius:calc(var(--radius)*.55);background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;margin-right:2px}
+.e-chip{display:flex;align-items:center;gap:7px;height:38px;padding:0 12px;border-radius:calc(var(--radius)*.7);font-size:12.5px;font-weight:600;color:var(--ink)}
+.e-chip .n{font-size:11px;color:var(--muted);font-weight:600}
+.e-chip.act{background:oklch(var(--cat-l) var(--cat-c) var(--h)/.2);box-shadow:inset 0 0 0 1.5px oklch(var(--cat-l) var(--cat-c) var(--h));padding:0 14px}
+.e-chip.act .n{color:var(--ink)}
+.e-chip.hov{background:var(--surface-2)}
+.e-chip.uns{color:var(--muted)}
+.dock .sep{margin:6px 4px}
+.e-pop{position:absolute;bottom:118px;width:290px;padding:12px 14px;display:grid;gap:8px;background:var(--win-bg);border:var(--bw) solid var(--border);border-radius:var(--radius);box-shadow:0 18px 40px rgba(0,0,0,.3)}
+.demo[data-theme="graphite"] .e-pop{background:oklch(25% .012 255/.98)}
+.e-pop .h{display:flex;align-items:center;gap:8px;font-weight:600}
+.e-pop .h .chip{margin-left:auto}
+.e-pop .w{display:flex;gap:8px;align-items:center;font-size:12px}
+.e-pop .f{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);border-top:var(--bw) solid var(--border);padding-top:8px}
+.e-cap{position:absolute;top:22px;left:24px;right:24px;display:flex;justify-content:space-between;color:#fff;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+
+/* F — Inspector */
+.lF{display:grid;grid-template-columns:236px 1fr;height:100%}
+.f-rail{border-right:var(--bw) solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:3px}
+.f-rail .searchbar{margin:0 0 12px;height:32px}
+.f-item{display:flex;align-items:center;gap:9px;height:34px;padding:0 10px;border-radius:calc(var(--radius)*.55);font-size:13px}
+.f-item .n{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600}
+.f-item.sel{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.f-item.sel .n{color:var(--accent-ink);opacity:.8}
+.f-item .live{font-size:9.5px;font-weight:700;letter-spacing:.06em;color:oklch(var(--cat-l) var(--cat-c) var(--h));margin-left:auto}
+.f-rail .lbl{padding:14px 10px 6px}
+.f-rail .bottom{margin-top:auto;display:flex;gap:4px}
+.f-main{padding:20px 26px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.f-hdr{display:flex;align-items:center;gap:12px}
+.f-hdr .dh{font-size:22px}
+.f-hdr .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.f-hdr .m-btn.pri .kbd{background:transparent;border-color:color-mix(in oklab,var(--accent-ink) 40%,transparent);color:var(--accent-ink)}
+.f-tabs{display:flex;gap:4px;border-bottom:var(--bw) solid var(--border)}
+.f-tab{padding:8px 12px;font-size:12.5px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;gap:6px;align-items:center}
+.f-tab.on{color:var(--ink);border-bottom-color:var(--accent)}
+.f-tab .c{font-size:10.5px;background:var(--surface-2);padding:1px 6px;border-radius:99px}
+.f-list{display:flex;flex-direction:column}
+.f-row{display:grid;grid-template-columns:30px 1fr 150px 150px;align-items:center;gap:12px;padding:10px 12px;border-bottom:var(--bw) solid var(--border);font-size:12.5px}
+.f-row .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.f-row .acts{display:flex;gap:4px;justify-content:flex-end}
+.f-row .acts .m-btn{height:26px;padding:0 9px;font-size:11.5px}
+.f-row.hd{color:var(--muted);font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding-block:6px}
+.f-sub{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f-box{padding:12px 14px;display:grid;gap:8px}
+.f-box .h{display:flex;justify-content:space-between;align-items:center}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<nav class="toc" aria-label="Sections">
+  <div class="wrap">
+    <a href="#designs"><b>0+3</b>Themes &amp; designs</a>
+    <a href="#info"><b>1</b>What the home shows</a>
+    <a href="#display"><b>2</b>Ways to show it</a>
+    <a href="#product"><b>4</b>Product &amp; core values</a>
+    <a href="#build"><b>5</b>Build plan</a>
+    <a href="#questions"><b>?</b>Open questions</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Catogarizer · v2 session switching · planning</span>
+    <h1>Catogarizer v2 Blueprint</h1>
+    <p class="lede">Everything needed to decide how the new home dashboard looks and what the app stands for, before any code gets written. Pick a theme and a design, choose one signature moment in section 4, then press <b>Copy my picks</b> at the bottom and paste it into the chat.</p>
+    <div class="status">
+      <span class="pill good">Decided 28 Sep: Fjord theme · C Now + Shelf · double-tap to go back</span>
+      <span class="pill good">Theme setting in the app · English UI with "Unsorted"</span>
+      <span class="pill">Build in progress on feature/v2-switching-ui</span>
+    </div>
+  </header>
+
+  <!-- ================= 0 + 3 ================= -->
+  <section class="sec" id="designs">
+    <div class="sec-head">
+      <span class="num">0 + 3</span>
+      <h2>Pick a theme and a home design</h2>
+      <p class="lede">Themes and designs are independent, so any theme works with any design. Every preview uses the same moment: Monday 10:00, you're in Deep Work for 48 minutes, Comms and Design have parked windows, Discord tried to open once.</p>
+    </div>
+
+    <div class="pickrow">
+      <div class="label"><h3>Theme</h3><span class="muted" id="themeName"></span></div>
+      <div class="themes" id="themePicker" role="group" aria-label="Theme"></div>
+    </div>
+
+    <div class="pickrow">
+      <div class="label"><h3>Home design</h3><span class="muted">Hover states are drawn in, so each preview shows how switching works</span></div>
+      <div class="designs" id="designPicker" role="group" aria-label="Design"></div>
+    </div>
+
+    <div class="stage" id="stage" aria-label="Preview of the selected design">
+      <div class="canvas" id="canvas"><div class="demo" id="demo" data-theme="daylight"></div></div>
+    </div>
+
+    <div class="notes" id="notes"></div>
+  </section>
+
+  <!-- ================= 1 ================= -->
+  <section class="sec" id="info">
+    <div class="sec-head">
+      <span class="num">1</span>
+      <h2>What the home dashboard has to show</h2>
+      <p class="lede">The home answers three questions: where am I, what's parked where, and what's held back. Everything else is either shown only when it matters or lives one click deeper. <span class="tag new">NEW</span> marks information the backend doesn't expose yet.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>#</th><th>Information</th><th>Why the user needs it</th><th>Comes from</th></tr></thead>
+        <tbody>
+          <tr class="grp"><td colspan="4">Always on the home</td></tr>
+          <tr><td class="id">1</td><td>Active category (name + color)</td><td>"Where am I?" There is never a state without one.</td><td><code>ICategorySwitchService.ActiveCategoryId</code> <span class="tag ok">exists</span></td></tr>
+          <tr><td class="id">2</td><td>Time in the active category ("since 09:12 · 48 min")</td><td>Orientation, and a quiet nudge when a quick check turns into an hour.</td><td>Switch timestamp <span class="tag new">NEW</span> (trivial)</td></tr>
+          <tr><td class="id">3</td><td>All categories in your order, plus Unsorted</td><td>The places you can go.</td><td><code>LibraryService</code> + implicit Unsorted <span class="tag ok">exists</span></td></tr>
+          <tr><td class="id">4</td><td>Session state per category: "3 parked" or "starts fresh"</td><td>Tells you what happens on click: your windows come back, or the template opens.</td><td>Session query on the switch service <span class="tag new">NEW</span></td></tr>
+          <tr><td class="id">5</td><td>The apps of each category (icons, max 4 + "+2")</td><td>Recognition at a glance, faster than reading names.</td><td><code>Category.AppIds</code> + icon extraction <span class="tag new">NEW</span></td></tr>
+          <tr><td class="id">6</td><td>Held-back indicator per category (shield + count)</td><td>Know that switching here will block Discord before you do it.</td><td><code>Category.BlockedAppIds</code> <span class="tag ok">exists</span></td></tr>
+          <tr><td class="id">7</td><td>Pinned apps (always visible)</td><td>Explains why Spotify never disappears, and where to change that.</td><td><code>AppConfig.PinnedApps</code> <span class="tag ok">exists</span></td></tr>
+          <tr><td class="id">8</td><td>How to switch without the window (hotkey, number keys)</td><td>The palette is the main tool. The home has to teach it.</td><td><code>AppSettings.CommandPaletteHotkey</code> <span class="tag ok">exists</span></td></tr>
+          <tr><td class="id">9</td><td>Previous category ("back to Comms")</td><td>The most common switch is going back where you just were.</td><td>Switch service <span class="tag new">NEW</span></td></tr>
+          <tr class="grp"><td colspan="4">Only when it matters</td></tr>
+          <tr><td class="id">10</td><td>Problems: app failed to launch, exe moved, window could not be restored</td><td>Readable fix instead of silence.</td><td><code>CategoryActionResult</code> <span class="tag ok">exists</span></td></tr>
+          <tr><td class="id">11</td><td>Switch in progress (on the card, not a full-screen overlay)</td><td>A template launch can take seconds. A restore should not show anything.</td><td>ViewModel state</td></tr>
+          <tr><td class="id">12</td><td>Last block event ("Discord tried to open at 09:34")</td><td>Proof the focus rule works, without a toast history.</td><td><code>AppBlockingService</code> event <span class="tag ok">exists</span></td></tr>
+          <tr><td class="id">13</td><td>Next scheduled trigger ("Wrap-up switches to Comms at 16:30")</td><td>No surprise when the app switches on its own.</td><td><code>TriggerSchedulerService</code> <span class="tag ok">exists</span></td></tr>
+          <tr><td class="id">14</td><td>Unsorted windows, when there are any</td><td>An invitation to sort them into a category, never a nag.</td><td>Unsorted session <span class="tag ok">exists</span></td></tr>
+          <tr class="grp"><td colspan="4">One click deeper (editor, palette, hover)</td></tr>
+          <tr><td class="id">15</td><td>Window titles inside each session</td><td>"Which Chrome window is where?"</td><td>Session query <span class="tag new">NEW</span></td></tr>
+          <tr><td class="id">16</td><td>Template details: saved position, monitor per app</td><td>Setup work, not daily work.</td><td><code>AppEntry.Placement</code> <span class="tag ok">exists</span></td></tr>
+          <tr><td class="id">17</td><td>Blocklist, pinned list, triggers, settings (editing)</td><td>Setup work.</td><td>existing dialogs <span class="tag ok">exists</span></td></tr>
+          <tr><td class="id">18</td><td>Time per category today (only if design D wins)</td><td>Reflection. Nice, not needed to decide where to go.</td><td>Switch log <span class="tag new">NEW</span></td></tr>
+          <tr class="grp"><td colspan="4">Deliberately never</td></tr>
+          <tr><td class="id">×</td><td colspan="3">Window thumbnails or live previews, CPU/RAM per app, streaks, productivity scores, unread counts from other apps. They turn a glance into a study (see core value 5).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= 2 ================= -->
+  <section class="sec" id="display">
+    <div class="sec-head">
+      <span class="num">2</span>
+      <h2>Ways to show each piece</h2>
+      <p class="lede">Every row lists the options I considered. The letter shows which design uses it, so you can mix: "design B, but with the hero from C" is a perfectly good answer.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>#</th><th>Information</th><th>Options</th></tr></thead>
+        <tbody id="waysBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= 4 ================= -->
+  <section class="sec" id="product">
+    <div class="sec-head">
+      <span class="num">4</span>
+      <h2>Product plan and core values</h2>
+      <p class="lede">Once you approve this section, the core values are fixed. They go into <code>PRINCIPLES.md</code> and every future feature plan is checked against them. If a feature breaks one, the feature changes, not the value.</p>
+    </div>
+
+    <div class="usp">
+      <span class="eyebrow">What makes it unique</span>
+      <p class="big">One keystroke swaps your whole context on Windows. The windows, layout and distractions of one task step aside, the next task's come back exactly as you left them, and you never had to file anything.</p>
+      <p class="muted">Close relatives, and what they miss: <b>Windows virtual desktops</b> switch in order instead of by name, never launch a fresh workspace, and can't block anything. <b>PowerToys Workspaces</b> launches app layouts but forgets your session the moment you leave it. <b>Cold Turkey / Freedom</b> only block. <b>FancyZones</b> only arrange. Catogarizer is the one tool where switching, restoring, launching and blocking are the same action.</p>
+    </div>
+
+    <h3>Core values</h3>
+    <div class="values">
+      <div class="value"><h3>Nothing is ever lost</h3><p>Catogarizer hides windows, it never closes them. Every hidden window can be found in one step, and all of them come back when Catogarizer exits, crashes or updates.</p><p class="rule">Decision rule: a feature that can leave a window unreachable is rejected. Closing always needs an explicit per-app action.</p></div>
+      <div class="value"><h3>Switching is the product</h3><p>A switch feels instant. Restoring a session shows no spinner and no overlay. Editing, settings and automation never slow down or clutter the switch path.</p><p class="rule">Decision rule: measure it. Hotkey to restored windows under 300 ms on this machine.</p></div>
+      <div class="value"><h3>Keyboard first, mouse welcome</h3><p>Any switch takes the hotkey plus at most two keys. Every action you do more than once a day has a key, and every key action also has a visible mouse path.</p><p class="rule">Decision rule: no feature ships with only one of the two paths.</p></div>
+      <div class="value"><h3>Zero bookkeeping</h3><p>You never maintain sessions. A window joins the active category by appearing. Templates change only when you say so, so they never fill up with one-off clutter.</p><p class="rule">Decision rule: if a feature needs the user to tidy up regularly, redesign it.</p></div>
+      <div class="value"><h3>Glance, don't study</h3><p>The home answers "where am I, what's parked where, what's held back" in two seconds. No thumbnails, no charts for the sake of charts, no live previews.</p><p class="rule">Decision rule: if information doesn't help decide where to go next, it moves one level deeper.</p></div>
+      <div class="value"><h3>Quiet by default</h3><p>It runs all day at close to zero idle CPU. It only speaks when it acted for you (an app was held back, a trigger switched). No streaks, no guilt, no nagging.</p><p class="rule">Decision rule: every notification must name an action Catogarizer already took.</p></div>
+      <div class="value"><h3>Yours, local, no admin</h3><p>No account, no cloud, no telemetry, no elevation. The config is a readable JSON file on your disk.</p><p class="rule">Decision rule: a feature that needs admin rights or a server is out, however useful.</p></div>
+    </div>
+
+    <h3>Requirements for the v2 home</h3>
+    <p class="muted" style="font-size:14px">Orange rows are my assumptions. Please look at those first, they're where I might have misread you.</p>
+    <div class="reqs">
+      <div class="req guess"><span class="o">GUESSED</span><div><p><b>Safety net for hidden windows.</b> On exit, on crash and on the next start, every window Catogarizer hid is shown again. The tray gets "Show all hidden windows".</p><p>Hidden windows vanish from the taskbar and Alt-Tab. If the app crashes without this, you'd think your work is gone. Solution: write hidden handles to <code>hidden.json</code> on every hide, restore at exit and startup.</p></div></div>
+      <div class="req guess"><span class="o">GUESSED</span><div><p><b>Each category gets a color</b>, auto-assigned and changeable.</p><p>Makes the active category recognizable in the palette, tray, home and switch feedback without reading. Additive model change (<code>Category.Hue</code>).</p></div></div>
+      <div class="req guess"><span class="o">GUESSED</span><div><p><b>Remember the previous category</b> so "go back" is one action.</p><p>Back-and-forth is the most common switch. Needed by every design and by signature moment A.</p></div></div>
+      <div class="req guess"><span class="o">GUESSED</span><div><p><b>Real app icons</b> extracted from the exe, cached, with a letter tile as the loading/fallback state.</p><p>Icon stacks are only faster than names if they're the real icons.</p></div></div>
+      <div class="req guess"><span class="o">GUESSED</span><div><p><b>The UI stays English</b> and the implicit category is called <b>Unsorted</b> (the concept calls it "Sonstiges").</p><p>Mixing one German label into an English UI reads like a bug. See question 2.</p></div></div>
+      <div class="req"><span class="o">PROMPT</span><div><p><b>Click a category = switch to it.</b> Cards show name, app icons and "N parked".</p><p>From CONCEPT.md "Chosen design". No Open button any more.</p></div></div>
+      <div class="req"><span class="o">PROMPT</span><div><p><b>Exactly one category is always visibly active</b>, Unsorted included.</p><p>From CONCEPT.md "Category switching &amp; sessions".</p></div></div>
+      <div class="req"><span class="o">CODEBASE</span><div><p><b>Editing moves off the home</b> into a category editor (template apps, placement, blocklist).</p><p>The home is an overview to glance at. Today's detail panel with six icon buttons per app is the opposite.</p></div></div>
+      <div class="req"><span class="o">CODEBASE</span><div><p><b>Every state is designed:</b> first launch, empty category, launching, launch failed, config broken. Themed dialogs only, inline validation.</p><p>Existing conventions and your global rules.</p></div></div>
+    </div>
+
+    <h3>Signature moment (pick one)</h3>
+    <p class="muted" style="font-size:14px">One moment that is deliberately better than it needs to be. Only one, so it stands out. Once chosen, it's off-limits for cleanup and "consistency" passes.</p>
+    <div class="sigs" id="sigPicker" role="group" aria-label="Signature moment">
+      <button class="sig" data-sig="A" aria-pressed="false"><div class="h"><b>A · Double-tap to go back</b><span class="rec">MY PICK</span></div><span class="where">Where: the most frequent action of the day</span><p>Press the hotkey twice quickly and you're back in the category you just left. No palette, no typing. A small pill in that category's color rises from the taskbar edge, says "← Comms", and is gone after 900 ms.</p></button>
+      <button class="sig" data-sig="B" aria-pressed="false"><div class="h"><b>B · Your first category is what's already open</b></div><span class="where">Where: first launch, the one moment every user has</span><p>First launch shows no empty dashboard. It shows the windows you have open right now as tiles. You tick the ones that belong together, type "Deep Work", done. Your first category exists in ten seconds, built from what you're already doing.</p></button>
+      <button class="sig" data-sig="C" aria-pressed="false"><div class="h"><b>C · The switch receipt</b></div><span class="where">Where: every switch</span><p>After each switch a quiet line slides up for 1.4 s: "Deep Work · 4 windows back · Comms parked (3)". It's proof that nothing was lost, shown at exactly the moment you'd wonder. Hover keeps it, click opens what was parked.</p></button>
+    </div>
+    <p class="muted" style="font-size:14px">Why A: it's used dozens of times a day, and it's the one thing virtual desktops can't do. B and C would still exist in a plain form (a "create from open windows" button, a basic switch toast), just without the extra care.</p>
+
+    <div class="cols2">
+      <div class="box"><h3>Not part of this round</h3><ul>
+        <li>Time statistics per category (unless design D wins)</li>
+        <li>To-do integration (interface exists, stays unwired)</li>
+        <li>Drag-and-drop reordering of categories</li>
+        <li>The mixed-DPI placement capture bug from Phase 12</li>
+        <li>AUMID-based PWA window matching</li>
+      </ul></div>
+      <div class="box"><h3>Never, because of the core values</h3><ul>
+        <li>Window thumbnails / live previews (value 5)</li>
+        <li>Closing windows as part of a switch (value 1)</li>
+        <li>Hard blocking that needs admin rights (value 7)</li>
+        <li>Cloud sync, accounts, telemetry (value 7)</li>
+        <li>Productivity scores or streaks (value 6)</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- ================= 5 ================= -->
+  <section class="sec" id="build">
+    <div class="sec-head">
+      <span class="num">5</span>
+      <h2>Build plan</h2>
+      <p class="lede">One branch, <code>feature/v2-switching-ui</code>, one commit per step, tests before every commit. The order is set by risk: the safety net comes first because hiding windows without it is dangerous, and the signature moment comes early so it doesn't get built tired.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div><h3>Safety net and session state (Core, test-first)</h3><p>Persist hidden windows and restore them on exit and startup. Extend the switch service with <code>ActiveCategoryChanged</code>, <code>PreviousCategoryId</code>, active-since time and a session snapshot (count + titles per category). Fixes the known 350 ms attribution race while I'm in there.</p><div class="meta"><span class="tag">xUnit + fakes</span><span class="tag">real-app check: kill process while hidden, restart</span></div></div></div>
+      <div class="step"><div><h3>Wire switching into the running app</h3><p>Composition root, tray menu, palette, CLI (<code>catogarizer switch "Deep Work"</code>), blocking follows the active category, trigger action "Open category" becomes a switch. The old category-level Open/Close/Minimize goes away; per-app actions stay.</p><div class="meta"><span class="tag">run skill</span><span class="tag">UI Automation via PowerShell</span></div></div></div>
+      <div class="step"><div><h3>Signature moment</h3><p>Built right after switching works, not at the end. For A: double-tap detection in <code>GlobalHotkeyService</code>, a borderless click-through pill window with a short WPF storyboard.</p><div class="meta"><span class="tag">emil-design-eng for motion</span></div></div></div>
+      <div class="step"><div><h3>Theme system</h3><p>Split <code>DaylightStudio.xaml</code> into one token dictionary per theme plus a shared controls dictionary using <code>DynamicResource</code>. Switching theme then means swapping one dictionary, so offering all themes in Settings becomes cheap. Contrast check per theme.</p><div class="meta"><span class="tag">impeccable (audit)</span></div></div></div>
+      <div class="step"><div><h3>Category color and real app icons</h3><p>Additive model change for the color. Icon extraction via <code>SHGetFileInfo</code> in the Win32 project, cached, letter tile while loading.</p><div class="meta"><span class="tag">no destructive migration</span></div></div></div>
+      <div class="step"><div><h3>New home + category editor</h3><p>The chosen design as the home, editing moved into a separate category editor window. Empty, first-launch and error states designed here, not later.</p><div class="meta"><span class="tag">impeccable</span><span class="tag">emil-design-eng</span></div></div></div>
+      <div class="step"><div><h3>Palette v2</h3><p>Number keys 1–9, parked counts, previous category on top, Unsorted, pinned apps. I'll show you a preview before building it, like this page.</p><div class="meta"><span class="tag">artifact preview first</span></div></div></div>
+      <div class="step"><div><h3>Review rounds 0–4</h3><p>Separate agents that haven't seen the plan: requirements check (<code>fs-anforderungs-pruefer</code>), flow test empty/full/misused (<code>fs-ablauf-tester</code>), fix verification (<code>fs-fix-verifizierer</code>), "where does the UI lie" (<code>fs-ui-luegenpruefer</code>), and a user simulation with an unexpected role (<code>fs-nutzer-simulant</code>). Repeat until a whole round finds nothing new.</p><div class="meta"><span class="tag">feature-schmiede phase 5</span><span class="tag">computer-use screenshots</span></div></div></div>
+      <div class="step"><div><h3>Wrap up</h3><p>Update CONCEPT, STACK, TODO, USER_GUIDE and a new CHANGELOG. Code review and simplify pass, then you review, then merge and deploy the exe to <code>C:\projects\03 Apps</code>.</p><div class="meta"><span class="tag">code-review</span><span class="tag">simplify</span><span class="tag">security-review (CLI pipe, hidden.json)</span></div></div></div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Skill / agent</th><th>Used for</th></tr></thead>
+        <tbody>
+          <tr><td><b>feature-schmiede</b></td><td>The frame for the whole thing: this plan, your approval, build, review rounds, handover.</td></tr>
+          <tr><td><b>impeccable</b></td><td>Design audit of the home and editor: hierarchy, spacing, contrast, empty and error states.</td></tr>
+          <tr><td><b>emil-design-eng</b></td><td>Motion and polish details: the signature pill, hover and press timing, translated into WPF storyboards.</td></tr>
+          <tr><td><b>run</b></td><td>Launching and driving the real app after every step.</td></tr>
+          <tr><td><b>fs-* review agents</b></td><td>Review rounds 0–4 with a fresh view each.</td></tr>
+          <tr><td><b>code-fixer</b></td><td>When review rounds find real bugs.</td></tr>
+          <tr><td><b>code-review · simplify · security-review</b></td><td>Before asking you to merge.</td></tr>
+          <tr><td><b>handoff</b></td><td>If the session runs out of context mid-build.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= ? ================= -->
+  <section class="sec" id="questions">
+    <div class="sec-head">
+      <span class="num">?</span>
+      <h2>Two questions</h2>
+    </div>
+    <div class="q"><h3>1. One theme, or a theme setting?</h3><p>Should the app ship with the one theme you pick, or should Settings let you switch between all of them?</p><p class="guessline">My guess: a Settings choice. With the token split in build step 4 each extra theme costs almost nothing, and a sellable product usually has at least a light and a dark option. Your pick becomes the default.</p></div>
+    <div class="q"><h3>2. English UI with "Unsorted"?</h3><p>The app is English today, but the concept calls the implicit category "Sonstiges".</p><p class="guessline">My guess: stay English and call it "Unsorted". A German UI would be a separate, later decision for the whole app.</p></div>
+  </section>
+</div>
+
+<div class="pickbar" role="region" aria-label="Your picks">
+  <div class="wrap">
+    <span class="item"><span>Theme</span><b id="pkTheme"></b></span>
+    <span class="item"><span>Design</span><b id="pkDesign"></b></span>
+    <span class="item"><span>Signature</span><b id="pkSig"></b></span>
+    <span class="copied" id="copied" hidden>Copied, paste it into the chat</span>
+    <button class="copy" id="copyBtn" type="button">Copy my picks</button>
+  </div>
+</div>
+
+<textarea id="copyFallback" aria-hidden="true" tabindex="-1" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0"></textarea>
+
+<script>
+(function(){
+  const S = p => `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+  const I = {
+    search:S('<circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/>'),
+    gear:S('<path d="M2.5 4.5h11M2.5 11.5h11"/><circle cx="5.5" cy="4.5" r="1.6" fill="currentColor"/><circle cx="10.5" cy="11.5" r="1.6" fill="currentColor"/>'),
+    plus:S('<path d="M8 3v10M3 8h10"/>'),
+    shield:S('<path d="M8 1.8 13 3.6v4.1c0 3-2.1 5.2-5 6.5-2.9-1.3-5-3.5-5-6.5V3.6z"/>'),
+    pin:S('<path d="M6 2h4l-.6 4.2L12 8.5v1H4v-1l2.6-2.3zM8 9.5V14"/>'),
+    bolt:S('<path d="M9 1.5 3.5 9H8l-1 5.5L12.5 7H8z"/>'),
+    back:S('<path d="M13 8H3M7 4 3 8l4 4"/>'),
+    win:S('<rect x="2.5" y="3.5" width="11" height="9" rx="1.5"/><path d="M2.5 6.2h11"/>'),
+    clock:S('<circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2 1.3"/>'),
+    chev:S('<path d="m6 3 5 5-5 5"/>'),
+    more:S('<circle cx="3.5" cy="8" r=".9" fill="currentColor"/><circle cx="8" cy="8" r=".9" fill="currentColor"/><circle cx="12.5" cy="8" r=".9" fill="currentColor"/>'),
+    edit:S('<path d="M10.5 2.5l3 3L6 13H3v-3z"/>')
+  };
+  const APPS = {
+    'VS Code':['VS',240,.15],'Terminal':['>_',260,.02],'Obsidian':['Ob',290,.15],'Chrome':['Ch',145,.13],
+    'Outlook':['Ou',245,.14],'Teams':['Te',278,.13],'Slack':['Sl',330,.14],'Figma':['Fi',25,.15],
+    'Photoshop':['Ps',230,.14],'Edge':['Ed',195,.12],'Zotero':['Zo',22,.17],'Excel':['Ex',150,.13],
+    'Banking':['Bk',60,.12],'Explorer':['Fx',85,.13],'Notepad':['Np',220,.04],'Spotify':['Sp',150,.17],
+    'WhatsApp':['Wa',160,.13],'Discord':['Dc',275,.15],'Steam':['St',250,.06],'YouTube':['Yt',28,.2]
+  };
+  const ico = (n,cls='') => { const a=APPS[n]; return `<span class="ico ${cls}" style="--h:${a[1]};--c:${a[2]}" title="${n}">${a[0].replace('>','&gt;')}</span>`; };
+  const stack = (apps,max=4) => `<span class="stack">${apps.slice(0,max).map(a=>ico(a)).join('')}${apps.length>max?`<span class="ico more">+${apps.length-max}</span>`:''}</span>`;
+  const kbd = k => `<span class="kbd">${k}</span>`;
+  const hot = `<span class="keys">${kbd('Ctrl')}${kbd('Alt')}${kbd('Space')}</span>`;
+
+  const CATS = [
+    {name:'Deep Work',h:260,key:'1',apps:['VS Code','Terminal','Obsidian','Chrome'],state:'active',count:4,blocked:['Discord','Steam','YouTube'],
+      wins:[['VS Code','CategorySwitchService.cs · catogarizer'],['Terminal','dotnet test'],['Obsidian','Phase 13 notes'],['Chrome','Storyboard class · Microsoft Learn']]},
+    {name:'Comms',h:150,key:'2',apps:['Outlook','Teams','Slack'],state:'parked',count:3,last:'48 min ago',blocked:[],
+      wins:[['Outlook','Inbox (12)'],['Teams','Chat · Projekt Alpha'],['Slack','#general']]},
+    {name:'Design',h:330,key:'3',apps:['Figma','Photoshop','Chrome'],state:'parked',count:2,last:'yesterday',blocked:['Slack'],
+      wins:[['Figma','Catogarizer v2 · Home'],['Photoshop','icon-1024.psd']]},
+    {name:'Research',h:70,key:'4',apps:['Edge','Zotero','Obsidian'],state:'fresh',count:0,last:'3 days ago',blocked:['YouTube']},
+    {name:'Admin',h:200,key:'5',apps:['Excel','Banking','Explorer','Chrome','Outlook','Notepad'],state:'fresh',count:0,last:'last week',blocked:[]}
+  ];
+  const ACT = CATS[0];
+  const UNS = {count:2,wins:[['Explorer','Downloads'],['Notepad','notes.txt']]};
+  const PINNED = ['Spotify','WhatsApp'];
+
+  const state = c => c.state==='active' ? `<span class="chip on" style="--h:${c.h}">Active · 48 min</span>`
+    : c.state==='parked' ? `<span class="chip">${I.win}${c.count} parked</span>`
+    : `<span class="chip fresh">Starts fresh</span>`;
+  const blk = c => c.blocked.length ? `<span class="blk" title="Holds back ${c.blocked.join(', ')}">${I.shield}${c.blocked.length}</span>` : '';
+  const tbar = `<div class="tbar"><span class="tlogo"></span>Catogarizer<div class="ctl"><span>${S('<path d="M4 8h8"/>')}</span><span>${S('<rect x="4.5" y="4.5" width="7" height="7" rx="1"/>')}</span><span>${S('<path d="m4.5 4.5 7 7m0-7-7 7"/>')}</span></div></div>`;
+  const win = inner => `<div class="win">${tbar}<div class="wbody">${inner}</div></div>`;
+  const brand = `<div class="brand"><span class="logo">C</span><span>Catogarizer</span></div>`;
+
+  const LAYOUTS = {
+    A: () => win(`<div class="lA">
+      <div class="a-hdr">${brand}
+        <div class="searchbar">${I.search}<span>Switch to…</span>${hot}</div>
+        <div class="r"><span class="m-ibtn" title="Settings">${I.gear}</span><span class="m-btn pri">${I.plus}New category</span></div>
+      </div>
+      <div class="a-pins">${I.pin}<span>Always visible</span>${PINNED.map(p=>`<span class="pin">${ico(p,'s')}${p}</span>`).join('')}</div>
+      <div class="a-grid">
+        <div class="a-card m-card act" style="--h:${ACT.h}">
+          <div class="a-top"><span class="dot"></span><span class="dh">${ACT.name}</span>${state(ACT)}<span class="mut sm" style="margin-left:6px">since 09:12</span>${kbd('1')}</div>
+          <div class="a-wins">${ACT.wins.map(w=>`<div class="a-win">${ico(w[0],'s')}<span class="t">${w[1]}</span></div>`).join('')}</div>
+          <div class="a-foot"><span class="blk">${I.shield}Holding back Discord, Steam, YouTube</span></div>
+        </div>
+        ${CATS.slice(1).map((c,i)=>`<div class="a-card m-card${i===0?' hover':''}" style="--h:${c.h}">
+          <div class="a-top"><span class="dot"></span><span class="dh">${c.name}</span>${kbd(c.key)}</div>
+          ${stack(c.apps)}
+          <div class="a-foot">${state(c)}<span class="mut sm">${c.last}</span>${blk(c)}</div>
+          <span class="hint">Switch →</span>
+        </div>`).join('')}
+      </div>
+      <div class="a-uns"><span class="dot hollow"></span><b>Unsorted</b><span>2 windows: Explorer · Downloads, Notepad · notes.txt</span><span class="m-btn ghost">Sort into a category…</span></div>
+      <div class="a-bottom"><span>${I.bolt}"Wrap-up" switches to Comms at 16:30</span><span>${I.shield}Discord tried to open at 09:34</span></div>
+    </div>`),
+
+    B: () => win(`<div class="lB">
+      <div class="b-hdr">${brand}
+        <div class="searchbar">${I.search}<span>Type to filter, Enter switches</span><span class="keys">${kbd('1')}<span class="mut sm" style="align-self:center">–</span>${kbd('5')}</span></div>
+        <div class="r"><span class="m-ibtn">${I.gear}</span><span class="m-btn">${I.plus}New</span></div>
+      </div>
+      <div class="b-list">
+        <div class="b-row head lbl"><span>Key</span><span></span><span>Category</span><span>Apps</span><span>Session</span><span>Last used</span><span></span></div>
+        <div class="b-row act" style="--h:${ACT.h}">${kbd('1')}<span class="dot"></span><span class="dh">${ACT.name}</span>${stack(ACT.apps)}${state(ACT)}<span class="mut sm">since 09:12</span>${blk(ACT)}</div>
+        <div class="b-exp" style="--h:${ACT.h}">
+          <div class="b-wins">${ACT.wins.map(w=>`<div class="b-win">${ico(w[0],'s')}<span>${w[1]}</span></div>`).join('')}</div>
+          <div class="b-held">${I.shield}Holding back Discord, Steam, YouTube · Discord tried to open at 09:34</div>
+        </div>
+        ${CATS.slice(1).map((c,i)=>`<div class="b-row${i===0?' hov':''}" style="--h:${c.h}">${kbd(c.key)}<span class="dot"></span><span class="dh">${c.name}</span>${stack(c.apps)}${state(c)}<span class="mut sm">${c.last}</span>${blk(c)}</div>`).join('')}
+        <div class="b-row uns">${kbd('0')}<span class="dot hollow"></span><span class="dh">Unsorted</span><span class="stack">${ico('Explorer')}${ico('Notepad')}</span><span class="chip">${I.win}2 parked</span><span class="mut sm">before 08:30</span><span></span></div>
+      </div>
+      <div class="b-foot"><span>${I.pin}Always visible: ${PINNED.map(p=>ico(p,'s')).join('')} Spotify, WhatsApp</span><span>${I.bolt}Wrap-up → Comms at 16:30</span><span class="r">From anywhere: ${hot}&nbsp;then a number</span></div>
+    </div>`),
+
+    C: () => win(`<div class="lC">
+      <div class="c-hdr">${brand}<div class="r"><span class="mut sm">Switch from anywhere</span>${hot}<span class="m-ibtn">${I.gear}</span></div></div>
+      <div class="c-hero m-card" style="--h:${ACT.h}">
+        <div class="c-now">
+          <span class="lbl">You're in</span>
+          <div class="c-big">${ACT.name}</div>
+          <div class="c-sub"><span class="blk">${I.clock}since 09:12 · 48 min</span><span class="blk">${I.win}4 windows</span></div>
+          <div class="c-wins">${ACT.wins.map(w=>`<div class="c-win">${ico(w[0],'s')}<span class="t">${w[1]}</span><span class="mut sm">${w[0]}</span></div>`).join('')}</div>
+        </div>
+        <div class="c-side">
+          <div class="c-held"><span class="lbl">Held back while you're here</span>
+            <div class="row">${ico('Discord','s')}Discord ${ico('Steam','s')}Steam ${ico('YouTube','s')}YouTube</div>
+            <span class="ev">Discord tried to open at 09:34 and was closed.</span>
+          </div>
+          <div class="c-held"><span class="lbl">Always visible</span><div class="row">${PINNED.map(p=>`${ico(p,'s')}${p}`).join(' ')}</div></div>
+          <div class="c-back">${I.back}<span class="t"><b>Back to Comms</b><span class="mut">3 windows parked</span></span>${kbd('Space')}<span class="mut sm">×2</span></div>
+        </div>
+      </div>
+      <div class="c-shelf">
+        ${CATS.slice(1).map(c=>`<div class="c-tile m-card" style="--h:${c.h}"><div class="top"><span class="dot"></span>${c.name}${kbd(c.key)}</div>${stack(c.apps,3)}<div>${state(c)}</div></div>`).join('')}
+        <div class="c-tile m-card uns"><div class="top"><span class="dot hollow"></span>Unsorted${kbd('0')}</div><span class="stack">${ico('Explorer')}${ico('Notepad')}</span><div><span class="chip">${I.win}2 parked</span></div></div>
+      </div>
+    </div>`),
+
+    D: () => {
+      const pos = t => { const [h,m]=t.split(':').map(Number); return ((h*60+m)-480)/600*100; };
+      const seg = (a,b,c,live) => `<div class="d-seg${live?' live':''}" style="--h:${c.h};left:${pos(a)}%;width:${pos(b)-pos(a)}%">${pos(b)-pos(a)>6?c.name:''}</div>`;
+      const ticks = [8,9,10,11,12,13,14,15,16,17,18].map(h=>`<span style="left:${(h-8)*10}%">${String(h).padStart(2,'0')}:00</span>`).join('');
+      return win(`<div class="lD">
+        <div class="d-side">${brand}
+          <span class="lbl" style="padding-top:0">Categories</span>
+          ${CATS.map(c=>`<div class="d-item${c.state==='active'?' act':''}" style="--h:${c.h}"><span class="dot"></span>${c.name}<span class="n">${c.state==='active'?'now':c.count?c.count+' parked':''}</span></div>`).join('')}
+          <div class="d-item"><span class="dot hollow"></span><span class="mut">Unsorted</span><span class="n">2 parked</span></div>
+          <span class="lbl">Always visible</span>
+          ${PINNED.map(p=>`<div class="d-item">${ico(p,'s')}${p}</div>`).join('')}
+          <div class="bottom"><span class="m-ibtn">${I.gear}</span><span class="m-ibtn">${I.plus}</span><span class="m-ibtn">${I.bolt}</span></div>
+        </div>
+        <div class="d-main">
+          <div class="d-hdr"><span class="dh">Monday, 28 September</span><div class="searchbar">${I.search}<span>Switch to…</span>${hot}</div></div>
+          <div class="d-tl m-card">
+            <div class="h"><span class="lbl">Today</span><span class="mut sm">Triggers shown as dashed lines</span></div>
+            <div class="d-track">
+              ${seg('08:30','09:12',CATS[1])}${seg('09:12','10:00',ACT,true)}
+              <div class="d-now" style="left:${pos('10:00')}%"></div>
+              <div class="d-trig" style="left:${pos('16:30')}%"><span>Wrap-up → Comms</span></div>
+            </div>
+            <div class="d-axis">${ticks}</div>
+          </div>
+          <div class="d-cols">
+            <div class="d-card m-card" style="--h:${ACT.h}">
+              <div class="h"><span class="dot"></span><span class="dh" style="font-size:15px">${ACT.name}</span>${state(ACT)}</div>
+              ${ACT.wins.map(w=>`<div class="d-win">${ico(w[0])}<span class="t">${w[1]}</span><span class="mut sm">${w[0]}</span></div>`).join('')}
+              <div class="d-held">${I.shield}Holding back Discord, Steam, YouTube · Discord blocked at 09:34</div>
+            </div>
+            <div class="d-card m-card">
+              <div class="h"><span class="lbl">Time today</span></div>
+              <div class="d-bar" style="--h:${ACT.h}"><span>Deep Work</span><i style="width:100%"></i><b>48m</b></div>
+              <div class="d-bar" style="--h:${CATS[1].h}"><span>Comms</span><i style="width:87.5%"></i><b>42m</b></div>
+              <div class="d-bar" style="--h:${CATS[2].h}"><span>Design</span><i style="width:0;opacity:0"></i><b class="mut">0m</b></div>
+              <div class="d-held" style="margin-top:auto">${I.back}Double-tap ${kbd('Space')} for Comms</div>
+            </div>
+          </div>
+        </div>
+      </div>`);
+    },
+
+    E: () => `<div class="screen">
+      <div class="ghost" style="left:60px;top:40px;width:600px;height:420px"><div class="gt"></div>${'<div class="gl"></div>'.repeat(9)}</div>
+      <div class="ghost" style="left:600px;top:90px;width:380px;height:330px"><div class="gt"></div>${'<div class="gl"></div>'.repeat(7)}</div>
+      <div class="e-cap"><span>The whole home is this strip. It sits above the taskbar or hides until the hotkey.</span><span>Manage… opens the editor window</span></div>
+      <div class="e-pop" style="left:318px" >
+        <div class="h" style="--h:${CATS[1].h}"><span class="dot"></span>Comms<span class="chip">${I.win}3 parked</span></div>
+        ${CATS[1].wins.map(w=>`<div class="w">${ico(w[0],'s')}${w[1]}</div>`).join('')}
+        <div class="f"><span>Left 48 min ago</span><span>Click to switch</span></div>
+      </div>
+      <div class="dock">
+        <span class="logo">C</span>
+        <div class="e-chip act" style="--h:${ACT.h}"><span class="dot"></span>${ACT.name}<span class="n">48m · 4 ${'▢'}</span><span class="blk">${I.shield}</span></div>
+        ${CATS.slice(1).map((c,i)=>`<div class="e-chip${i===0?' hov':''}" style="--h:${c.h}"><span class="dot"></span>${c.name}${c.count?`<span class="n">${c.count}</span>`:''}</div>`).join('')}
+        <div class="e-chip uns"><span class="dot hollow"></span>Unsorted<span class="n">2</span></div>
+        <span class="sep"></span>
+        ${PINNED.map(p=>ico(p)).join('')}
+        <span class="sep"></span>
+        <span class="m-ibtn" title="Manage">${I.more}</span>
+      </div>
+      <div class="taskbar"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>`,
+
+    F: () => {
+      const c = CATS[1];
+      return win(`<div class="lF">
+        <div class="f-rail">
+          <div class="searchbar">${I.search}<span>Search</span></div>
+          <span class="lbl" style="padding-top:0">Categories</span>
+          ${CATS.map((x,i)=>`<div class="f-item${i===1?' sel':''}" style="--h:${x.h}"><span class="dot"></span>${x.name}${x.state==='active'?'<span class="live">ACTIVE</span>':x.count?`<span class="n">${x.count}</span>`:''}</div>`).join('')}
+          <div class="f-item"><span class="dot hollow"></span><span class="mut">Unsorted</span><span class="n">2</span></div>
+          <span class="lbl">Everywhere</span>
+          <div class="f-item">${I.pin}Always visible<span class="n">2</span></div>
+          <div class="f-item">${I.bolt}Automations<span class="n">2</span></div>
+          <div class="bottom"><span class="m-ibtn">${I.gear}</span><span class="m-ibtn">${I.plus}</span></div>
+        </div>
+        <div class="f-main">
+          <div class="f-hdr" style="--h:${c.h}"><span class="dot" style="width:12px;height:12px"></span><span class="dh">${c.name}</span><span class="chip">${I.win}3 parked · left 48 min ago</span>
+            <div class="r"><span class="m-ibtn">${I.edit}</span><span class="m-btn pri">Switch to Comms ${kbd('Enter')}</span></div></div>
+          <div class="f-tabs"><span class="f-tab on">Session <span class="c">3</span></span><span class="f-tab">Template <span class="c">3</span></span><span class="f-tab">Held back <span class="c">0</span></span><span class="f-tab">Automations <span class="c">1</span></span></div>
+          <div class="f-list">
+            <div class="f-row hd"><span></span><span>Parked window</span><span>App</span><span></span></div>
+            ${c.wins.map(w=>`<div class="f-row">${ico(w[0])}<span class="t">${w[1]}</span><span class="mut">${w[0]}</span><span class="acts"><span class="m-btn">Show once</span><span class="m-btn ghost">Move…</span></span></div>`).join('')}
+          </div>
+          <div class="f-sub">
+            <div class="f-box m-card"><div class="h"><span class="lbl">Template opens</span><span class="mut sm">if no session</span></div>${stack(c.apps)}</div>
+            <div class="f-box m-card"><div class="h"><span class="lbl">Automation</span></div><span class="sm">${I.bolt} Morning: switches here Mon–Fri 08:30</span></div>
+          </div>
+        </div>
+      </div>`);
+    }
+  };
+
+  const DESIGNS = [
+    {id:'A',name:'Rooms',line:'Card grid, the active card grows',
+     idea:'The current card direction, finished. The active category takes two columns and lists its live windows, every other card is one click to switch.',
+     good:'Friendly and obvious on first sight. Scales well to 4–9 categories. Closest to what the concept already describes.',
+     weak:'Most space per category, so more than about nine means scrolling. The least keyboard-looking of the six.',
+     fits:'Mouse-and-keyboard users who open the window now and then.',effort:2},
+    {id:'B',name:'Switchboard',line:'Numbered rows, keyboard feel',
+     idea:'A dense list where every row has its number key. The active row opens up to show its windows and what it holds back. Feels like the palette, just permanent.',
+     good:'Fastest to scan, fits 15+ categories, teaches the number keys on every glance. Easiest to build.',
+     weak:'Plain. Less "product" personality unless the theme carries it.',
+     fits:'Keyboard people who treat the window like a control panel.',effort:1},
+    {id:'C',name:'Now + Shelf',line:'Big "you are here", others on a shelf',
+     idea:'The top half is about the present: where you are, for how long, which windows, what is held back, and the way back. Other categories sit on a shelf below.',
+     good:'Strongest answer to "where am I". Makes the back action and blocking visible without any clicks.',
+     weak:'The shelf fits five or six categories before it wraps. Parked sessions get less detail.',
+     fits:'People with a few big contexts who switch rarely but deliberately.',effort:2},
+    {id:'D',name:'Day',line:'Sidebar + today on a timeline',
+     idea:'A timeline of today shows which category was active when, with triggers ahead as dashed lines. Adds a daily time total per category.',
+     good:'Makes automation and your day visible. The only design that shows history.',
+     weak:'Needs a new switch log (not built). Timelines tempt you to study, which pushes against core value 5.',
+     fits:'People who plan their day in blocks and like to look back.',effort:3},
+    {id:'E',name:'Dock',line:'The home is a slim strip',
+     idea:'No dashboard window at all. A compact strip above the taskbar (or hidden until the hotkey) with one chip per category. Hover shows what is parked, "Manage…" opens a separate editor.',
+     good:'The most minimal and always at hand. Makes the app feel like part of Windows rather than one more window.',
+     weak:'A second always-on-top surface, and the editor becomes a separate window to design. Crowded after about seven categories.',
+     fits:'People who never want to open a management window during the day.',effort:3},
+    {id:'F',name:'Inspector',line:'Sidebar + detail tabs',
+     idea:'A classic master-detail layout. Select a category on the left, see its parked windows, template, held-back apps and automations on the right, then press Switch.',
+     good:'Everything in one window including editing, so no separate editor. Scales to many categories.',
+     weak:'Two steps to switch by mouse (select, then Switch). Feels like a settings app, which fights "switching is the product".',
+     fits:'People who tweak their setup often.',effort:2}
+  ];
+
+  const THEMES = [
+    {id:'daylight',name:'Daylight Studio',sub:'Current. Cool light, blue',sw:['oklch(98% .006 250)','oklch(52% .16 260)']},
+    {id:'fjord',name:'Fjord',sub:'Soft mint light, deep teal',sw:['oklch(97.4% .011 195)','oklch(49% .1 192)']},
+    {id:'paperink',name:'Paper & Ink',sub:'Editorial white, oxblood, serif',sw:['oklch(98.8% .002 80)','oklch(38% .13 25)']},
+    {id:'mono',name:'High-Contrast Mono',sub:'Accessible, hard edges',sw:['oklch(100% 0 0)','oklch(10% 0 0)']},
+    {id:'graphite',name:'Graphite Mica',sub:'Windows 11 dark, translucent',sw:['oklch(22% .01 255)','oklch(74% .12 240)']},
+    {id:'nightshift',name:'Night Shift',sub:'Warm dark, amber',sw:['oklch(19% .014 55)','oklch(76% .14 68)']},
+    {id:'slate',name:'Slate Dusk',sub:'Cool dark, violet',sw:['oklch(27% .022 265)','oklch(73% .13 300)']}
+  ];
+
+  const WAYS = [
+    ['1','Active category',[['Card spanning two columns','A'],['Expanded, marked row','B'],['Hero panel with a big name','C'],['Live striped segment on a timeline','D'],['Enlarged chip in a strip','E'],['"ACTIVE" label in a sidebar','F'],['Tinted tray icon in the category color','all']]],
+    ['2','Time in category',[['"Active · 48 min" chip','A B E'],['"since 09:12" line','C'],['Timeline length + daily total','D']]],
+    ['3','All categories',[['Card grid','A'],['Numbered list','B'],['Shelf of tiles','C'],['Sidebar list','D F'],['Chip strip','E']]],
+    ['4','Parked vs. fresh',[['"3 parked" chip / outlined "Starts fresh"','A B C'],['Count in a sidebar','D F'],['Hover popover with window titles','E'],['Full window list in a tab','F'],['One dot per parked window','—']]],
+    ['5','Apps of a category',[['Overlapping icon stack','A B C'],['Template tab','F'],['Not on the home at all','D E']]],
+    ['6','Held back',[['Shield + count on each card','A B'],['Named list for the active category','C'],['One line under the active session','D'],['Tab per category','F'],['Only after something was blocked','—']]],
+    ['7','Pinned apps',[['Chips under the header','A'],['Footer line','B'],['Box in the hero','C'],['Sidebar section','D F'],['Right end of the strip','E']]],
+    ['8','Switch hint',[['Search field that shows the hotkey','A D'],['Number key on every item','A B C'],['"then a number" footer','B'],['Taught only in the empty state','—']]],
+    ['9','Go back',[['"Back to Comms" button with the double-tap hint','C'],['Hint line in a side card','D'],['Only in the palette','A B E F']]],
+    ['10–14','Contextual info',[['Footer line (trigger, last block)','A B'],['Dashed trigger line on the timeline','D'],['Dashed "Unsorted" bar with "Sort into…"','A'],['Unsorted as a normal row/tile with key 0','B C'],['Dismissible banner for problems','all']]]
+  ];
+  const SIGS = {A:'A · Double-tap to go back',B:'B · First category from open windows',C:'C · The switch receipt'};
+
+  const $ = id => document.getElementById(id);
+  const store = {get(k){try{return localStorage.getItem('cv2.'+k)}catch(e){return null}},set(k,v){try{localStorage.setItem('cv2.'+k,v)}catch(e){}}};
+  let cur = {theme:store.get('theme')||'daylight', design:store.get('design')||'A', sig:store.get('sig')||'', picked:{theme:!!store.get('theme'),design:!!store.get('design')}};
+
+  $('themePicker').innerHTML = THEMES.map(t=>`<button type="button" class="tbtn" data-theme="${t.id}" aria-pressed="false"><span class="swatch"><i style="background:${t.sw[0]}"></i><i style="background:${t.sw[1]}"></i></span><span>${t.name}<small>${t.sub}</small></span></button>`).join('');
+  $('designPicker').innerHTML = DESIGNS.map(d=>`<button type="button" class="dbtn" data-design="${d.id}" aria-pressed="false"><b><span>${d.id}</span>${d.name}</b><small>${d.line}</small></button>`).join('');
+  $('waysBody').innerHTML = WAYS.map(r=>`<tr><td class="id">${r[0]}</td><td>${r[1]}</td><td><div class="ways">${r[2].map(w=>`<span class="way">${w[0]}${w[1]!=='—'?`<em>${w[1]}</em>`:''}</span>`).join('')}</div></td></tr>`).join('');
+
+  function render(){
+    $('demo').setAttribute('data-theme',cur.theme);
+    $('demo').innerHTML = LAYOUTS[cur.design]();
+    document.querySelectorAll('.tbtn').forEach(b=>b.setAttribute('aria-pressed',b.dataset.theme===cur.theme));
+    document.querySelectorAll('.dbtn').forEach(b=>b.setAttribute('aria-pressed',b.dataset.design===cur.design));
+    document.querySelectorAll('.sig').forEach(b=>b.setAttribute('aria-pressed',b.dataset.sig===cur.sig));
+    const d = DESIGNS.find(x=>x.id===cur.design), t = THEMES.find(x=>x.id===cur.theme);
+    $('themeName').textContent = t.name;
+    const eff = n => `<span class="effort" aria-label="effort ${n} of 3">${[1,2,3].map(i=>`<i class="${i<=n?'on':''}"></i>`).join('')}</span>`;
+    $('notes').innerHTML = `
+      <div class="note"><span class="eyebrow">${d.id} · ${d.name} · idea</span><p>${d.idea}</p></div>
+      <div class="note"><span class="eyebrow">Strong at</span><p>${d.good}</p></div>
+      <div class="note"><span class="eyebrow">Weak at</span><p>${d.weak}</p></div>
+      <div class="note"><span class="eyebrow">Fits · build effort ${eff(d.effort)}</span><p>${d.fits}</p></div>`;
+    const set = (el,val,ok) => { el.textContent = ok ? val : 'not picked yet'; el.className = ok ? '' : 'empty'; };
+    set($('pkTheme'),t.name,cur.picked.theme);
+    set($('pkDesign'),`${d.id} · ${d.name}`,cur.picked.design);
+    set($('pkSig'),SIGS[cur.sig]||'',!!cur.sig);
+    fit();
+  }
+  function fit(){
+    const st=$('stage'), cv=$('canvas'); const s = st.clientWidth/1120;
+    cv.style.transform = `scale(${s})`; st.style.height = (700*s)+'px';
+  }
+  $('themePicker').addEventListener('click',e=>{const b=e.target.closest('.tbtn'); if(!b) return; cur.theme=b.dataset.theme; cur.picked.theme=true; store.set('theme',cur.theme); render();});
+  $('designPicker').addEventListener('click',e=>{const b=e.target.closest('.dbtn'); if(!b) return; cur.design=b.dataset.design; cur.picked.design=true; store.set('design',cur.design); render();});
+  $('sigPicker').addEventListener('click',e=>{const b=e.target.closest('.sig'); if(!b) return; cur.sig=b.dataset.sig; store.set('sig',cur.sig); render();});
+  $('copyBtn').addEventListener('click',()=>{
+    const t = THEMES.find(x=>x.id===cur.theme), d = DESIGNS.find(x=>x.id===cur.design);
+    const txt = `My picks: Theme = ${cur.picked.theme?t.name:'(none)'}, Design = ${cur.picked.design?d.id+' '+d.name:'(none)'}, Signature moment = ${SIGS[cur.sig]||'(none)'}`;
+    const done = () => { $('copied').hidden=false; setTimeout(()=>{$('copied').hidden=true},2200); };
+    const fallback = () => { const ta=$('copyFallback'); ta.value=txt; ta.select(); try{document.execCommand('copy');}catch(e){} done(); };
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done,fallback); } else fallback();
+  });
+  new ResizeObserver(fit).observe($('stage'));
+  render();
+})();
+</script>
