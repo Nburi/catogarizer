@@ -19,6 +19,7 @@ public partial class PlacementDialogViewModel : ObservableObject
     private readonly IMonitorService _monitorService;
 
     private IntPtr? _hwnd;
+    private bool _changed;
 
     [ObservableProperty]
     private string _statusMessage = "Click \"Open app\" to launch it, then drag/resize its window where you want it.";
@@ -94,6 +95,7 @@ public partial class PlacementDialogViewModel : ObservableObject
         var placement = WindowPlacementResolver.CaptureFromBounds(bounds, monitors, _monitorService.GetPrimaryMonitor());
 
         Result = placement;
+        MarkChanged();
         CapturedSummary = Describe(placement);
         StatusMessage = "Captured. Click Save to keep it.";
     }
@@ -102,12 +104,22 @@ public partial class PlacementDialogViewModel : ObservableObject
     private void ClearPlacement()
     {
         Result = null;
+        MarkChanged();
         CapturedSummary = null;
         StatusMessage = "Placement cleared - this app will open at its own default position.";
     }
 
-    [RelayCommand]
+    private void MarkChanged()
+    {
+        _changed = true;
+        SaveCommand.NotifyCanExecuteChanged();
+    }
+
+    // Nothing to save until the user captured or cleared something.
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private void Save() => RequestClose?.Invoke(this, EventArgs.Empty);
+
+    private bool CanSave() => _changed;
 
     private static string Describe(WindowRect r) => $"{r.Width}×{r.Height}, offset ({r.OffsetX},{r.OffsetY}) from monitor top-left";
 }

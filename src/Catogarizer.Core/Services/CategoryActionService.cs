@@ -34,7 +34,7 @@ public sealed class CategoryActionService : ICategoryActionService
     public AppActionResult OpenApp(AppEntry app)
     {
         if (!_fileExists(app.ExecutablePath))
-            return Fail(app, $"\"{app.Name}\" wasn't found at {app.ExecutablePath}. It may have been moved or uninstalled.");
+            return Fail(app, $"\"{app.Name}\" wasn't found at {app.ExecutablePath}. It may have been moved or uninstalled. Use the pencil to point to the new location, or remove it.");
 
         try
         {

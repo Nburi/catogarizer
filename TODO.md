@@ -560,16 +560,8 @@ categories with charmap/msinfo32, Claude pinned; config restored afterwards):
   - [x] Round 1 (flow: empty/full/misused) - fixed in 4010945 (tray crash,
         lost CLI commands) and 4e21122 (UI).
   - [x] Round 2 (fix verification) - 21/26 fixed, leftovers fixed in 0d589c5.
-  - [ ] Round 3 (where the UI lies) - part 1 fixed in a40e3d6. Still open:
-        hero window rows look clickable but aren't (VM command
-        `BringToFrontCommand` exists, XAML not wired); editor row for a
-        missing app shows "Opens at its default position" and live ▶/—/⏹
-        buttons that do nothing; editor "wasn't found" text has no next
-        step; Automation "Run now" on a trigger without actions is silent;
-        Automation enable checkbox has no label; `TriggerRowViewModel` has
-        no `ToString()` (screen reader reads the type name); "Set window
-        position" Save is enabled with nothing captured; after "Show all
-        hidden windows" tiles say "Opens 2 apps" though those apps are
-        already open (low priority).
+  - [x] Round 3 (where the UI lies) - part 1 in a40e3d6, part 2 fixed (hero rows clickable,
+        missing-exe editor rows, Automation labels/empty Run now, Save enabled only after a change).
+        Left open (low): tiles say "Opens 2 apps" after "Show all hidden windows".
   - [ ] Round 4 (user simulation, fs-nutzer-simulant, unexpected role).
 - [ ] 9. Docs, code review, user review, merge, deploy.

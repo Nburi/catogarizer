@@ -78,6 +78,12 @@ public sealed partial class TriggersViewModel : ObservableObject
     [RelayCommand]
     private async Task RunNow(TriggerRowViewModel row)
     {
+        if (!row.HasActions)
+        {
+            Notice = "This trigger has no actions yet. Edit it to add some.";
+            NoticeIsError = false;
+            return;
+        }
         IsBusy = true;
         BusyMessage = $"Running \"{row.Trigger.Name}\"...";
         Notice = null;

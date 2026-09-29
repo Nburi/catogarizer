@@ -96,8 +96,9 @@
                                         </StackPanel>
                                     </StackPanel>
 
-                                    <CheckBox Grid.Column="1" IsChecked="{Binding IsEnabled}" VerticalAlignment="Top"
-                                              ToolTip="Enabled" AutomationProperties.Name="{Binding Name}"/>
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding IsEnabled}" VerticalAlignment="Top" Content="On"
+                                              Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                                              ToolTip="Turn this trigger on or off" AutomationProperties.Name="{Binding Name, StringFormat='{}{0} enabled'}"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>

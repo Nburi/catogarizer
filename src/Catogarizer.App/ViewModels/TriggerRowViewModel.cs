@@ -32,8 +32,13 @@ public sealed partial class TriggerRowViewModel : ObservableObject
         _ => $"{Trigger.Actions.Count} actions",
     };
 
+    public bool HasActions => Trigger.Actions.Count > 0;
+
     [ObservableProperty]
     private bool _isEnabled;
+
+    /// <summary>Screen readers fall back to the type name for list items otherwise.</summary>
+    public override string ToString() => Name;
 
     public TriggerRowViewModel(Trigger trigger, LibraryService library)
     {

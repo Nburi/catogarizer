@@ -6,6 +6,14 @@
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BgBrush}" FontFamily="{StaticResource UiFont}">
     <Window.Resources>
+        <!-- Live app actions make no sense when the exe is gone; Edit and Remove stay usable. -->
+        <Style x:Key="MissingAwareIconButtonStyle" TargetType="Button" BasedOn="{StaticResource GhostIconButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ExecutablePath, Converter={StaticResource MissingFileConverter}}" Value="True">
+                    <Setter Property="IsEnabled" Value="False"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="SectionTitle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextStyle}">
             <Setter Property="FontSize" Value="14.5"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -176,20 +184,32 @@
                                         <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                                    TextTrimming="CharacterEllipsis"/>
                                         <TextBlock Text="{Binding Placement, Converter={StaticResource PlacementStatusConverter}}"
-                                                   Style="{StaticResource MutedTextStyle}" FontSize="11.5" TextTrimming="CharacterEllipsis"/>
+                                                   FontSize="11.5" TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource MutedTextStyle}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ExecutablePath, Converter={StaticResource MissingFileConverter}}" Value="True">
+                                                            <Setter Property="Text" Value="{Binding ExecutablePath, StringFormat='Not found at {0}'}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                            <Setter Property="ToolTip" Value="{Binding ExecutablePath}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Button Content="&#x25B6;" Style="{StaticResource GhostIconButtonStyle}" ToolTip="Open now"
+                                        <Button Content="&#x25B6;" Style="{StaticResource MissingAwareIconButtonStyle}" ToolTip="Open now"
                                                 AutomationProperties.Name="Open now"
                                                 Command="{Binding DataContext.OpenAppCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
-                                        <Button Content="&#x2014;" Style="{StaticResource GhostIconButtonStyle}" ToolTip="Minimize"
+                                        <Button Content="&#x2014;" Style="{StaticResource MissingAwareIconButtonStyle}" ToolTip="Minimize"
                                                 AutomationProperties.Name="Minimize"
                                                 Command="{Binding DataContext.MinimizeAppCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
-                                        <Button Content="&#x23F9;" Style="{StaticResource GhostIconButtonStyle}" ToolTip="Close this app"
+                                        <Button Content="&#x23F9;" Style="{StaticResource MissingAwareIconButtonStyle}" ToolTip="Close this app"
                                                 AutomationProperties.Name="Close this app"
                                                 Command="{Binding DataContext.CloseAppCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
                                         <Rectangle Width="1" Fill="{DynamicResource BorderBrush2}" Margin="6,5"/>
-                                        <Button Content="&#x26F6;" Style="{StaticResource GhostIconButtonStyle}" ToolTip="Set where it opens"
+                                        <Button Content="&#x26F6;" Style="{StaticResource MissingAwareIconButtonStyle}" ToolTip="Set where it opens"
                                                 AutomationProperties.Name="Set where it opens"
                                                 Command="{Binding DataContext.SetPlacementCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
                                         <Button Content="&#x270E;" Style="{StaticResource GhostIconButtonStyle}" ToolTip="Edit"
