@@ -4,7 +4,9 @@ A one-page static site: plain HTML and CSS, no framework, no build step.
 
     website/
       public/    everything that gets served (index.html, style.css, favicon.ico, img/)
-      deploy/    server side: nginx config + deploy.ps1 (never served)
+
+The server pulls this repo with `git pull`; nginx serves `website/public/` as its root.
+The nginx config is not part of the repo.
 
 Preview locally from the repo root:
 
@@ -13,14 +15,12 @@ Preview locally from the repo root:
 Theme values (colors, radii) mirror the app's default "Fjord" theme in
 `app/src/Catogarizer.Core/Theming/ThemeCatalog.cs`. Keep them in sync if the default changes.
 
-## Deploy
+## Releasing a new installer
 
-1. Build the installer: `app/installer/build-installer.ps1 -Version 1.0.0` (needs Inno Setup 6, `winget install JRSoftware.InnoSetup`).
-2. Upload: `website/deploy/deploy.ps1 -Server user@host -WithInstaller`.
-3. Once on the server: copy `deploy/catogarizer.nginx.conf` to `/etc/nginx/sites-available/`, set `server_name`, enable it, reload nginx.
+1. Build it: `app/installer/build-installer.ps1 -Version x.y.z` (needs Inno Setup 6, `winget install JRSoftware.InnoSetup`). Output: `app/installer/Output/Catogarizer-Setup.exe`.
+2. Copy the exe by hand to the server's downloads folder, which nginx serves at `/downloads/`. It is not in git, so `git pull` does not bring it.
 
-The download button links to `downloads/Catogarizer-Setup.exe`. The exe is not in git; without step 1+2 the link is a 404.
+The download button links to `downloads/Catogarizer-Setup.exe`; without step 2 the link is a 404.
 
 ## Open items
 - The hero screenshot is an HTML/CSS mock. Replace it with a real screenshot or GIF of a switch.
-- `deploy.ps1` and the nginx config are untested against the real server.
