@@ -554,5 +554,22 @@ categories with charmap/msinfo32, Claude pinned; config restored afterwards):
       the footer, theme radius. Deviation: built without a separate preview
       because the user asked not to stop between steps; screenshots sent
       instead. Verified live (preselection, "tb" → Test B, "2" switched).
-- [ ] 8. Review rounds 0–4 (fs-* agents).
+- [ ] 8. Review rounds 0–4 (fs-* agents, each with `tools/livetest/` setup/
+      teardown so the user's real windows and config are always restored).
+  - [x] Round 0 (requirements) - fixed in 4b096c4.
+  - [x] Round 1 (flow: empty/full/misused) - fixed in 4010945 (tray crash,
+        lost CLI commands) and 4e21122 (UI).
+  - [x] Round 2 (fix verification) - 21/26 fixed, leftovers fixed in 0d589c5.
+  - [ ] Round 3 (where the UI lies) - part 1 fixed in a40e3d6. Still open:
+        hero window rows look clickable but aren't (VM command
+        `BringToFrontCommand` exists, XAML not wired); editor row for a
+        missing app shows "Opens at its default position" and live ▶/—/⏹
+        buttons that do nothing; editor "wasn't found" text has no next
+        step; Automation "Run now" on a trigger without actions is silent;
+        Automation enable checkbox has no label; `TriggerRowViewModel` has
+        no `ToString()` (screen reader reads the type name); "Set window
+        position" Save is enabled with nothing captured; after "Show all
+        hidden windows" tiles say "Opens 2 apps" though those apps are
+        already open (low priority).
+  - [ ] Round 4 (user simulation, fs-nutzer-simulant, unexpected role).
 - [ ] 9. Docs, code review, user review, merge, deploy.
