@@ -22,17 +22,19 @@ public sealed class TrayIconController : IDisposable
     private readonly IAutostartService _autostartService;
     private readonly Window _mainWindow;
     private readonly Action<SwitchResult> _onSwitched;
+    private readonly UpdateNotifier _updateNotifier;
     private readonly TaskbarIcon _icon;
     private bool _isExiting;
 
     public TrayIconController(LibraryService library, CategorySwitcher switcher, IAppBlockingService appBlockingService,
-        IAutostartService autostartService, Window mainWindow, Action<SwitchResult> onSwitched)
+        IAutostartService autostartService, Window mainWindow, UpdateNotifier updateNotifier, Action<SwitchResult> onSwitched)
     {
         _library = library;
         _switcher = switcher;
         _autostartService = autostartService;
         _mainWindow = mainWindow;
         _onSwitched = onSwitched;
+        _updateNotifier = updateNotifier;
 
         _icon = new TaskbarIcon
         {
@@ -105,6 +107,14 @@ public sealed class TrayIconController : IDisposable
     {
         var menu = new ContextMenu();
         var active = _switcher.ActiveCategoryId;
+
+        if (_updateNotifier.Visible is { } update)
+        {
+            var updateItem = new MenuItem { Header = $"Update available: {update.Latest} - download" };
+            updateItem.Click += (_, _) => _updateNotifier.OpenDownloadPage();
+            menu.Items.Add(updateItem);
+            menu.Items.Add(new Separator());
+        }
 
         if (_switcher.PreviousCategoryId is { } previous)
         {

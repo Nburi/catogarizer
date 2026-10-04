@@ -110,6 +110,25 @@
                 </StackPanel>
             </Grid>
 
+            <!-- A newer version exists: a quiet note with a link, nothing is downloaded for you. -->
+            <Border Margin="0,0,0,14" CornerRadius="{DynamicResource ControlRadius}" Padding="14,8"
+                    Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                    Visibility="{Binding UpdateText, Converter={StaticResource NullToCollapsedConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding UpdateText}" TextWrapping="Wrap" Foreground="{DynamicResource InkBrush}" FontSize="12.5" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="Download page" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5" Margin="12,0,6,0"
+                            VerticalAlignment="Center" Command="{Binding OpenUpdateCommand}"
+                            AutomationProperties.Name="Open the download page in your browser"/>
+                    <Button Grid.Column="2" Content="&#x2715;" Style="{StaticResource GhostIconButtonStyle}"
+                            Command="{Binding DismissUpdateCommand}" ToolTip="Hide until next start" AutomationProperties.Name="Hide the update note"/>
+                </Grid>
+            </Border>
+
             <!-- Problems (launch failures etc.) -->
             <Border Margin="0,0,0,14" CornerRadius="{DynamicResource ControlRadius}" Padding="14,10"
                     Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1"

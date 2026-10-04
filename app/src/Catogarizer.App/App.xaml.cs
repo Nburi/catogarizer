@@ -33,6 +33,7 @@ public partial class App : Application
     private TriggerSchedulerService? _triggerScheduler;
     private CategorySwitchService? _switchService;
     private CategorySwitcher? _switcher;
+    private UpdateNotifier? _updateNotifier;
     private CommandPaletteWindow? _paletteWindow;
     private SwitchPillWindow? _pill;
     private ThemeService? _themeService;
@@ -123,13 +124,16 @@ public partial class App : Application
 
         var editorServices = new EditorServices(library, dialogService, installedAppFinder, processLauncher, windowFinder,
             windowManager, monitorService, categoryActionService, autostartService, triggerRunner);
-        var mainWindow = new MainWindow(editorServices, switcher, themeService, appBlockingService, RegisterGlobalHotkey);
+        var updateNotifier = new UpdateNotifier();
+        _updateNotifier = updateNotifier;
+        var mainWindow = new MainWindow(editorServices, switcher, themeService, appBlockingService, updateNotifier, RegisterGlobalHotkey);
         // A relayed command (switch/run/back) stays headless regardless of the StartMinimized
         // setting - it's a background request (script/hotkey tool), not a user opening the app.
         if (!library.Settings.StartMinimized && !command.IsRelayed)
             mainWindow.Show();
 
-        _trayIconController = new TrayIconController(library, switcher, appBlockingService, autostartService, mainWindow, OnSwitched);
+        _trayIconController = new TrayIconController(library, switcher, appBlockingService, autostartService, mainWindow, updateNotifier, OnSwitched);
+        updateNotifier.Start();
 
         RegisterGlobalHotkey(library.Settings.CommandPaletteHotkey);
         ListenForShowSignal();
@@ -371,6 +375,7 @@ public partial class App : Application
         _hotkeyService?.Dispose();
         _trayIconController?.Dispose();
         _triggerScheduler?.Dispose();
+        _updateNotifier?.Dispose();
         (_appBlockingService as IDisposable)?.Dispose();
         if (_ownsSingleInstanceMutex) _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
