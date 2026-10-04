@@ -43,6 +43,19 @@ public partial class MainWindow : Window
         await _viewModel.SwitchByNumberAsync(number);
     }
 
+    /// <summary>With nowhere to move a window to (no categories yet), the menu would be an empty box - don't open it.</summary>
+    private void WindowRow_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (_viewModel.MoveTargets.Count == 0) e.Handled = true;
+    }
+
+    private async void MoveWindowMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { DataContext: MoveTarget target } item) return;
+        if (ItemsControl.ItemsControlFromItemContainer(item) is ContextMenu { PlacementTarget: FrameworkElement { DataContext: WindowRow row } })
+            await _viewModel.MoveWindowAsync(row.Handle, target.Id);
+    }
+
     public static readonly DependencyProperty ShelfColumnsProperty =
         DependencyProperty.Register(nameof(ShelfColumns), typeof(int), typeof(MainWindow), new PropertyMetadata(4));
 

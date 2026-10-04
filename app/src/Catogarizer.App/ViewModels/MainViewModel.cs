@@ -48,6 +48,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string? _lastBlockedText;
 
     public ObservableCollection<WindowRow> ActiveWindows { get; } = new();
+    /// <summary>Where a window of the active category can be sent: every other category, plus Unsorted.</summary>
+    public ObservableCollection<MoveTarget> MoveTargets { get; } = new();
     public ObservableCollection<HeldBackRow> HeldBack { get; } = new();
     public ObservableCollection<PinnedRow> Pinned { get; } = new();
 
@@ -142,6 +144,12 @@ public partial class MainViewModel : ObservableObject
         var since = _switcher.ActiveSince;
         var elapsed = DateTime.Now - since;
         ActiveSinceText = elapsed.TotalMinutes < 1 ? $"since {since:HH:mm}" : $"since {since:HH:mm} · {Duration(elapsed)}";
+
+        var targets = _library.Categories.OrderBy(c => c.SortOrder).Where(c => c.Id != activeId)
+            .Select(c => new MoveTarget(c.Id, c.Name, _themeService.ColorFor(c))).ToList();
+        if (activeId != CategorySwitchService.Uncategorized)
+            targets.Add(new MoveTarget(CategorySwitchService.Uncategorized, CategorySwitchService.UncategorizedName, _themeService.ColorFor(null)));
+        Replace(MoveTargets, targets);
 
         var windows = sessions.TryGetValue(activeId, out var list) ? list : [];
         var opening = _switcher.IsOpeningApps && active is not null;
@@ -411,6 +419,27 @@ public partial class MainViewModel : ObservableObject
     {
         if (_services.WindowManager.IsWindowOpen(row.Handle))
             _services.WindowManager.BringToFront(row.Handle);
+    }
+
+    /// <summary>
+    /// Context menu on a window row: sends the window to another category (or Unsorted) at once,
+    /// without switching. In a category other than the active one it is parked right away.
+    /// </summary>
+    public async Task MoveWindowAsync(IntPtr handle, Guid categoryId)
+    {
+        Notice = null;
+        var moved = await Task.Run(() => _switcher.MoveWindow(handle, categoryId));
+        if (moved)
+        {
+            Refresh();
+            return;
+        }
+        // The window closed in the meantime, or the category was deleted.
+        _noticeCategoryId = _switcher.ActiveCategoryId;
+        NoticeCanEdit = false;
+        Notice = "That window couldn't be moved - it was closed, or the category no longer exists.";
+        NoticeRaised?.Invoke(this, EventArgs.Empty);
+        Refresh();
     }
 
     [RelayCommand]

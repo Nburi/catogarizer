@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Windows.Media;
+using Catogarizer.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Catogarizer.App.ViewModels;
@@ -25,6 +26,13 @@ public sealed record HeldBackRow(string Name, string? IconPath, int IconProcessI
 
 public sealed record PinnedRow(Guid Id, string Name, string? IconPath, int IconProcessId)
 {
+    public override string ToString() => Name;
+}
+
+/// <summary>A place a window can be sent from the home's window context menu. Compares by value, so an open menu survives refreshes.</summary>
+public sealed record MoveTarget(Guid Id, string Name, System.Windows.Media.Color Color)
+{
+    public Brush Brush => ThemeService.FrozenBrush(Color);
     public override string ToString() => Name;
 }
 

@@ -194,9 +194,21 @@
                                         <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1"
                                                 CornerRadius="{DynamicResource ControlRadius}" Margin="0,0,0,6">
                                             <Button Style="{StaticResource GhostRowButtonStyle}" Padding="10,7"
-                                                    AutomationProperties.Name="{Binding Title}" ToolTip="Bring to front"
+                                                    AutomationProperties.Name="{Binding Title}" ToolTip="Bring to front  ·  right-click to move to another category"
+                                                    Tag="{Binding DataContext.MoveTargets, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    ContextMenuOpening="WindowRow_ContextMenuOpening"
                                                     Command="{Binding DataContext.BringToFrontCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}" HorizontalContentAlignment="Stretch">
+                                                <Button.ContextMenu>
+                                                    <ContextMenu Style="{StaticResource ThemedContextMenuStyle}"
+                                                                 ItemsSource="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                                        <ContextMenu.ItemContainerStyle>
+                                                            <Style TargetType="MenuItem" BasedOn="{StaticResource ThemedMenuItemStyle}">
+                                                                <EventSetter Event="Click" Handler="MoveWindowMenuItem_Click"/>
+                                                            </Style>
+                                                        </ContextMenu.ItemContainerStyle>
+                                                    </ContextMenu>
+                                                </Button.ContextMenu>
                                                 <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
