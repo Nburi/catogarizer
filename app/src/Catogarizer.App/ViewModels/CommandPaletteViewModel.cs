@@ -84,7 +84,8 @@ public partial class CommandPaletteViewModel : ObservableObject
             {
                 Id = id, Name = _library.NameOf(id), KeyText = _library.KeyOf(id),
                 Color = ThemeService.FrozenBrush(_themeService.ColorFor(category)),
-                StateText = id == active ? "You're here" : CategoryStateText.Describe(parked, missing, template.Count, category is null),
+                StateText = id == active ? "You're here" : CategoryStateText.Describe(parked, missing, template.Count, category is null,
+                    parked > 0 ? 0 : CategoryStateText.OpenInUnsorted(template, sessions)),
                 IsActive = id == active, IsPrevious = id == previous, HasMissingApp = missing > 0,
                 Icons = template.Take(MaxIcons).Select(a => new TemplateIcon(a.Name, a.ExecutablePath)).ToList(),
             };
