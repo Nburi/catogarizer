@@ -71,6 +71,17 @@ public sealed class CategorySwitcher
         return category is null ? null : SwitchTo(category.Id);
     }
 
+    /// <summary>Moves a window to another category (or Unsorted) without switching. False if the category or window is gone.</summary>
+    public bool MoveWindow(IntPtr handle, Guid categoryId)
+    {
+        lock (_lock)
+        {
+            if (categoryId != CategorySwitchService.Uncategorized && _library.Categories.All(c => c.Id != categoryId))
+                return false;
+            return _switch.MoveWindow(handle, categoryId);
+        }
+    }
+
     public void DeleteCategory(Guid categoryId)
     {
         lock (_lock)

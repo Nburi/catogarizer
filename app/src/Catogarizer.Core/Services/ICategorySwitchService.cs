@@ -71,4 +71,12 @@ public interface ICategorySwitchService : IDisposable
     /// Windows of apps that are no longer pinned join the active category, so unpinning does too.
     /// </summary>
     void ApplyPinnedApps();
+
+    /// <summary>
+    /// Moves one tracked window into <paramref name="targetCategoryId"/>'s session without switching.
+    /// It follows the target's rules: shown if the target is the active category, otherwise parked
+    /// (hidden, and written to the hidden ledger first). Returns false if the window isn't tracked
+    /// (closed, pinned or unknown); moving to the category it already belongs to is a successful no-op.
+    /// </summary>
+    bool MoveWindow(IntPtr handle, Guid targetCategoryId);
 }

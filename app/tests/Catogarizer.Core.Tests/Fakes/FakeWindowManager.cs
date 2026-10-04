@@ -53,8 +53,12 @@ public sealed class FakeWindowManager : IWindowManager
 
     public bool IsWindowOpen(IntPtr handle) => !_closedWindows.Contains(handle);
 
+    /// <summary>Runs right before a window is hidden, to check what was persisted by then.</summary>
+    public Action<IntPtr>? OnHide { get; set; }
+
     public void Hide(IntPtr handle)
     {
+        OnHide?.Invoke(handle);
         HideCalls.Add(handle);
         _hiddenWindows.Add(handle);
     }
