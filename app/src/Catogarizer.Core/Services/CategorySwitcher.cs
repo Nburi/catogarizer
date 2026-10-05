@@ -106,6 +106,25 @@ public sealed class CategorySwitcher
         _switch.ApplyPinnedApps();
     }
 
+    /// <summary>The pinned entry that covers this process (matched by process name, like the switch service does), or null.</summary>
+    public PinnedApp? FindPinned(string processName) =>
+        _library.PinnedApps.FirstOrDefault(p => string.Equals(ProcessPattern.ProcessName(p.ProcessNameOrPath), processName, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Pins the app if it isn't pinned, unpins it if it is - the same <see cref="PinApp"/>/<see cref="Unpin"/>
+    /// the home's "+ Pin app" and the unpin cross use. Returns whether it is pinned afterwards.
+    /// </summary>
+    public bool TogglePin(string name, string processNameOrPath, string processName)
+    {
+        if (FindPinned(processName) is { } pinned)
+        {
+            Unpin(pinned.Id);
+            return false;
+        }
+        PinApp(name, processNameOrPath);
+        return true;
+    }
+
     public void HoldBack(Guid categoryId, string name, string processNameOrPath)
     {
         lock (_lock)
