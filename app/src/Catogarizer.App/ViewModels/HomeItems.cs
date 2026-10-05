@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Catogarizer.App.ViewModels;
 
 /// <summary>A window in the active category's session.</summary>
-public sealed record WindowRow(string Title, string AppName, int ProcessId, IntPtr Handle)
+public sealed record WindowRow(string Title, string AppName, int ProcessId, IntPtr Handle, string ProcessName)
 {
     /// <summary>Null when the title already says it ("Arc", "Arc"), so the name isn't shown twice.</summary>
     public string? AppLabel => string.Equals(Title.Trim(), AppName.Trim(), StringComparison.OrdinalIgnoreCase) ? null : AppName;
@@ -29,11 +29,38 @@ public sealed record PinnedRow(Guid Id, string Name, string? IconPath, int IconP
     public override string ToString() => Name;
 }
 
-/// <summary>A place a window can be sent from the home's window context menu. Compares by value, so an open menu survives refreshes.</summary>
-public sealed record MoveTarget(Guid Id, string Name, System.Windows.Media.Color Color)
+/// <summary>
+/// One line of the window context menu on the home. <see cref="Kind"/> is "item", "header" or
+/// "separator"; headers and separators are not clickable. Compares by value.
+/// </summary>
+public abstract record WindowMenuEntry(string Text)
 {
-    public Brush Brush => ThemeService.FrozenBrush(Color);
-    public override string ToString() => Name;
+    public virtual string Kind => "item";
+
+    /// <summary>Colour dot in front of the text, or null for none.</summary>
+    public virtual Brush? Dot => null;
+
+    public bool HasDot => Dot is not null;
+    public override string ToString() => Text;
+}
+
+/// <summary>A place a window can be sent: another category or Unsorted.</summary>
+public sealed record MoveTarget(Guid Id, string Name, System.Windows.Media.Color Color) : WindowMenuEntry(Name)
+{
+    public override Brush? Dot => ThemeService.FrozenBrush(Color);
+}
+
+/// <summary>"Pin app" or "Unpin app" for the window's app, depending on whether it is pinned right now.</summary>
+public sealed record PinMenuEntry(string Text) : WindowMenuEntry(Text);
+
+public sealed record MenuHeaderEntry(string Text) : WindowMenuEntry(Text)
+{
+    public override string Kind => "header";
+}
+
+public sealed record MenuSeparatorEntry() : WindowMenuEntry("")
+{
+    public override string Kind => "separator";
 }
 
 public sealed record TemplateIcon(string Name, string ExecutablePath)

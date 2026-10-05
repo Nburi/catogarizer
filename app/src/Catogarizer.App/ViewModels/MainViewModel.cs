@@ -155,7 +155,7 @@ public partial class MainViewModel : ObservableObject
         var opening = _switcher.IsOpeningApps && active is not null;
         WindowCountText = opening ? "opening apps..." : windows.Count switch { 0 => "No windows", 1 => "1 window", var n => $"{n} windows" };
         var shown = ShowAllWindows ? windows.Count : MaxWindowRows;
-        Replace(ActiveWindows, windows.Take(shown).Select(w => new WindowRow(w.Title, AppNames.ForProcess(w.ProcessId, w.ProcessName), w.ProcessId, w.Handle)));
+        Replace(ActiveWindows, windows.Take(shown).Select(w => new WindowRow(w.Title, AppNames.ForProcess(w.ProcessId, w.ProcessName), w.ProcessId, w.Handle, w.ProcessName)));
         MoreWindowsText = windows.Count <= MaxWindowRows ? null
             : ShowAllWindows ? "Show fewer"
             : $"Show {windows.Count - MaxWindowRows} more";
@@ -419,6 +419,39 @@ public partial class MainViewModel : ObservableObject
     {
         if (_services.WindowManager.IsWindowOpen(row.Handle))
             _services.WindowManager.BringToFront(row.Handle);
+    }
+
+    /// <summary>The window menu for one row, built when it opens so the Pin/Unpin wording is current.</summary>
+    public IReadOnlyList<WindowMenuEntry> BuildWindowMenu(WindowRow row)
+    {
+        var entries = new List<WindowMenuEntry>();
+        if (MoveTargets.Count > 0)
+        {
+            entries.Add(new MenuHeaderEntry("MOVE TO"));
+            entries.AddRange(MoveTargets);
+            entries.Add(new MenuSeparatorEntry());
+        }
+        entries.Add(new PinMenuEntry(_switcher.FindPinned(row.ProcessName) is null ? "Pin app (always visible)" : "Unpin app"));
+        return entries;
+    }
+
+    /// <summary>Context menu on a window row: pins the window's app so it is never hidden, or unpins it.</summary>
+    public async Task TogglePinAsync(WindowRow row)
+    {
+        Notice = null;
+        var path = AppNames.ExecutableOf(row.ProcessId) ?? row.ProcessName;
+        try
+        {
+            await Task.Run(() => _switcher.TogglePin(row.AppName, path, row.ProcessName));
+        }
+        catch (ArgumentException)
+        {
+            _noticeCategoryId = _switcher.ActiveCategoryId;
+            NoticeCanEdit = false;
+            Notice = $"{row.AppName} couldn't be pinned.";
+            NoticeRaised?.Invoke(this, EventArgs.Empty);
+        }
+        Refresh();
     }
 
     /// <summary>

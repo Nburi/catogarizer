@@ -43,17 +43,29 @@ public partial class MainWindow : Window
         await _viewModel.SwitchByNumberAsync(number);
     }
 
-    /// <summary>With nowhere to move a window to (no categories yet), the menu would be an empty box - don't open it.</summary>
+    /// <summary>Built per opening, so "Pin"/"Unpin" always matches the current state.</summary>
     private void WindowRow_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
-        if (_viewModel.MoveTargets.Count == 0) e.Handled = true;
+        if (sender is FrameworkElement { DataContext: WindowRow row, ContextMenu: { } menu })
+            menu.ItemsSource = _viewModel.BuildWindowMenu(row);
+        else
+            e.Handled = true;
     }
 
-    private async void MoveWindowMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void WindowMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not MenuItem { DataContext: MoveTarget target } item) return;
-        if (ItemsControl.ItemsControlFromItemContainer(item) is ContextMenu { PlacementTarget: FrameworkElement { DataContext: WindowRow row } })
-            await _viewModel.MoveWindowAsync(row.Handle, target.Id);
+        if (sender is not MenuItem { DataContext: WindowMenuEntry entry } item) return;
+        if (ItemsControl.ItemsControlFromItemContainer(item) is not ContextMenu { PlacementTarget: FrameworkElement { DataContext: WindowRow row } }) return;
+
+        switch (entry)
+        {
+            case MoveTarget target:
+                await _viewModel.MoveWindowAsync(row.Handle, target.Id);
+                break;
+            case PinMenuEntry:
+                await _viewModel.TogglePinAsync(row);
+                break;
+        }
     }
 
     public static readonly DependencyProperty ShelfColumnsProperty =
