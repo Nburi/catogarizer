@@ -43,6 +43,31 @@ public partial class MainWindow : Window
         await _viewModel.SwitchByNumberAsync(number);
     }
 
+    /// <summary>Built per opening, so "Pin"/"Unpin" always matches the current state.</summary>
+    private void WindowRow_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: WindowRow row, ContextMenu: { } menu })
+            menu.ItemsSource = _viewModel.BuildWindowMenu(row);
+        else
+            e.Handled = true;
+    }
+
+    private async void WindowMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { DataContext: WindowMenuEntry entry } item) return;
+        if (ItemsControl.ItemsControlFromItemContainer(item) is not ContextMenu { PlacementTarget: FrameworkElement { DataContext: WindowRow row } }) return;
+
+        switch (entry)
+        {
+            case MoveTarget target:
+                await _viewModel.MoveWindowAsync(row.Handle, target.Id);
+                break;
+            case PinMenuEntry:
+                await _viewModel.TogglePinAsync(row);
+                break;
+        }
+    }
+
     public static readonly DependencyProperty ShelfColumnsProperty =
         DependencyProperty.Register(nameof(ShelfColumns), typeof(int), typeof(MainWindow), new PropertyMetadata(4));
 

@@ -240,6 +240,41 @@ public sealed class CategorySwitchService : ICategorySwitchService
         StateChanged?.Invoke();
     }
 
+    public bool MoveWindow(IntPtr handle, Guid targetCategoryId)
+    {
+        lock (_switchLock)
+        {
+            OpenWindowInfo window;
+            var park = false;
+            lock (_lock)
+            {
+                var found = _sessions.Values.SelectMany(s => s).FirstOrDefault(w => w.Handle == handle);
+                if (found is null || !_windowManager.IsWindowOpen(handle)) return false;
+                window = found;
+                if (Session(targetCategoryId).Any(w => w.Handle == handle)) return true;
+
+                // Not Attribute(): that would drop a parked window from the ledger before it is shown again.
+                foreach (var session in _sessions.Values)
+                    session.RemoveAll(w => w.Handle == handle);
+                Session(targetCategoryId).Add(window);
+
+                if (targetCategoryId != ActiveCategoryId)
+                {
+                    park = true;
+                    _hidden[handle] = window;
+                    PersistHidden();
+                }
+            }
+
+            if (park)
+                _windowManager.Hide(handle);
+            else
+                Reveal([window]);
+        }
+        StateChanged?.Invoke();
+        return true;
+    }
+
     public void ReleaseCategory(Guid categoryId)
     {
         if (categoryId == Uncategorized) return;
