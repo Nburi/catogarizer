@@ -181,7 +181,9 @@ public partial class MainViewModel : ObservableObject
         BackHint = $"or press {_library.Settings.CommandPaletteHotkey} twice";
         var parked = sessions.TryGetValue(previousId.Value, out var w) ? w.Count : 0;
         var missing = parked > 0 || previous is null ? 0 : _library.MissingAppCount(previous);
-        BackDetail = CategoryStateText.Describe(parked, missing, previous?.AppIds.Count ?? 0, previous is null);
+        var template = previous is null ? [] : _library.AppsOf(previous);
+        BackDetail = CategoryStateText.Describe(parked, missing, template.Count, previous is null,
+            parked > 0 ? 0 : CategoryStateText.OpenInUnsorted(template, sessions));
         BackColor = ThemeService.FrozenBrush(_themeService.ColorFor(previous));
     }
 
@@ -202,7 +204,8 @@ public partial class MainViewModel : ObservableObject
                 IsUnsorted = false,
                 Icons = apps.Take(MaxShelfIcons).Select(a => new TemplateIcon(a.Name, a.ExecutablePath)).ToList(),
                 MoreIconsText = apps.Count > MaxShelfIcons ? $"+{apps.Count - MaxShelfIcons}" : null,
-                StateText = CategoryStateText.Describe(parked, missing, apps.Count, isUnsorted: false),
+                StateText = CategoryStateText.Describe(parked, missing, apps.Count, isUnsorted: false,
+                    openInUnsorted: parked > 0 ? 0 : CategoryStateText.OpenInUnsorted(apps, sessions)),
                 HasParkedWindows = parked > 0,
                 BlockedCount = category.BlockedAppIds.Count,
                 TemplateCount = apps.Count,

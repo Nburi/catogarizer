@@ -28,4 +28,22 @@ public static class AppWindowMatcher
         return byProcess.FirstOrDefault(w => w.Title.Contains(app.Name, StringComparison.OrdinalIgnoreCase))
                ?? byProcess.FirstOrDefault();
     }
+
+    /// <summary>
+    /// One window per app: the best match of each app among the windows no earlier app took.
+    /// Apps without a window are skipped, so the result is never longer than <paramref name="apps"/>.
+    /// </summary>
+    public static List<OpenWindowInfo> MatchEach(IEnumerable<AppEntry> apps, IEnumerable<OpenWindowInfo> windows)
+    {
+        var available = windows.ToList();
+        var matched = new List<OpenWindowInfo>();
+        foreach (var app in apps)
+        {
+            var match = BestMatch(app, available);
+            if (match is null) continue;
+            matched.Add(match);
+            available.Remove(match);
+        }
+        return matched;
+    }
 }

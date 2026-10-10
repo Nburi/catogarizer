@@ -296,13 +296,7 @@ public sealed class CategorySwitchService : ICategorySwitchService
     /// </summary>
     private List<OpenWindowInfo> ClaimUnsortedWindows(IReadOnlyList<AppEntry> templateApps)
     {
-        var unsorted = OpenWindows(Uncategorized);
-        var claimed = new List<OpenWindowInfo>();
-        foreach (var app in templateApps)
-        {
-            var match = AppWindowMatcher.BestMatch(app, unsorted.Where(w => !claimed.Contains(w)));
-            if (match is not null) claimed.Add(match);
-        }
+        var claimed = AppWindowMatcher.MatchEach(templateApps, OpenWindows(Uncategorized));
         Session(Uncategorized).RemoveAll(claimed.Contains);
         return claimed;
     }
