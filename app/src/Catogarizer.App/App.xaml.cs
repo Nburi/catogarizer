@@ -33,6 +33,8 @@ public partial class App : Application
     private TriggerSchedulerService? _triggerScheduler;
     private CategorySwitchService? _switchService;
     private CategorySwitcher? _switcher;
+    private TemporaryCategoryService? _temporary;
+    private QuickCategoryFlow? _quickCategory;
     private UpdateNotifier? _updateNotifier;
     private CommandPaletteWindow? _paletteWindow;
     private SwitchPillWindow? _pill;
@@ -122,8 +124,23 @@ public partial class App : Application
         triggerScheduler.Start(() => library.Triggers);
         _triggerScheduler = triggerScheduler;
 
+        var temporary = new TemporaryCategoryService(library, switcher, windowManager, new SystemClock(), autoPoll: true);
+        var quickCategory = new QuickCategoryFlow(library, temporary, dialogService);
+        _temporary = temporary;
+        _quickCategory = quickCategory;
+        // Catogarizer acted for the user (made a category, or left one that emptied): say so with the
+        // same pill the double-tap uses, so a changed desktop never comes unexplained.
+        temporary.Started += category => Dispatcher.BeginInvoke(() =>
+            FlashPill(category.Name, themeService.ColorFor(category), showBackArrow: false));
+        temporary.Vanished += (_, returnedTo) =>
+        {
+            if (returnedTo is null) return;
+            OnSwitched(returnedTo);
+            Dispatcher.BeginInvoke(() => FlashPill(library.NameOf(returnedTo.CategoryId), CategoryColor(returnedTo.CategoryId), showBackArrow: true));
+        };
+
         var editorServices = new EditorServices(library, dialogService, installedAppFinder, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService, autostartService, triggerRunner);
+            windowManager, monitorService, categoryActionService, autostartService, triggerRunner, temporary, quickCategory);
         var updateNotifier = new UpdateNotifier();
         _updateNotifier = updateNotifier;
         var mainWindow = new MainWindow(editorServices, switcher, themeService, appBlockingService, updateNotifier, RegisterGlobalHotkey);
@@ -132,7 +149,7 @@ public partial class App : Application
         if (!library.Settings.StartMinimized && !command.IsRelayed)
             mainWindow.Show();
 
-        _trayIconController = new TrayIconController(library, switcher, appBlockingService, autostartService, mainWindow, updateNotifier, OnSwitched);
+        _trayIconController = new TrayIconController(library, switcher, appBlockingService, autostartService, mainWindow, updateNotifier, quickCategory, OnSwitched);
         updateNotifier.Start();
 
         RegisterGlobalHotkey(library.Settings.CommandPaletteHotkey);
@@ -329,7 +346,7 @@ public partial class App : Application
                 return;
             }
 
-            var vm = new CommandPaletteViewModel(_library!, _switcher!, _themeService!, OnSwitched);
+            var vm = new CommandPaletteViewModel(_library!, _switcher!, _themeService!, _quickCategory!, OnSwitched);
             _paletteWindow = new CommandPaletteWindow(vm);
             _paletteWindow.Show();
             _paletteWindow.Activate();
@@ -351,11 +368,17 @@ public partial class App : Application
             return;
         }
 
-        _pill.Flash(_library!.NameOf(previous), CategoryColor(previous), showBackArrow: true);
+        FlashPill(_library!.NameOf(previous), CategoryColor(previous), showBackArrow: true);
         Task.Run(() =>
         {
             if (_switcher.SwitchBack() is { } result) OnSwitched(result);
         });
+    }
+
+    private void FlashPill(string text, Color color, bool showBackArrow)
+    {
+        _pill ??= new SwitchPillWindow();
+        _pill.Flash(text, color, showBackArrow);
     }
 
     private Color CategoryColor(Guid id) =>
@@ -371,6 +394,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         RestoreHiddenWindows();
+        _temporary?.Dispose();
         _switchService?.Dispose();
         _hotkeyService?.Dispose();
         _trayIconController?.Dispose();

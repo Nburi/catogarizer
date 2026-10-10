@@ -39,6 +39,9 @@ public partial class MainViewModel : ObservableObject
     // ---- Now ----
     [ObservableProperty] private string _activeName = "";
     [ObservableProperty] private bool _activeIsUnsorted;
+    [ObservableProperty] private bool _activeIsTemporary;
+    /// <summary>The active category has an editor: not Unsorted, not a quick category.</summary>
+    [ObservableProperty] private bool _canEditActive;
     [ObservableProperty] private Brush _activeColor = Brushes.Gray;
     [ObservableProperty] private Brush _heroTint = Brushes.Transparent;
     [ObservableProperty] private string _activeSinceText = "";
@@ -127,7 +130,8 @@ public partial class MainViewModel : ObservableObject
         var categories = _library.Categories.OrderBy(c => c.SortOrder).ToList();
         var active = categories.FirstOrDefault(c => c.Id == activeId);
 
-        HasCategories = categories.Count > 0;
+        // Quick categories don't count: with only one of those, the first-run card still has a job.
+        HasCategories = categories.Any(c => !c.IsTemporary);
         HotkeyKeys = _library.Settings.CommandPaletteHotkey.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
         RefreshNow(active, sessions);
@@ -142,6 +146,8 @@ public partial class MainViewModel : ObservableObject
     {
         var activeId = _switcher.ActiveCategoryId;
         ActiveIsUnsorted = active is null;
+        ActiveIsTemporary = active is { IsTemporary: true };
+        CanEditActive = active is { IsTemporary: false };
         ActiveName = _library.NameOf(activeId);
         var color = _themeService.ColorFor(active);
         ActiveColor = ThemeService.FrozenBrush(color);
@@ -169,6 +175,7 @@ public partial class MainViewModel : ObservableObject
         NoWindowsText = windows.Count > 0 ? null
             : opening ? $"Opening {string.Join(", ", _library.AppsOf(active!).Select(a => a.Name))}..."
             : active is null ? "Nothing open outside your categories."
+            : active.IsTemporary ? "Windows you open now join this category. It disappears when the last one closes."
             : "Windows you open now join this category.";
 
         // A launch problem belongs to the switch that caused it; the next switch clears it.
@@ -178,6 +185,7 @@ public partial class MainViewModel : ObservableObject
         Replace(HeldBack, blocked.Select(b => new HeldBackRow(b.Name, PathOrNull(b.ProcessNameOrPath), RunningProcessOf(b.ProcessNameOrPath))));
         HeldBackEmptyText = blocked.Count > 0 ? null
             : active is null ? "Unsorted never holds anything back."
+            : active.IsTemporary ? "Quick categories don't hold anything back."
             : "Nothing is held back here. Add distracting apps in the editor.";
         // Only for this visit: coming back later, an old attempt would read like a new one.
         LastBlockedText = _lastBlocked is { } last && last.CategoryId == activeId && last.At >= _switcher.ActiveSince
@@ -217,6 +225,7 @@ public partial class MainViewModel : ObservableObject
                 KeyText = _library.KeyOf(category.Id),
                 Color = ThemeService.FrozenBrush(_themeService.ColorFor(category)),
                 IsUnsorted = false,
+                IsTemporary = category.IsTemporary,
                 Icons = apps.Take(MaxShelfIcons).Select(a => new TemplateIcon(a.Name, a.ExecutablePath)).ToList(),
                 MoreIconsText = apps.Count > MaxShelfIcons ? $"+{apps.Count - MaxShelfIcons}" : null,
                 StateText = CategoryStateText.Describe(parked, missing, apps.Count, isUnsorted: false,
@@ -245,6 +254,7 @@ public partial class MainViewModel : ObservableObject
                 KeyText = _library.KeyOf(CategorySwitchService.Uncategorized),
                 Color = ThemeService.FrozenBrush(_themeService.ColorFor(null)),
                 IsUnsorted = true,
+                IsTemporary = false,
                 Icons = parkedApps.Take(MaxShelfIcons).Select(x => new TemplateIcon(AppNames.ForProcess(x.Window.ProcessId, x.Window.ProcessName), x.Path!)).ToList(),
                 MoreIconsText = parkedApps.Count > MaxShelfIcons ? $"+{parkedApps.Count - MaxShelfIcons}" : null,
                 StateText = CategoryStateText.Describe(parked, 0, 0, isUnsorted: true),
@@ -343,16 +353,47 @@ public partial class MainViewModel : ObservableObject
         OpenEditor(category.Id, suggestOpenApps: true);
     }
 
+    /// <summary>Home button, <c>+</c> key: a category for the next hour that removes itself (CONCEPT.md "Temporary categories").</summary>
+    [RelayCommand]
+    public async Task NewQuickCategoryAsync()
+    {
+        Notice = null;
+        await _services.QuickCategory.StartAsync();
+        Refresh();
+    }
+
+    /// <summary>Hero button, Ctrl+W: closes the active quick category, asking its windows to close first.</summary>
+    [RelayCommand]
+    public async Task CloseTemporaryAsync()
+    {
+        var id = _switcher.ActiveCategoryId;
+        if (!_library.IsTemporary(id)) return;
+
+        var count = _switcher.GetSessions().TryGetValue(id, out var windows) ? windows.Count : 0;
+        if (count > 0)
+        {
+            var confirmed = _dialogService.ShowConfirm($"Close \"{_library.NameOf(id)}\"?",
+                (count == 1 ? "Its window will be asked to close." : $"Its {count} windows will be asked to close.")
+                + " Apps with unsaved work will ask you first, and the category stays until they are closed.",
+                "Close windows");
+            if (!confirmed) return;
+        }
+
+        Notice = null;
+        await Task.Run(() => _services.Temporary.Close(id));
+        Refresh();
+    }
+
     [RelayCommand]
     private void EditActive()
     {
-        if (!ActiveIsUnsorted) OpenEditor(_switcher.ActiveCategoryId);
+        if (CanEditActive) OpenEditor(_switcher.ActiveCategoryId);
     }
 
     [RelayCommand]
     private void EditCategory(ShelfItem item)
     {
-        if (!item.IsUnsorted) OpenEditor(item.Id);
+        if (item.CanEdit) OpenEditor(item.Id);
     }
 
     private void OpenEditor(Guid categoryId, bool suggestOpenApps = false)

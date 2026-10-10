@@ -76,6 +76,9 @@ public sealed partial class ShelfItem : ObservableObject
     public required string? KeyText { get; init; }
     public required Brush Color { get; init; }
     public required bool IsUnsorted { get; init; }
+
+    /// <summary>A quick category: shown with a TEMP chip instead of the editor, since there is nothing to edit.</summary>
+    public required bool IsTemporary { get; init; }
     public required IReadOnlyList<TemplateIcon> Icons { get; init; }
     public required string? MoreIconsText { get; init; }
     public required string StateText { get; init; }
@@ -86,11 +89,12 @@ public sealed partial class ShelfItem : ObservableObject
     /// <summary>An app of its template no longer exists at its path - switching would fail for it.</summary>
     public required bool HasMissingApp { get; init; }
 
+    public bool CanEdit => !IsUnsorted && !IsTemporary;
     public bool HasBlocked => BlockedCount > 0;
     public string BlockedTooltip => BlockedCount == 1 ? "Holds back 1 app while active" : $"Holds back {BlockedCount} apps while active";
     public string AutomationName => BlockedCount switch
     {
-        0 => $"Switch to {Name}, {StateText}",
+        0 => $"Switch to {Name}{(IsTemporary ? " (temporary)" : "")}, {StateText}",
         1 => $"Switch to {Name}, {StateText}, holds back 1 app",
         _ => $"Switch to {Name}, {StateText}, holds back {BlockedCount} apps",
     };

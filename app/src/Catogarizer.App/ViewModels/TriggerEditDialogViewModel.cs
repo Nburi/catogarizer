@@ -73,12 +73,12 @@ public sealed partial class TriggerEditDialogViewModel : ObservableObject
         _name = editing.Name;
         _timeOfDay = editing.TimeOfDay ?? "08:00";
         foreach (var action in editing.Actions)
-            Actions.Add(new TriggerActionEditItem(_library, _installedAppFinder, _dialogService, _library.Categories, AvailableApps, action));
+            Actions.Add(new TriggerActionEditItem(_library, _installedAppFinder, _dialogService, _library.PermanentCategories, AvailableApps, action));
     }
 
     [RelayCommand]
     private void AddAction() =>
-        Actions.Add(new TriggerActionEditItem(_library, _installedAppFinder, _dialogService, _library.Categories, AvailableApps));
+        Actions.Add(new TriggerActionEditItem(_library, _installedAppFinder, _dialogService, _library.PermanentCategories, AvailableApps));
 
     [RelayCommand]
     private void RemoveAction(TriggerActionEditItem item) => Actions.Remove(item);

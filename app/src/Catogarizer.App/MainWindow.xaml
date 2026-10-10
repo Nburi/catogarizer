@@ -7,7 +7,7 @@
         Icon="Assets/app.ico"
         Background="{DynamicResource BgBrush}"
         FontFamily="{StaticResource UiFont}"
-        PreviewKeyDown="Window_PreviewKeyDown" SizeChanged="Window_SizeChanged">
+        PreviewKeyDown="Window_PreviewKeyDown" PreviewTextInput="Window_PreviewTextInput" SizeChanged="Window_SizeChanged">
     <Window.Resources>
         <Geometry x:Key="ShieldGeometry">M8,1.8 L13,3.6 L13,7.7 C13,10.7 10.9,12.9 8,14.2 C5.1,12.9 3,10.7 3,7.7 L3,3.6 Z</Geometry>
 
@@ -106,6 +106,10 @@
                     <Button Content="&#x2699;" Style="{StaticResource GhostIconButtonStyle}" Width="34" Height="34" FontSize="15"
                             Margin="0,0,8,0" Command="{Binding OpenSettingsCommand}" ToolTip="Settings"
                             AutomationProperties.Name="Settings"/>
+                    <Button Content="+ Quick category" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                            Command="{Binding NewQuickCategoryCommand}"
+                            ToolTip="A temporary category that disappears when its last window closes  ·  press +"
+                            AutomationProperties.Name="New quick category"/>
                     <Button Content="+ New category" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding NewCategoryCommand}"/>
                 </StackPanel>
             </Grid>
@@ -198,10 +202,20 @@
                                 <TextBlock Grid.Column="1" Text="{Binding ActiveName}" FontFamily="{DynamicResource HeadingFont}" FontSize="34"
                                            FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"
                                            VerticalAlignment="Center"/>
-                                <Button Grid.Column="2" Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Padding="12,6"
-                                        VerticalAlignment="Center" Margin="12,0,0,0" Command="{Binding EditActiveCommand}"
-                                        AutomationProperties.Name="Edit this category"
-                                        Visibility="{Binding ActiveIsUnsorted, Converter={StaticResource InverseBoolToVis}}"/>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                                    <Border Style="{StaticResource KeycapStyle}" Margin="0,0,10,0" Padding="7,2" VerticalAlignment="Center"
+                                            ToolTip="Temporary: it is not saved and disappears when its last window closes"
+                                            Visibility="{Binding ActiveIsTemporary, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="TEMP" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                    </Border>
+                                    <Button Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Padding="12,6"
+                                            Command="{Binding EditActiveCommand}" AutomationProperties.Name="Edit this category"
+                                            Visibility="{Binding CanEditActive, Converter={StaticResource BoolToVis}}"/>
+                                    <Button Content="Close" Style="{StaticResource SecondaryButtonStyle}" Padding="12,6"
+                                            Command="{Binding CloseTemporaryCommand}" ToolTip="Close this category and its windows  ·  Ctrl+W"
+                                            AutomationProperties.Name="Close this quick category"
+                                            Visibility="{Binding ActiveIsTemporary, Converter={StaticResource BoolToVis}}"/>
+                                </StackPanel>
                             </Grid>
                             <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12.5" Margin="25,6,0,14">
                                 <Run Text="{Binding ActiveSinceText, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding WindowCountText, Mode=OneWay}"/>
@@ -384,7 +398,12 @@
                                             Margin="4,-4,2,-4" ToolTip="Edit" AutomationProperties.Name="{Binding Name, StringFormat=Edit {0}}"
                                             Command="{Binding DataContext.EditCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             CommandParameter="{Binding}"
-                                            Visibility="{Binding IsUnsorted, Converter={StaticResource InverseBoolToVis}}"/>
+                                            Visibility="{Binding CanEdit, Converter={StaticResource BoolToVis}}"/>
+                                    <Border Grid.Column="2" Style="{StaticResource KeycapStyle}" Margin="4,0,6,0" Padding="6,1" VerticalAlignment="Top"
+                                            ToolTip="Temporary: disappears when its last window closes"
+                                            Visibility="{Binding IsTemporary, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="TEMP" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                    </Border>
                                     <Border Grid.Column="3" Style="{StaticResource KeycapStyle}" VerticalAlignment="Top"
                                             Visibility="{Binding KeyText, Converter={StaticResource NullToCollapsedConverter}}">
                                         <TextBlock Text="{Binding KeyText}" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" FontWeight="SemiBold"

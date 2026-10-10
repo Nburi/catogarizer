@@ -14,4 +14,6 @@ public sealed record EditorServices(
     IMonitorService MonitorService,
     ICategoryActionService CategoryActions,
     IAutostartService Autostart,
-    TriggerRunner TriggerRunner);
+    TriggerRunner TriggerRunner,
+    TemporaryCategoryService Temporary,
+    QuickCategoryFlow QuickCategory);
