@@ -17,10 +17,10 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _liveRefresh;
 
     public MainWindow(EditorServices services, CategorySwitcher switcher, ThemeService themeService,
-        IAppBlockingService appBlockingService, Action<string> onHotkeyChanged)
+        IAppBlockingService appBlockingService, UpdateNotifier updateNotifier, Action<string> onHotkeyChanged)
     {
         InitializeComponent();
-        _viewModel = new MainViewModel(services, switcher, themeService, appBlockingService, onHotkeyChanged);
+        _viewModel = new MainViewModel(services, switcher, themeService, appBlockingService, updateNotifier, onHotkeyChanged);
         DataContext = _viewModel;
         _viewModel.NoticeRaised += (_, _) => PageScroll.ScrollToTop();
 

@@ -30,6 +30,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ThemeService _themeService;
     private readonly IDialogService _dialogService;
     private readonly Action<string> _onHotkeyChanged;
+    private readonly UpdateNotifier _updateNotifier;
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _refreshDebounce;
     private (string Name, DateTime At, Guid CategoryId)? _lastBlocked;
@@ -71,8 +72,11 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private IReadOnlyList<string> _hotkeyKeys = [];
     [ObservableProperty] private string? _notice;
 
+    /// <summary>"Version 1.2.0 is available.", or null. A quiet note with a link, never a dialog.</summary>
+    [ObservableProperty] private string? _updateText;
+
     public MainViewModel(EditorServices services, CategorySwitcher switcher, ThemeService themeService,
-        IAppBlockingService appBlockingService, Action<string> onHotkeyChanged)
+        IAppBlockingService appBlockingService, UpdateNotifier updateNotifier, Action<string> onHotkeyChanged)
     {
         _services = services;
         _library = services.Library;
@@ -80,6 +84,7 @@ public partial class MainViewModel : ObservableObject
         _switcher = switcher;
         _themeService = themeService;
         _onHotkeyChanged = onHotkeyChanged;
+        _updateNotifier = updateNotifier;
         _dispatcher = Dispatcher.CurrentDispatcher;
 
         _refreshDebounce = new DispatcherTimer(TimeSpan.FromMilliseconds(120), DispatcherPriority.Background, (_, _) =>
@@ -91,6 +96,7 @@ public partial class MainViewModel : ObservableObject
 
         switcher.StateChanged += RequestRefresh;
         themeService.ThemeChanged += RequestRefresh;
+        updateNotifier.Changed += RequestRefresh;
         appBlockingService.AppBlocked += name =>
         {
             _lastBlocked = (name, DateTime.Now, _switcher.ActiveCategoryId);
@@ -129,6 +135,7 @@ public partial class MainViewModel : ObservableObject
         RefreshShelf(categories, activeId, sessions);
         RefreshPinned();
         RefreshNextTrigger(categories);
+        UpdateText = _updateNotifier.Visible is { } update ? $"Version {update.Latest} is available." : null;
     }
 
     private void RefreshNow(Category? active, IReadOnlyDictionary<Guid, IReadOnlyList<OpenWindowInfo>> sessions)
@@ -405,6 +412,16 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>The view scrolls the banner into sight - a problem the user can't see isn't reported.</summary>
     public event EventHandler? NoticeRaised;
+
+    [RelayCommand]
+    private void OpenUpdate() => _updateNotifier.OpenDownloadPage();
+
+    [RelayCommand]
+    private void DismissUpdate()
+    {
+        _updateNotifier.Dismiss();
+        Refresh();
+    }
 
     [RelayCommand]
     private void EditNoticeCategory()

@@ -3,12 +3,13 @@
   Needs the .NET SDK and Inno Setup 6 (winget install JRSoftware.InnoSetup).
   Usage: .\build-installer.ps1 -Version 1.0.0
 #>
+# -Version is stamped into the exe too: the update check compares it with website/public/version.json.
 param([string]$Version = "1.0.0")
 
 $ErrorActionPreference = "Stop"
 $appRoot = Split-Path -Parent $PSScriptRoot
 
-dotnet publish "$appRoot\src\Catogarizer.App\Catogarizer.App.csproj" -c Release -p:PublishProfile=win-x64-selfcontained
+dotnet publish "$appRoot\src\Catogarizer.App\Catogarizer.App.csproj" -c Release -p:PublishProfile=win-x64-selfcontained -p:Version=$Version
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
 $iscc = @(
