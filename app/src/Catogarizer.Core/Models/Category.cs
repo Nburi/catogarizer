@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Catogarizer.Core.Models;
 
 /// <summary>
@@ -17,4 +19,11 @@ public sealed class Category
 
     /// <summary>OKLCH hue in degrees; the active theme decides lightness and chroma. Null only in configs saved before colors existed.</summary>
     public double? Hue { get; set; }
+
+    /// <summary>
+    /// A quick category that lives only in memory: it is never written to the config file
+    /// (so a restart removes it) and disappears when its last window closes.
+    /// </summary>
+    [JsonIgnore]
+    public bool IsTemporary { get; init; }
 }

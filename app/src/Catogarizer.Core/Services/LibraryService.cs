@@ -35,7 +35,11 @@ public sealed class LibraryService
         Save();
     }
 
+    /// <summary>Every category, including the temporary ones that exist only in memory.</summary>
     public IReadOnlyList<Category> Categories => _config.Categories;
+
+    /// <summary>The categories that are saved - what automation can point at.</summary>
+    public IReadOnlyList<Category> PermanentCategories => _config.Categories.Where(c => !c.IsTemporary).ToList();
     public IReadOnlyList<AppEntry> Apps => _config.Apps;
     public IReadOnlyList<BlockedApp> BlockedApps => _config.BlockedApps;
     /// <summary>Read from the window watcher's thread; mutations replace the list instead of changing it.</summary>
@@ -111,6 +115,40 @@ public sealed class LibraryService
         };
         _config.Categories.Add(category);
         Save();
+        return category;
+    }
+
+    public bool IsTemporary(Guid categoryId) => _config.Categories.Any(c => c.Id == categoryId && c.IsTemporary);
+
+    /// <summary>The name an unnamed quick category gets: "Temp 1", or the lowest free number after it.</summary>
+    public string NextTemporaryName()
+    {
+        for (var number = 1; ; number++)
+        {
+            var name = $"Temp {number}";
+            if (!_config.Categories.Any(c => string.Equals(c.Name.Trim(), name, StringComparison.OrdinalIgnoreCase)))
+                return name;
+        }
+    }
+
+    /// <summary>
+    /// Adds a quick category (see <see cref="Category.IsTemporary"/>) at the end of the shelf. A blank
+    /// name becomes <see cref="NextTemporaryName"/>. Nothing is saved: it never reaches the config file.
+    /// </summary>
+    public Category AddTemporaryCategory(string? name)
+    {
+        var finalName = string.IsNullOrWhiteSpace(name) ? NextTemporaryName() : name.Trim();
+        var validation = CategoryValidator.ValidateName(finalName, _config.Categories);
+        if (!validation.IsValid) throw new ArgumentException(validation.ErrorMessage, nameof(name));
+
+        var category = new Category
+        {
+            Name = finalName,
+            IsTemporary = true,
+            SortOrder = _config.Categories.Select(c => c.SortOrder).DefaultIfEmpty(-1).Max() + 1,
+            Hue = Theming.CategoryHues.Next(_config.Categories.Select(c => c.Hue).OfType<double>()),
+        };
+        _config.Categories.Add(category);
         return category;
     }
 
@@ -351,5 +389,23 @@ public sealed class LibraryService
         _config.BlockedApps.FirstOrDefault(b => b.Id == blockedAppId)
         ?? throw new InvalidOperationException($"No blocked app with id {blockedAppId}.");
 
-    private void Save() => _configStore.Save(_config);
+    /// <summary>Temporary categories live in <see cref="_config"/> for the running app but are left out of the file.</summary>
+    private void Save()
+    {
+        if (!_config.Categories.Any(c => c.IsTemporary))
+        {
+            _configStore.Save(_config);
+            return;
+        }
+
+        _configStore.Save(new AppConfig
+        {
+            Categories = _config.Categories.Where(c => !c.IsTemporary).ToList(),
+            Apps = _config.Apps,
+            BlockedApps = _config.BlockedApps,
+            PinnedApps = _config.PinnedApps,
+            Triggers = _config.Triggers,
+            Settings = _config.Settings,
+        });
+    }
 }
