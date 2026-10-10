@@ -76,6 +76,41 @@ of a flat rule list.
   and/or main window), not buried in a menu tree — plus the command palette
   below, which is the primary, most-used path (see "Chosen design").
 
+### Temporary categories ("Quick category", decided 2026-10-10)
+A category for the next hour that costs no bookkeeping: it is made in a
+second and removes itself, so the shelf never fills with leftovers.
+- **Create**: home button **+ Quick category**, key `+` on the home and in
+  the palette, a row in the palette, or the tray menu. A small dialog asks
+  for an optional name; Enter confirms. An empty name becomes `Temp 1`
+  (the lowest free number, so a fresh one is never `Temp 4`).
+- **You land in it at once** - it is a normal category (switchable, number
+  key, tile, palette row, "Move to" target) that starts empty. Windows opened
+  while it is active join it like in any category.
+- **The watch starts with the first window.** An empty, never-used temporary
+  category stays until the user leaves or closes it; it cannot vanish before
+  anything was ever in it.
+- **It disappears when**
+  1. its last window has closed (after a 3 s grace period, so closing one
+     window and opening the next does not lose the category),
+  2. the user closes it (hero button / Ctrl+W), or
+  3. Catogarizer restarts (temporary categories are never written to the
+     config file).
+- **Where you land**: if it was the active category, back in the category
+  you came from (the pill confirms it), otherwise Unsorted.
+- **Closing it by hand** asks to close its windows (themed confirm, only when
+  there are windows). The windows are asked to close gracefully (`WM_CLOSE`),
+  never killed, so an app with unsaved work still gets to ask. The category
+  then goes as soon as the last window is gone; if a window stays open, so
+  does the category. This is an explicit, per-category user action with a
+  confirmation, not part of a switch, so it stays within PRINCIPLES.md
+  values 1 and "Never: closing windows as part of a switch".
+- **Not editable**: no template, no held-back list, no colour/rename editor.
+  It also does not show up in the automation pickers (a trigger cannot point
+  at something that vanishes).
+- Out of scope for now: promoting a temporary category to a permanent one
+  ("Keep"), a CLI command, closing an inactive temporary category from the
+  shelf.
+
 ### App blocking
 - A category can carry a blocklist of apps that are not allowed to run
   while that category is the active/open one (soft block: a background
