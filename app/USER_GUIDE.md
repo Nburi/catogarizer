@@ -101,6 +101,27 @@ Apps you pin under **Always visible** on the home, like a music player or a
 chat assistant, stay on screen in every category and are never hidden by a
 switch.
 
+## Quick categories
+
+For work you only need for a while, make a quick category instead of a real
+one: **+ Quick category** on the home, the **+** key (on the home or in the
+palette), or **New quick category...** in the tray menu.
+
+- A small dialog asks for a name. It's optional: press **Enter** with the
+  field empty and it's called **Temp 1** (or the next free number).
+- You land in it at once, with nothing open. Windows you open join it like in
+  any category, and it shows a **TEMP** tag.
+- It removes itself when its last window has been closed for a few seconds
+  (closing one window and opening the next keeps it), when you close it, or
+  when Catogarizer restarts. It's never saved. A quick category you haven't
+  opened a window in yet stays until you leave or close it.
+- When it goes while you're in it, you land back in the category you came
+  from, with the usual pill to say so.
+- **Close** on the home (or **Ctrl+W**) asks its windows to close. Apps with
+  unsaved work ask you first, and the category stays until they're closed.
+- It has no editor and holds nothing back. To keep what you built, make a
+  normal category and use **From open windows** in its editor.
+
 ## Lost a window?
 
 Nothing Catogarizer hides is lost:
@@ -119,6 +140,7 @@ so the hotkey and blocking keep working. Left-click the tray icon to show the
 home. Right-click for:
 
 - **← Back to …** and your categories, to switch without the palette
+- **New quick category...**
 - **Show all hidden windows**
 - **Show Catogarizer**
 - **Start with Windows**

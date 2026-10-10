@@ -34,6 +34,10 @@ category's windows and brings back the new one's.
   High-Contrast Mono, Graphite Mica, Night Shift, Slate Dusk), switchable
   live, with matching title bars.
 - **Category colors** and real app icons everywhere.
+- **Quick categories**: a temporary category made in a second (home button,
+  `+` key, palette row, tray). Optional name, otherwise "Temp 1". It removes
+  itself when its last window closes (after a short grace period), when you
+  close it, or on restart, and takes you back to where you came from.
 - **CLI**: `switch "<category>"`, `back`, `show-all` next to `run "<trigger>"`.
 
 ### Changed
