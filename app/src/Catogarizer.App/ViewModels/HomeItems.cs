@@ -74,12 +74,13 @@ public sealed record TemplateIcon(string Name, string ExecutablePath)
 }
 
 /// <summary>One category in the Resources card: what it costs over its whole process tree.</summary>
-public sealed record ResourceRow(string Name, System.Windows.Media.Color Hue, string StateText, ResourceLevel Level, string BytesText, string CpuText, double SharePercent)
+public sealed record ResourceRow(string Name, System.Windows.Media.Color Hue, string StateText, ResourceLevel Level, string BytesText, string CpuText, double SharePercent,
+    bool HeldBySound = false)
 {
     /// <summary>Built from <see cref="Hue"/> so two rows with the same colour are equal and an unchanged card is not rebuilt.</summary>
     public Brush Color => ThemeService.FrozenBrush(Hue);
 
-    public override string ToString() => $"{Name}, {StateText}, {BytesText}, {CpuText} CPU";
+    public override string ToString() => $"{Name}, {StateText}{(HeldBySound ? ", plays sound" : "")}, {BytesText}, {CpuText} CPU";
 }
 
 /// <summary>A category on the shelf (every category except the active one).</summary>
@@ -115,6 +116,13 @@ public sealed partial class ShelfItem : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMemory), nameof(AutomationName))]
     private long _memoryBytes;
+
+    /// <summary>A parked tree of this category is left at full speed only because it plays sound (the badge on the tile).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AutomationName))]
+    private bool _holdsAwakeBySound;
+
+    public string SoundTooltip => "Playing sound, so it stays awake. Change this in the category's editor.";
 
     public bool IsResting => Level >= ResourceLevel.Eco;
     public bool HasMemory => MemoryBytes > 0;
@@ -159,7 +167,8 @@ public sealed partial class ShelfItem : ObservableObject
     {
         get
         {
-            var resources = (LevelText is { } level ? $", {level.ToLowerInvariant()}" : "") + (HasMemory ? $", {ByteSize.Format(MemoryBytes)}" : "");
+            var resources = (LevelText is { } level ? $", {level.ToLowerInvariant()}" : "") + (HasMemory ? $", {ByteSize.Format(MemoryBytes)}" : "")
+                + (HoldsAwakeBySound ? ", plays sound and stays awake" : "");
             return BlockedCount switch
             {
                 0 => $"Switch to {Name}{(IsTemporary ? " (temporary)" : "")}, {StateText}{resources}",

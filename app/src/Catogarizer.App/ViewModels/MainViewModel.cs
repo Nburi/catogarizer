@@ -318,6 +318,7 @@ public partial class MainViewModel : ObservableObject
             var costs = usage.FirstOrDefault(u => u.CategoryId == item.Id);
             item.Level = costs?.Level ?? ResourceLevel.Normal;
             item.MemoryBytes = costs?.PrivateBytes ?? 0;
+            item.HoldsAwakeBySound = costs?.HeldAwakeBySound ?? false;
         }
 
         // Same tiles as before: update only what they cost, in place, so a tile can animate falling asleep
@@ -328,6 +329,7 @@ public partial class MainViewModel : ObservableObject
             {
                 shown.Level = fresh.Level;
                 shown.MemoryBytes = fresh.MemoryBytes;
+                shown.HoldsAwakeBySound = fresh.HoldsAwakeBySound;
             }
             return;
         }
@@ -353,7 +355,8 @@ public partial class MainViewModel : ObservableObject
                 _ => "Awake",
             };
             return new ResourceRow(_library.NameOf(u.CategoryId), _themeService.ColorFor(category), state, u.Level,
-                ByteSize.Format(u.PrivateBytes), $"{Math.Round(u.CpuPercent)} %", total > 0 ? u.PrivateBytes * 100.0 / total : 0);
+                ByteSize.Format(u.PrivateBytes), $"{Math.Round(u.CpuPercent)} %", total > 0 ? u.PrivateBytes * 100.0 / total : 0,
+                u.HeldAwakeBySound && u.CategoryId != activeId);
         }));
 
         var parked = usage.Where(u => u.CategoryId != activeId).ToList();
@@ -660,7 +663,7 @@ public partial class MainViewModel : ObservableObject
             entries.Add(new MenuSeparatorEntry());
         }
         entries.Add(new PinMenuEntry(_switcher.FindPinned(row.ProcessName) is null ? "Pin app (always visible)" : "Unpin app"));
-        entries.Add(new FreezeMenuEntry(_library.FindFreezableApp(row.ProcessName) is null ? "Allow freezing while parked" : "Don't freeze this app"));
+        entries.Add(new FreezeMenuEntry(_library.FindFreezableApp(row.ProcessName) is null ? "Allow freezing while parked (stops its sound too)" : "Don't freeze this app"));
         return entries;
     }
 
