@@ -73,6 +73,29 @@ Apps`, already on `%PATH%`) expects.
   windows off-screen or to virtual desktops because it's instant (~200 ms
   for a full restore), needs no undocumented APIs and leaves the window's
   own state untouched.
+- **Resource saving for parked categories**: plain Win32 on other processes of
+  the same user, no admin. Spiked with `tools/ResourceSpike` against processes
+  it starts itself (2026-10-19, Windows 11):
+  - *Eco*: `SetProcessInformation(ProcessPowerThrottling)` + `SetPriorityClass(IDLE)`
+    work; `GetProcessInformation` reads the old state first, so leaving puts the
+    process back exactly (`EcoMemento`), not to a guess.
+  - *Trim*: `K32EmptyWorkingSet` took a 323 MB private working set to ~0 MB. The
+    figure shown per category is the **private** working set
+    (`PROCESS_MEMORY_COUNTERS_EX2`), because the plain working set counts shared
+    pages once per process and would add up wrongly over an Electron tree.
+  - *Freeze*: `NtSuspendProcess`/`NtResumeProcess` stop and restart a process
+    cleanly (a ticking loop stopped, then continued).
+  - *Sound*: the default output device's audio session list (hand-written COM,
+    no package) names the processes with an active stream - on the test machine a
+    Steam game and a tray tool. Audio of a browser lives in a helper child, so the
+    check runs over the whole tree.
+  - *WM_CLOSE on a hidden window*: an app that asks "Save?" shows its dialog on its
+    own, visibly, even though its main window is hidden. An app that hides itself to
+    the tray keeps its window handle (`IsWindow` stays true) with nothing visible -
+    indistinguishable from "still open", so the close result calls it "stayed open".
+  - Not verified here: elevated/protected processes (an `OpenProcess` that fails is
+    skipped), UWP host windows (out of scope), an Electron tree (the tree logic is
+    pure Core code, tested with fakes).
 - **CLI relay**: a second process started with `switch`/`back`/`show-all`/
   `run` hands the command to the running instance over a named pipe; the
   instance queues it on a worker thread so the pipe listener never blocks
