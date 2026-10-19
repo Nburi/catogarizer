@@ -309,7 +309,9 @@ public sealed class ResourceGovernor : IDisposable
             var activePids = sessions.TryGetValue(active, out var activeWindows)
                 ? activeWindows.Select(w => w.ProcessId).ToHashSet()
                 : [];
-            var ownTree = Descend(_ownProcessId, children, UsageOf);
+            // Only Catogarizer itself: the apps it launched from a template are its children, and they are
+            // exactly what should rest when parked.
+            var own = new HashSet<int> { _ownProcessId };
 
             var enabled = _settings.Enabled;
             var parkedGroups = groups.Where(g => g.Windows.Any(w => w.Category != active)).ToList();
@@ -319,7 +321,7 @@ public sealed class ResourceGovernor : IDisposable
             foreach (var group in groups)
             {
                 group.Playing = group.Pids.Overlaps(playing);
-                group.Eligible = enabled && IsEligible(group, active, activePids, ownTree, byPid) && !group.Pids.Overlaps(_awakeUntil.Keys);
+                group.Eligible = enabled && IsEligible(group, active, activePids, own, byPid) && !group.Pids.Overlaps(_awakeUntil.Keys);
                 group.ParkedSince = group.Windows
                     .Where(w => _parkedSince.ContainsKey(w.Category))
                     .Select(w => _parkedSince[w.Category])
@@ -441,11 +443,11 @@ public sealed class ResourceGovernor : IDisposable
         return groups;
     }
 
-    private bool IsEligible(Group group, Guid active, HashSet<int> activePids, HashSet<int> ownTree, Dictionary<int, ProcessNode> byPid)
+    private bool IsEligible(Group group, Guid active, HashSet<int> activePids, HashSet<int> own, Dictionary<int, ProcessNode> byPid)
     {
         if (group.Windows.Any(w => w.Category == active)) return false;
         if (group.Playing) return false;
-        if (group.Pids.Overlaps(activePids) || group.Pids.Overlaps(ownTree)) return false;
+        if (group.Pids.Overlaps(activePids) || group.Pids.Overlaps(own)) return false;
         foreach (var pid in group.Pids)
         {
             if (!byPid.TryGetValue(pid, out var node)) continue;
@@ -608,7 +610,7 @@ public sealed class ResourceGovernor : IDisposable
     private void RecomputeUsage(List<Group> groups, Guid active, DateTime now, Func<int, ProcessUsage?> usageOf)
     {
         var cores = Math.Max(1, Environment.ProcessorCount);
-        var perCategory = new Dictionary<Guid, (long Bytes, double Cpu, ResourceLevel Level, int Untouchable)>();
+        var perCategory = new Dictionary<Guid, (long Bytes, double Cpu, int Untouchable, List<(ResourceLevel Level, long Bytes)> Trees)>();
         var cpuNow = new Dictionary<int, (TimeSpan Cpu, long StartTicks, DateTime At)>();
 
         foreach (var group in groups)
@@ -635,14 +637,32 @@ public sealed class ResourceGovernor : IDisposable
 
             var level = group.Eligible && levels.Count > 0 ? levels.Min() : ResourceLevel.Normal;
             var owner = OwnerOf(group, active);
-            perCategory[owner] = perCategory.TryGetValue(owner, out var sum)
-                ? (sum.Bytes + bytes, sum.Cpu + cpu, (ResourceLevel)Math.Min((int)sum.Level, (int)level), sum.Untouchable + untouchable)
-                : (bytes, cpu, level, untouchable);
+            if (!perCategory.TryGetValue(owner, out var sum)) sum = (0, 0, 0, []);
+            sum.Trees.Add((level, bytes));
+            perCategory[owner] = (sum.Bytes + bytes, sum.Cpu + cpu, sum.Untouchable + untouchable, sum.Trees);
         }
 
         _previousCpu.Clear();
         foreach (var (pid, value) in cpuNow) _previousCpu[pid] = value;
-        _usage = perCategory.Select(p => new CategoryResourceUsage(p.Key, p.Value.Bytes, p.Value.Cpu, p.Value.Level, p.Value.Untouchable)).ToList();
+        _usage = perCategory.Select(p => new CategoryResourceUsage(p.Key, p.Value.Bytes, p.Value.Cpu, MajorityLevel(p.Value.Trees), p.Value.Untouchable)).ToList();
+    }
+
+    /// <summary>
+    /// What most of the category's memory is doing: the highest level that at least half of its bytes have reached.
+    /// One tree that must stay awake (a game playing sound) does not hide that everything else is resting.
+    /// </summary>
+    private static ResourceLevel MajorityLevel(List<(ResourceLevel Level, long Bytes)> trees)
+    {
+        var total = trees.Sum(t => t.Bytes);
+        if (total <= 0) return trees.Count == 0 ? ResourceLevel.Normal : trees.Min(t => t.Level);
+
+        long reached = 0;
+        foreach (var tree in trees.OrderByDescending(t => t.Level))
+        {
+            reached += tree.Bytes;
+            if (reached * 2 >= total) return tree.Level;
+        }
+        return ResourceLevel.Normal;
     }
 
     /// <summary>

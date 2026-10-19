@@ -615,9 +615,9 @@ public sealed class ResourceGovernorTests
     }
 
     [Fact]
-    public void Usage_ALevelIsOnlyClaimedWhenEveryTreeOfTheCategoryHasIt()
+    public void Usage_ACategoryShowsWhatMostOfItsMemoryIsDoing()
     {
-        _table.Add(10, 1, "code").Add(20, 1, "slack").Add(30, 1, "outlook");
+        _table.Add(10, 1, "code").Add(20, 1, "slack", mb: 100).Add(30, 1, "outlook", mb: 300);
         _sessions.Add(Work, 10, "code");
         _sessions.Add(Comms, 20, "slack");
         _sessions.Add(Comms, 30, "outlook");
@@ -625,7 +625,36 @@ public sealed class ResourceGovernorTests
 
         _resources.Tick();
 
+        // The big one cannot be slowed down, so the category is not "Eco" no matter how small the rest is.
         Assert.Equal(ResourceLevel.Normal, _resources.Usage.Single(u => u.CategoryId == Comms).Level);
+    }
+
+    [Fact]
+    public void Usage_OneTreeThatMustStayAwake_DoesNotHideThatTheRestIsResting()
+    {
+        _table.Add(10, 1, "code").Add(20, 1, "steam", mb: 400).Add(30, 1, "game", mb: 100);
+        _sessions.Add(Work, 10, "code");
+        _sessions.Add(Comms, 20, "steam");
+        _sessions.Add(Comms, 30, "game");
+        _audio.Playing.Add(30);
+
+        _resources.Tick();
+
+        Assert.Equal(ResourceLevel.Eco, _resources.Usage.Single(u => u.CategoryId == Comms).Level);
+    }
+
+    [Fact]
+    public void Tick_AppsCatogarizerStartedAreItsChildren_AndStillRestWhenParked()
+    {
+        _table.Add(OwnPid, 1, "Catogarizer.App").Add(20, OwnPid, "charmap").Add(21, 20, "helper");
+        _table.Add(10, 1, "code");
+        _sessions.Add(Work, 10, "code");
+        _sessions.Add(Comms, 20, "charmap");
+
+        _resources.Tick();
+
+        Assert.Equal([20, 21], _governor.Eco.Order());
+        Assert.DoesNotContain(OwnPid, _governor.Eco);
     }
 
     // ---------------- The timer ----------------

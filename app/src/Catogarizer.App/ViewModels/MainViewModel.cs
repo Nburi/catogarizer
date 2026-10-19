@@ -481,7 +481,7 @@ public partial class MainViewModel : ObservableObject
                 (windows.Count == 1 ? "Its window will be asked to close." : $"Its {windows.Count} windows will be asked to close.")
                 + " Apps with unsaved work will ask you first. The programs keep running; a chat app may stay in the tray.",
                 "Close windows",
-                windows.Select(w => w.Title.Length == 0 ? AppNames.ForProcess(w.ProcessId, w.ProcessName) : $"{w.Title} - {AppNames.ForProcess(w.ProcessId, w.ProcessName)}").ToList());
+                windows.Select(WindowLabel).ToList());
             if (!confirmed) return;
         }
 
@@ -501,6 +501,16 @@ public partial class MainViewModel : ObservableObject
         Refresh();
     }
 
+    /// <summary>"Title - App", or just one of them when they say the same ("Zeichentabelle - Zeichentabelle" reads like a stutter).</summary>
+    private static string WindowLabel(OpenWindowInfo window)
+    {
+        var app = AppNames.ForProcess(window.ProcessId, window.ProcessName);
+        var title = window.Title.Trim();
+        return title.Length == 0 ? app
+            : string.Equals(title, app, StringComparison.OrdinalIgnoreCase) || title.EndsWith(" - " + app, StringComparison.OrdinalIgnoreCase) ? title
+            : $"{title} - {app}";
+    }
+
     /// <summary>All closed is one calm line; windows that stayed are named, with a way to them.</summary>
     private void ShowCloseReport(CloseReport? report)
     {
@@ -516,7 +526,7 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        var names = string.Join(", ", report.StillOpen.Take(2).Select(w => w.Title.Length == 0 ? AppNames.ForProcess(w.ProcessId, w.ProcessName) : w.Title));
+        var names = string.Join(", ", report.StillOpen.Take(2).Select(WindowLabel));
         var more = report.StillOpen.Count > 2 ? $" and {report.StillOpen.Count - 2} more" : "";
         CloseReportText = $"{report.CategoryName}: {report.Closed} of {report.Requested} windows closed. "
             + (report.StillOpen.Count == 1 ? "1 is" : $"{report.StillOpen.Count} are") + $" still open: {names}{more}. "
