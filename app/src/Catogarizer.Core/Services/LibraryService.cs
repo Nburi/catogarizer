@@ -44,6 +44,8 @@ public sealed class LibraryService
     public IReadOnlyList<BlockedApp> BlockedApps => _config.BlockedApps;
     /// <summary>Read from the window watcher's thread; mutations replace the list instead of changing it.</summary>
     public IReadOnlyList<PinnedApp> PinnedApps => _config.PinnedApps;
+    /// <summary>Read from the resource governor's thread; mutations replace the list instead of changing it.</summary>
+    public IReadOnlyList<FreezableApp> FreezableApps => _config.FreezableApps;
     public IReadOnlyList<Trigger> Triggers => _config.Triggers;
 
     public IReadOnlyList<AppEntry> AppsOf(Category category) =>
@@ -294,6 +296,46 @@ public sealed class LibraryService
         Save();
     }
 
+    // ---------------- Freezable apps and categories ----------------
+
+    /// <summary>Allows the app to be suspended while parked. Adding one that is already allowed returns the existing entry.</summary>
+    public FreezableApp AddFreezableApp(string name, string processNameOrPath)
+    {
+        var nameValidation = BlockedAppValidator.ValidateName(name);
+        if (!nameValidation.IsValid) throw new ArgumentException(nameValidation.ErrorMessage, nameof(name));
+        var valueValidation = BlockedAppValidator.ValidateProcessNameOrPath(processNameOrPath);
+        if (!valueValidation.IsValid) throw new ArgumentException(valueValidation.ErrorMessage, nameof(processNameOrPath));
+
+        if (FindFreezableApp(ProcessPattern.ProcessName(processNameOrPath)) is { } existing) return existing;
+
+        var allowed = new FreezableApp { Name = name.Trim(), ProcessNameOrPath = processNameOrPath };
+        _config.FreezableApps = [.. _config.FreezableApps, allowed];
+        Save();
+        return allowed;
+    }
+
+    public void RemoveFreezableApp(Guid freezableAppId)
+    {
+        _config.FreezableApps = _config.FreezableApps.Where(a => a.Id != freezableAppId).ToList();
+        Save();
+    }
+
+    /// <summary>The entry that covers this process (matched by process name, like pinning), or null.</summary>
+    public FreezableApp? FindFreezableApp(string processName) =>
+        _config.FreezableApps.FirstOrDefault(a => string.Equals(ProcessPattern.ProcessName(a.ProcessNameOrPath), processName, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Never for Unsorted, quick categories and anything unknown.</summary>
+    public FreezeMode FreezeModeOf(Guid categoryId) =>
+        _config.Categories.FirstOrDefault(c => c.Id == categoryId) is { IsTemporary: false } category ? category.FreezeMode : FreezeMode.Never;
+
+    public void SetFreezeMode(Guid categoryId, FreezeMode mode)
+    {
+        var category = GetCategoryOrThrow(categoryId);
+        if (category.IsTemporary) throw new InvalidOperationException("A quick category has no settings.");
+        category.FreezeMode = mode;
+        Save();
+    }
+
     // ---------------- Category <-> App links ----------------
 
     public void AddAppToCategory(Guid categoryId, Guid appId)
@@ -404,6 +446,7 @@ public sealed class LibraryService
             Apps = _config.Apps,
             BlockedApps = _config.BlockedApps,
             PinnedApps = _config.PinnedApps,
+            FreezableApps = _config.FreezableApps,
             Triggers = _config.Triggers,
             Settings = _config.Settings,
         });

@@ -11,6 +11,7 @@ public sealed class AppConfig
     public List<AppEntry> Apps { get; set; } = new();
     public List<BlockedApp> BlockedApps { get; set; } = new();
     public List<PinnedApp> PinnedApps { get; set; } = new();
+    public List<FreezableApp> FreezableApps { get; set; } = new();
     public List<Trigger> Triggers { get; set; } = new();
     public AppSettings Settings { get; set; } = new();
 }

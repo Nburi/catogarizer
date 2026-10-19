@@ -20,6 +20,10 @@ public sealed class Category
     /// <summary>OKLCH hue in degrees; the active theme decides lightness and chroma. Null only in configs saved before colors existed.</summary>
     public double? Hue { get; set; }
 
+    /// <summary>Whether this category's apps may be suspended while it is parked. Written by name so the config stays readable.</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public FreezeMode FreezeMode { get; set; } = FreezeMode.Never;
+
     /// <summary>
     /// A quick category that lives only in memory: it is never written to the config file
     /// (so a restart removes it) and disappears when its last window closes.
