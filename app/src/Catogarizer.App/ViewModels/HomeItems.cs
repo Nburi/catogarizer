@@ -122,7 +122,8 @@ public sealed partial class ShelfItem : ObservableObject
     [NotifyPropertyChangedFor(nameof(AutomationName))]
     private bool _holdsAwakeBySound;
 
-    public string SoundTooltip => "Playing sound, so it stays awake. Change this in the category's editor.";
+    /// <summary>Unsorted and quick categories have no editor, so the way to change it is only named where there is one.</summary>
+    public string SoundTooltip => CanEdit ? "Playing sound, so it stays awake. Change this in the category's editor." : "Playing sound, so it stays awake.";
 
     public bool IsResting => Level >= ResourceLevel.Eco;
     public bool HasMemory => MemoryBytes > 0;

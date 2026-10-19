@@ -49,6 +49,13 @@ category's windows and brings back the new one's.
   sound, pinned apps, system processes and anything with a window in the active
   category are never touched. New in Settings: **Save resources while categories
   are parked** and the list of apps allowed to freeze.
+- **Sound no longer decides for games.** In the category editor, **Keep apps that
+  play sound running** (on by default) can be switched off per category, so a game
+  whose sound effects kept it awake rests like everything else. An app you allowed
+  to freeze is frozen even while it plays sound. When freezing is allowed and the
+  switch is off, the editor warns that music stops and online games lose their
+  connection. A parked category that stays awake only because of sound shows a
+  small speaker badge on its tile and in the Resources card.
 - **Close category** for every category (hero **Close**, **Ctrl+W**, tile
   right-click): the windows are asked to close, never the processes; windows that
   stay open (a Save prompt, an app that keeps running in the tray) are named with

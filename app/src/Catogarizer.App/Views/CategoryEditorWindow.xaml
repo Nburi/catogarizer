@@ -310,7 +310,7 @@
                             Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="3,0,0,0"
                             Visibility="{Binding ShowFreezeWarning, Converter={StaticResource BoolToVis}}">
                         <TextBlock Style="{StaticResource BaseTextStyle}" FontSize="12.5" TextWrapping="Wrap"
-                                   Text="This category's apps will be frozen even while they play sound: music stops, calls drop and online games lose their connection until you switch back."/>
+                                   Text="This category's apps can be frozen even while they play sound: music stops, calls drop and online games lose their connection until you switch back."/>
                     </Border>
                 </StackPanel>
             </StackPanel>
