@@ -80,6 +80,9 @@ public partial class MainWindow : Window
             case PinMenuEntry:
                 await _viewModel.TogglePinAsync(row);
                 break;
+            case FreezeMenuEntry:
+                await _viewModel.ToggleFreezeAsync(row);
+                break;
         }
     }
 

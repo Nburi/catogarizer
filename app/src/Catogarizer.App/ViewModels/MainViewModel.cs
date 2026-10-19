@@ -80,6 +80,13 @@ public partial class MainViewModel : ObservableObject
     /// <summary>The one calm line under the Resources rows: off, nothing parked, or what could not be slowed down.</summary>
     [ObservableProperty] private string? _resourcesNote;
 
+    /// <summary>"Free memory now" is offered while something is parked and the setting is on.</summary>
+    [ObservableProperty] private bool _canFreeMemory;
+
+    /// <summary>The answer to "Free memory now" when there was nothing to free; gone with the next switch.</summary>
+    [ObservableProperty] private string? _freeNowText;
+    private Guid? _freeNowCategoryId;
+
     // ---- Footer / chrome ----
     [ObservableProperty] private string? _nextTriggerText;
     [ObservableProperty] private IReadOnlyList<string> _hotkeyKeys = [];
@@ -341,6 +348,8 @@ public partial class MainViewModel : ObservableObject
 
         var untouchable = parked.Sum(u => u.UntouchableProcesses);
         var anythingParked = sessions.Any(s => s.Key != activeId && s.Value.Count > 0);
+        CanFreeMemory = anythingParked && _library.Settings.SaveResources;
+        if (FreeNowText is not null && _freeNowCategoryId != activeId) FreeNowText = null;
         ResourcesNote = !_library.Settings.SaveResources ? "Resource saving is off. Turn it on in Settings."
             : !anythingParked ? "Nothing is parked, so nothing is slowed down. Park a category by switching away from it."
             : untouchable > 0 ? $"{untouchable} {(untouchable == 1 ? "process runs" : "processes run")} as administrator or are protected and stay at full speed. Catogarizer never asks for admin rights."
@@ -570,7 +579,44 @@ public partial class MainViewModel : ObservableObject
             entries.Add(new MenuSeparatorEntry());
         }
         entries.Add(new PinMenuEntry(_switcher.FindPinned(row.ProcessName) is null ? "Pin app (always visible)" : "Unpin app"));
+        entries.Add(new FreezeMenuEntry(_library.FindFreezableApp(row.ProcessName) is null ? "Allow freezing while parked" : "Don't freeze this app"));
         return entries;
+    }
+
+    /// <summary>Context menu on a window row: lets the app be suspended while its category is parked, or takes that back.</summary>
+    public async Task ToggleFreezeAsync(WindowRow row)
+    {
+        Notice = null;
+        var path = AppNames.ExecutableOf(row.ProcessId) ?? row.ProcessName;
+        try
+        {
+            await Task.Run(() =>
+            {
+                if (_library.FindFreezableApp(row.ProcessName) is { } allowed) _library.RemoveFreezableApp(allowed.Id);
+                else _library.AddFreezableApp(row.AppName, path);
+            });
+        }
+        catch (ArgumentException)
+        {
+            _noticeCategoryId = _switcher.ActiveCategoryId;
+            NoticeCanEdit = false;
+            Notice = $"{row.AppName} couldn't be changed.";
+            NoticeRaised?.Invoke(this, EventArgs.Empty);
+        }
+        _resources.RequestTick();
+        Refresh();
+    }
+
+    /// <summary>"Free memory now" in the Resources card: pages out every parked app that may be touched, whatever the load.</summary>
+    [RelayCommand]
+    private async Task FreeMemoryNowAsync()
+    {
+        FreeNowText = null;
+        _freeNowCategoryId = _switcher.ActiveCategoryId;
+        var freed = await Task.Run(_resources.FreeMemoryNow);
+        // Success is the "Freed ..." pill, which fires on its own; only an empty result needs words.
+        if (freed is null) FreeNowText = "Nothing more to free right now.";
+        Refresh();
     }
 
     /// <summary>Context menu on a window row: pins the window's app so it is never hidden, or unpins it.</summary>

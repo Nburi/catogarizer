@@ -148,6 +148,22 @@ public partial class App : Application
             Dispatcher.BeginInvoke(() => FlashPill(library.NameOf(returnedTo.CategoryId), CategoryColor(returnedTo.CategoryId), showBackArrow: true));
         };
 
+        // Catogarizer acted for the user (memory got tight and parked categories were put to sleep): say so once.
+        resources.Relieved += relieved => Dispatcher.BeginInvoke(() =>
+        {
+            var names = relieved.CategoryIds.Select(library.NameOf).ToList();
+            var detail = names.Count switch
+            {
+                0 => null,
+                1 => $"{names[0]} asleep",
+                2 => $"{names[0]}, {names[1]} asleep",
+                _ => $"{names.Count} categories asleep",
+            };
+            _pill ??= new SwitchPillWindow();
+            _pill.Flash($"Freed {ByteSize.Format(relieved.FreedBytes)}",
+                relieved.CategoryIds.Count > 0 ? CategoryColor(relieved.CategoryIds[0]) : null, showBackArrow: false, detail, longRead: true);
+        });
+
         var editorServices = new EditorServices(library, dialogService, installedAppFinder, processLauncher, windowFinder,
             windowManager, monitorService, categoryActionService, autostartService, triggerRunner, temporary, quickCategory, resources);
         var updateNotifier = new UpdateNotifier();

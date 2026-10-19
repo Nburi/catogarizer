@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Media;
 using Catogarizer.App.Services;
+using Catogarizer.Core.Models;
 using Catogarizer.Core.Services;
 using Catogarizer.Core.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -40,6 +41,9 @@ public partial class SettingsViewModel : ObservableObject
 
     public IReadOnlyList<ThemeOption> Themes { get; }
 
+    /// <summary>Apps the user allowed to be suspended while parked. Removing one takes effect at once, like unpinning.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<FreezableApp> FreezableApps { get; }
+
     /// <summary>True once the persisted hotkey has actually changed - callers use this to
     /// decide whether the live global hotkey registration needs to be refreshed.</summary>
     public bool HotkeyChanged { get; private set; }
@@ -65,6 +69,7 @@ public partial class SettingsViewModel : ObservableObject
         _startWithWindows = autostartService.IsEnabled;
         _startMinimized = library.Settings.StartMinimized;
         _saveResources = library.Settings.SaveResources;
+        FreezableApps = new System.Collections.ObjectModel.ObservableCollection<FreezableApp>(library.FreezableApps);
         _hotkeyText = library.Settings.CommandPaletteHotkey;
 
         Themes = ThemeCatalog.All.Select(t => new ThemeOption(t.Id, t.Name, t.Description,
@@ -110,6 +115,13 @@ public partial class SettingsViewModel : ObservableObject
     {
         RevertUnsavedTheme();
         RequestClose?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
+    private void RemoveFreezable(FreezableApp app)
+    {
+        _library.RemoveFreezableApp(app.Id);
+        FreezableApps.Remove(app);
     }
 
     [RelayCommand]

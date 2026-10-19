@@ -375,8 +375,17 @@
                                     </ItemsControl>
                                     <TextBlock Text="{Binding ResourcesNote}" Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap"
                                                Visibility="{Binding ResourcesNote, Converter={StaticResource NullToCollapsedConverter}}"/>
-                                    <TextBlock Text="{Binding ParkedBytesText}" Style="{StaticResource MutedTextStyle}" FontSize="12" Margin="0,2,0,0"
-                                               Visibility="{Binding ParkedBytesText, Converter={StaticResource NullToCollapsedConverter}}"/>
+                                    <Grid Margin="0,2,0,0">
+                                        <TextBlock Text="{Binding ParkedBytesText}" Style="{StaticResource MutedTextStyle}" FontSize="12" VerticalAlignment="Center"
+                                                   Visibility="{Binding ParkedBytesText, Converter={StaticResource NullToCollapsedConverter}}"/>
+                                        <Button Content="Free memory now" Style="{StaticResource GhostRowButtonStyle}" Padding="6,2" HorizontalAlignment="Right"
+                                                Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold"
+                                                Command="{Binding FreeMemoryNowCommand}" AutomationProperties.Name="Free memory now"
+                                                ToolTip="Pages out every parked app that may be touched, whatever the memory load"
+                                                Visibility="{Binding CanFreeMemory, Converter={StaticResource BoolToVis}}"/>
+                                    </Grid>
+                                    <TextBlock Text="{Binding FreeNowText}" Style="{StaticResource MutedTextStyle}" FontSize="12" Margin="0,2,0,0"
+                                               Visibility="{Binding FreeNowText, Converter={StaticResource NullToCollapsedConverter}}"/>
                                 </StackPanel>
                             </Border>
 
