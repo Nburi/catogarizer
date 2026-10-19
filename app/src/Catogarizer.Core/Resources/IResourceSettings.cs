@@ -14,4 +14,7 @@ public interface IResourceSettings
     bool IsAppFreezable(string processName);
 
     FreezeMode FreezeModeOf(Guid categoryId);
+
+    /// <summary>Sound protects this category's apps while it is parked (the default). Off for games.</summary>
+    bool KeepsSoundAwake(Guid categoryId);
 }

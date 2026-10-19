@@ -149,6 +149,136 @@ public sealed class ResourceGovernorTests
         Assert.Empty(_governor.SuspendCalls);
     }
 
+    // ---------------- Sound protection (per category) ----------------
+
+    [Fact]
+    public void Tick_ACategoryThatIgnoresSound_RestsEvenWhileTheAppPlays_AndFreezesWhereAllowed()
+    {
+        WorkActiveCommsParked();
+        _audio.Playing.Add(20);
+        _settings.SoundIgnored.Add(Comms);
+        _settings.Modes[Comms] = FreezeMode.Immediately;
+        _memory.LoadPercent = 30;
+
+        _resources.Tick();
+        Assert.Equal([20], _governor.Eco);
+
+        Later(TimeSpan.FromSeconds(6));
+        _resources.Tick();
+
+        Assert.Equal([20], _governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_ACategoryThatIgnoresSound_StillNeverFreezesWhileItsModeIsNever()
+    {
+        WorkActiveCommsParked();
+        _audio.Playing.Add(20);
+        _settings.SoundIgnored.Add(Comms);
+
+        _resources.Tick();
+        Later(TimeSpan.FromMinutes(5));
+        _resources.Tick();
+
+        Assert.Equal([20], _governor.Eco);
+        Assert.Empty(_governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_AnAppExplicitlyAllowedToFreeze_IsFrozenDespiteSound_EvenInACategoryThatKeepsSoundAwake()
+    {
+        WorkActiveCommsParked();
+        _audio.Playing.Add(20);
+        _settings.Freezable.Add("slack");
+        _settings.Modes[Comms] = FreezeMode.Immediately;
+
+        _resources.Tick();
+        Later(TimeSpan.FromSeconds(6));
+        _resources.Tick();
+
+        Assert.Equal([20], _governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_AWindowOfACategoryThatKeepsSoundAwake_ProtectsTheSharedTree()
+    {
+        WorkActiveCommsParked();
+        _sessions.Add(Design, 20, "slack");
+        _audio.Playing.Add(20);
+        _settings.SoundIgnored.Add(Comms);
+        _settings.Modes[Comms] = FreezeMode.Immediately;
+        _settings.Modes[Design] = FreezeMode.Immediately;
+
+        _resources.Tick();
+        Later(TimeSpan.FromMinutes(5));
+        _resources.Tick();
+
+        Assert.Empty(_governor.EnterEcoCalls);
+        Assert.Empty(_governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_UnreadableAudio_OnlyHoldsBackFreezingWhereSoundWouldHaveProtected()
+    {
+        WorkActiveCommsParked();
+        _audio.IsReliable = false;
+        _settings.Modes[Comms] = FreezeMode.Immediately;
+        _resources.Tick();
+        Later(TimeSpan.FromSeconds(6));
+        _resources.Tick();
+        Assert.Empty(_governor.SuspendCalls);
+
+        _settings.SoundIgnored.Add(Comms);
+        _resources.Tick();
+
+        Assert.Equal([20], _governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Usage_ATreeHeldAwakeBySound_IsFlagged_AndOnlyWhileSoundIsTheReason()
+    {
+        WorkActiveCommsParked();
+        _audio.Playing.Add(20);
+
+        _resources.Tick();
+        Assert.True(_resources.Usage.Single(u => u.CategoryId == Comms).HeldAwakeBySound);
+
+        _settings.SoundIgnored.Add(Comms);
+        Later(TimeSpan.FromSeconds(4));
+        _resources.Tick();
+        Assert.False(_resources.Usage.Single(u => u.CategoryId == Comms).HeldAwakeBySound);
+
+        _settings.SoundIgnored.Clear();
+        _audio.Playing.Clear();
+        Later(TimeSpan.FromSeconds(4));
+        _resources.Tick();
+        Assert.False(_resources.Usage.Single(u => u.CategoryId == Comms).HeldAwakeBySound);
+    }
+
+    [Fact]
+    public void Usage_APinnedAppPlayingSound_IsNotFlagged_BecauseSoundIsNotWhatHoldsItAwake()
+    {
+        WorkActiveCommsParked();
+        _audio.Playing.Add(20);
+        _settings.Pinned.Add("slack");
+
+        _resources.Tick();
+
+        Assert.False(_resources.Usage.Single(u => u.CategoryId == Comms).HeldAwakeBySound);
+    }
+
+    [Fact]
+    public void Tick_WithTheSettingOff_NothingIsFlaggedAsHeldBySound()
+    {
+        WorkActiveCommsParked();
+        _audio.Playing.Add(20);
+        _settings.Enabled = false;
+
+        _resources.Tick();
+
+        Assert.False(_resources.Usage.Single(u => u.CategoryId == Comms).HeldAwakeBySound);
+    }
+
     [Fact]
     public void Tick_WithTheSettingOff_TouchesNothing_AndReleasesWhatWasApplied()
     {

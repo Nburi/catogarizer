@@ -25,6 +25,13 @@ public sealed class Category
     public FreezeMode FreezeMode { get; set; } = FreezeMode.Never;
 
     /// <summary>
+    /// Whether an app of this category that is playing sound is left alone while the category is parked. On by
+    /// default (and in every config saved before this existed); switch it off for games, whose sound effects
+    /// would otherwise keep them awake forever.
+    /// </summary>
+    public bool KeepSoundAwake { get; set; } = true;
+
+    /// <summary>
     /// A quick category that lives only in memory: it is never written to the config file
     /// (so a restart removes it) and disappears when its last window closes.
     /// </summary>

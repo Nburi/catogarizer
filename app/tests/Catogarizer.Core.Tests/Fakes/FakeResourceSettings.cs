@@ -15,4 +15,9 @@ public sealed class FakeResourceSettings : IResourceSettings
     public bool IsAppFreezable(string processName) => Freezable.Contains(processName);
 
     public FreezeMode FreezeModeOf(Guid categoryId) => Modes.GetValueOrDefault(categoryId, FreezeMode.Never);
+
+    /// <summary>Categories whose sound protection is switched off; every other category keeps it.</summary>
+    public HashSet<Guid> SoundIgnored { get; } = [];
+
+    public bool KeepsSoundAwake(Guid categoryId) => !SoundIgnored.Contains(categoryId);
 }
