@@ -63,6 +63,8 @@ tray menu.
 - **You're in** shows the active category and its windows. Click a window row
   to bring that window to the front.
 - **Held back while you're here** lists apps the active category blocks.
+- **Resources** shows what every category costs right now (see "Saving
+  resources").
 - **Always visible** lists pinned apps (see below).
 - **Switch to** is the shelf with every other category, showing what's parked
   there or what it will open. "1 app not found" means an app's `.exe` has
@@ -101,6 +103,50 @@ Apps you pin under **Always visible** on the home, like a music player or a
 chat assistant, stay on screen in every category and are never hidden by a
 switch.
 
+## Saving resources
+
+Hiding a window doesn't stop its app, so many parked categories can slow a
+laptop down. Catogarizer puts parked categories to rest, and wakes them the
+moment you switch back:
+
+- **Eco** (always, when parked): the apps run in Windows' efficiency mode with
+  a low priority. You won't notice, and nothing is closed or lost.
+- **Asleep** (only when memory is tight, above 80 %): the memory of parked apps
+  is paged out, the longest-parked category first, and only after it has been
+  parked for two minutes. The first thing you see when you come back is a
+  moment of paging in.
+- **Frozen** (only if you allowed it): the apps are paused completely. Chat
+  apps miss messages, downloads and syncs wait, calls drop - until you switch
+  back. Allow it for one app (right-click a window on the home, **Allow freezing
+  while parked**) or for a whole category (in its editor: **While parked** -
+  never, when memory is tight, or as soon as it is parked). Apps that are
+  playing sound are never frozen, or touched at all.
+
+Each parked tile shows what its category holds in memory, and a leaf (Eco), moon
+(Asleep) or snowflake (Frozen). Falling asleep is visible: the tile dims and its
+dot turns into a ring. The **Resources** card on the home lists every category
+with its state, memory and CPU. **Free memory now** pages out everything parked
+that may be touched, whatever the load. When memory got tight and Catogarizer
+freed some, a small pill says so once ("Freed 1.4 GB").
+
+Never touched: pinned apps, Catogarizer itself, Windows' own processes, anything
+with a window in the category you're in (a browser with windows in two
+categories is left alone entirely), and apps that run as administrator
+(Catogarizer never asks for admin rights - the card says how many it skipped).
+Turn the whole thing off in **Settings**.
+
+## Closing a category
+
+**Close** on the home (or **Ctrl+W**), or right-click a tile on the shelf and
+choose **Close windows...**. The confirmation lists the windows. They are asked to
+close the way a click on X does, so an app with unsaved work asks you first. Only
+the windows close, never the programs: a chat app may stay in the tray.
+
+If some windows are still open after a few seconds, a note says "3 of 5 windows
+closed. 2 are still open" and **Show them** takes you there. Closing the category
+you're in takes you back to the one you came from (or Unsorted). The category itself
+stays, with its template. Unsorted can't be closed as a whole.
+
 ## Quick categories
 
 For work you only need for a while, make a quick category instead of a real
@@ -117,8 +163,9 @@ palette), or **New quick category...** in the tray menu.
   opened a window in yet stays until you leave or close it.
 - When it goes while you're in it, you land back in the category you came
   from, with the usual pill to say so.
-- **Close** on the home (or **Ctrl+W**) asks its windows to close. Apps with
-  unsaved work ask you first, and the category stays until they're closed.
+- **Close** on the home (or **Ctrl+W**) closes it (see "Closing a category").
+  Apps with unsaved work ask you first, and the category stays until they're
+  closed.
 - It has no editor and holds nothing back. To keep what you built, make a
   normal category and use **From open windows** in its editor.
 
@@ -154,6 +201,8 @@ Click ⚙ on the home:
   High-Contrast Mono) to dark (Graphite Mica, Night Shift, Slate Dusk).
   Changes show right away; **Cancel** takes you back to the one you had.
 - **Start with Windows** and **Start minimized to tray**.
+- **Save resources while categories are parked** (on by default) and the list of
+  apps you allowed to freeze (see "Saving resources").
 - **Command palette shortcut**: click the box, press the combination you
   want, and **Save**. It applies immediately.
 - **Show all hidden windows** (see "Lost a window?").
@@ -194,3 +243,5 @@ account and no cloud.
   To start fresh, **Exit** from the tray menu and delete this file.
 - `hidden.json`: the list of windows that are hidden right now, used to bring
   them back after a crash. Don't delete it while windows are hidden.
+- `throttled.json`: the apps that are slowed down or frozen right now, so the
+  next start can wake them after a crash. Don't delete it while apps are frozen.
