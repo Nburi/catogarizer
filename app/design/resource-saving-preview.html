@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Catogarizer Resource Saving Preview</title>
+<meta name="description" content="Preview of every visual change in the resource-saving feature: tile states, Resources card, freeze menu entry, settings, close category, signature moment candidates.">
+<style>
+/* Tokens copied from ThemeCatalog (Fjord = default, Night Shift = dark check). */
+:root{
+  --bg:oklch(97.4% .011 195); --surface:oklch(99.6% .003 195); --surface-2:oklch(94% .016 195);
+  --ink:oklch(25% .035 220); --muted:oklch(45% .03 215); --border:oklch(88% .018 200);
+  --accent:oklch(49% .1 192); --accent-ink:oklch(99% 0 0); --danger:oklch(54% .18 25);
+  --card:18px; --ctl:10px; --cat-l:57%; --cat-c:.12;
+  --shadow:0 1px 2px oklch(25% .035 220/.05),0 10px 24px oklch(25% .035 220/.06);
+  --ui:'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;
+  --mono:'Cascadia Mono',Consolas,ui-monospace,monospace;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:oklch(19% .014 55); --surface:oklch(23% .016 55); --surface-2:oklch(27.5% .018 55);
+  --ink:oklch(93% .01 55); --muted:oklch(74% .02 55); --border:oklch(33% .02 55);
+  --accent:oklch(76% .14 68); --accent-ink:oklch(18% .02 65); --danger:oklch(68% .18 25);
+  --card:12px; --ctl:8px; --cat-l:72%; --cat-c:.12;
+  --shadow:0 1px 2px #0006,0 10px 24px #0005;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.4 var(--ui);padding:0 20px 80px}
+.page{max-width:1120px;margin:0 auto}
+h1{font:600 28px/1.2 var(--ui);margin:36px 0 6px}
+h2{font:600 19px/1.2 var(--ui);margin:0}
+p{margin:0}
+.muted{color:var(--muted)}
+.lead{max-width:70ch;color:var(--muted);font-size:14px}
+.bar{position:sticky;top:0;z-index:10;display:flex;gap:8px;align-items:center;padding:10px 0;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.bar a{color:var(--muted);text-decoration:none;font-size:13px;padding:6px 10px;border-radius:8px}
+.bar a:hover{background:var(--surface-2);color:var(--ink)}
+.bar .sp{flex:1}
+section{margin-top:44px;scroll-margin-top:60px;display:grid;gap:14px}
+.num{font:600 12px var(--mono);color:var(--accent)}
+.note{font-size:12.5px;color:var(--muted);max-width:75ch}
+.cap{font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+/* ---- app vocabulary ---- */
+.label{font:600 11px var(--ui);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.win{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:20px 24px 22px;box-shadow:var(--shadow);overflow:hidden}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--card)}
+.box{background:var(--surface-2);border-radius:var(--ctl);padding:12px 14px;margin-bottom:12px}
+.btn{font:500 13px var(--ui);color:var(--ink);background:var(--surface);border:1px solid var(--border);border-radius:var(--ctl);padding:7px 14px;cursor:pointer;transition:background .15s,border-color .15s}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600}
+.btn.small{padding:4px 10px;font-size:12px}
+.link{color:var(--accent);font:600 12px var(--ui);background:none;border:0;padding:4px 6px;cursor:pointer;border-radius:6px}
+.link:hover{background:var(--surface-2)}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none;background:oklch(var(--cat-l) var(--cat-c) var(--h))}
+.dot.lg{width:13px;height:13px}
+.key{font:600 10.5px var(--mono);color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);color:var(--muted);font:600 11.5px var(--ui);border-radius:10px;padding:2px 8px}
+.tile{display:block;width:100%;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--border);border-radius:var(--card);padding:12px 12px 12px 14px;cursor:pointer;transition:transform .12s,border-color .12s,opacity .4s}
+.tile:hover{transform:translateY(-2px);border-color:oklch(var(--cat-l) var(--cat-c) var(--h))}
+.tile .top{display:flex;gap:8px;align-items:flex-start}
+.tile .name{flex:1;font:600 13.5px var(--ui)}
+.tile .ico{display:flex;gap:5px;margin:12px 0}
+.tile .ico i{width:22px;height:22px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border);display:block}
+.tile .foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tile.unsorted{background:transparent}
+.state{display:inline-flex;align-items:center;gap:5px;font:600 11.5px var(--ui);color:var(--muted)}
+.state svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.state.asleep,.state.frozen{color:var(--accent)}
+.shelf{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.hero{display:grid;grid-template-columns:1.45fr 1fr;gap:26px;padding:22px 26px 14px;background:linear-gradient(135deg,oklch(var(--cat-l) var(--cat-c) var(--h)/.16),oklch(var(--cat-l) var(--cat-c) var(--h)/.03))}
+.hero h3{font:600 34px/1.1 var(--ui);margin:6px 0 0}
+.wrow{display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--ctl);padding:7px 10px;margin-bottom:6px;font-size:12.5px}
+.wrow i{width:20px;height:20px;border-radius:5px;background:var(--surface-2);border:1px solid var(--border)}
+.wrow span:last-child{margin-left:auto}
+/* resources card */
+.res{display:grid;gap:9px}
+.rrow{display:grid;grid-template-columns:auto 1fr auto auto;gap:4px 10px;align-items:center;font-size:12.5px}
+.rrow .nm{font-weight:600;display:flex;align-items:center;gap:7px;min-width:0}
+.rrow .num2{font:500 12px var(--mono);color:var(--muted);text-align:right;min-width:62px}
+.rrow .share{grid-column:2/-1;height:3px;background:var(--surface);border-radius:2px;overflow:hidden}
+.rrow .share b{display:block;height:100%;background:oklch(var(--cat-l) var(--cat-c) var(--h));border-radius:2px}
+.rfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;font-size:12px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start}
+.menu{background:var(--surface);border:1px solid var(--border);border-radius:var(--ctl);box-shadow:var(--shadow);padding:5px;width:250px}
+.menu div{padding:6px 10px;border-radius:6px;font-size:12.5px;display:flex;gap:8px;align-items:center}
+.menu .hd{font:600 10.5px var(--ui);letter-spacing:.08em;color:var(--muted);padding-top:8px}
+.menu .sep{height:1px;padding:0;margin:4px 6px;background:var(--border)}
+.menu .it:hover{background:var(--surface-2)}
+.menu .hint{margin-left:auto;color:var(--muted);font-size:11px}
+.dlg{background:var(--surface);border:1px solid var(--border);border-radius:var(--card);box-shadow:var(--shadow);padding:20px 22px;max-width:430px}
+.dlg h4{margin:0 0 6px;font:600 16px var(--ui)}
+.dlg ul{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:4px;max-height:150px;overflow:auto}
+.dlg li{display:flex;gap:8px;align-items:center;font-size:12.5px;background:var(--surface-2);border-radius:8px;padding:5px 9px}
+.dlg .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.dlg .acts .btn{min-width:90px}
+.banner{display:flex;gap:12px;align-items:center;padding:10px 14px;border-radius:var(--ctl);background:var(--surface);border:1px solid var(--danger);color:var(--danger);font-size:12.5px}
+.banner.calm{border-color:var(--accent);color:var(--ink)}
+.banner .x{margin-left:auto;display:flex;gap:6px;align-items:center}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:13px}
+.check i{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--muted);flex:none;margin-top:1px;display:grid;place-items:center}
+.check i.on{background:var(--accent);border-color:var(--accent)}
+.check i.on::after{content:"";width:8px;height:4px;border-left:2px solid var(--accent-ink);border-bottom:2px solid var(--accent-ink);transform:rotate(-45deg) translate(1px,-1px)}
+.check small{display:block;color:var(--muted);font-size:12px;margin-top:2px;max-width:48ch}
+/* demos */
+.demo{position:relative;min-height:170px;display:grid;place-items:center;background:linear-gradient(135deg,oklch(90% .02 220),oklch(92% .03 300));border:1px solid var(--border);border-radius:14px;overflow:hidden;padding:16px}
+:root[data-theme="dark"] .demo{background:linear-gradient(135deg,oklch(26% .02 240),oklch(28% .03 300))}
+.pill{position:absolute;left:50%;bottom:22px;transform:translate(-50%,14px);opacity:0;display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);border-radius:21px;padding:9px 20px 10px 16px;font:600 14px var(--ui);box-shadow:0 7px 26px #0003;white-space:nowrap;overflow:hidden}
+.pill::before{content:"";position:absolute;inset:0;background:oklch(var(--cat-l) var(--cat-c) var(--h)/.16)}
+.pill>*{position:relative}
+.pill.play{animation:rise 2.6s cubic-bezier(.2,.9,.3,1.2) forwards}
+@keyframes rise{0%{opacity:0;transform:translate(-50%,14px)}14%{opacity:1;transform:translate(-50%,0)}80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,0)}}
+.pill .sub{font-weight:500;color:var(--muted);font-size:13px}
+.sig{display:grid;gap:10px;align-content:start}
+.sig .demo{min-height:210px}
+.mini{width:210px}
+.mini .dot{transition:background .5s,box-shadow .5s}
+.mini.sleep{opacity:.62}
+.mini.sleep .dot{background:transparent;box-shadow:inset 0 0 0 2px oklch(var(--cat-l) var(--cat-c) var(--h))}
+.tick{font:500 12px var(--mono)}
+.rec{font:600 10.5px var(--mono);color:var(--accent);background:var(--surface-2);border-radius:5px;padding:3px 6px;margin-left:8px}
+@media (prefers-reduced-motion:reduce){.pill.play{animation:fade 2.6s forwards}.tile{transition:none}}
+@keyframes fade{0%,100%{opacity:0}15%,80%{opacity:1}}
+@media (max-width:760px){.shelf{grid-template-columns:repeat(2,1fr)}.hero{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="bar">
+  <strong>Resource saving</strong>
+  <a href="#home">Home</a><a href="#states">States</a><a href="#menu">Menu &amp; settings</a><a href="#close">Close category</a><a href="#moment">Signature moment</a>
+  <span class="sp"></span>
+  <button class="btn small" id="theme">Theme: Fjord</button>
+</div>
+
+<h1>Resource saving - what changes on screen</h1>
+<p class="lead">Every visual change of the feature, in the app's own vocabulary (Fjord, with Night Shift as the dark check). Nothing here is clickable-final: it is a picture to approve, not a prototype of the logic. Words in <span class="key">mono</span> are keys.</p>
+
+<section id="home">
+  <div><span class="num">01</span> <h2>Home</h2></div>
+  <p class="note">Three additions: a <b>RESOURCES</b> card in the side column (one level deeper than the tiles - PRINCIPLES value 5), a one-word state + memory on each parked tile, and <b>Close</b> next to <b>Edit</b> on the hero. Pinned apps and the active category are never slowed down.</p>
+  <div class="win">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div style="display:flex;gap:10px;align-items:center"><div style="width:26px;height:26px;border-radius:7px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700">C</div><strong style="font-size:17px">Catogarizer</strong></div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="muted">Switch from anywhere</span><span class="key">Ctrl</span><span class="key">Alt</span><span class="key">Space</span><button class="btn">+ Quick category</button><button class="btn">+ New category</button></div>
+    </div>
+    <div class="card" style="--h:255">
+      <div class="hero">
+        <div>
+          <div class="label">You're in</div>
+          <div style="display:flex;align-items:center;gap:12px"><span class="dot lg"></span><h3>Deep Work</h3>
+            <span style="margin-left:auto;display:flex;gap:8px"><button class="btn">Edit</button><button class="btn" title="Close this category and its windows - Ctrl+W">Close</button></span></div>
+          <p class="muted" style="margin:6px 0 14px 25px">since 09:12 · 1 h 38 min · 3 windows</p>
+          <div class="wrow"><i></i><span>app\Catogarizer.slnx - Visual Studio</span><span class="muted">Visual Studio</span></div>
+          <div class="wrow"><i></i><span>Pull requests - Arc</span><span class="muted">Arc</span></div>
+          <div class="wrow"><i></i><span>Terminal</span><span class="muted">Windows Terminal</span></div>
+        </div>
+        <div>
+          <div class="box"><div class="label" style="margin-bottom:8px">Held back while you're here</div><span class="chip">Discord</span> <span class="chip">Steam</span></div>
+          <div class="box res" id="resCard">
+            <div style="display:flex;justify-content:space-between;align-items:center"><span class="label">Resources</span><span class="muted" style="font-size:11.5px">Memory 74 % used</span></div>
+            <div class="rrow" style="--h:25"><span class="nm"><span class="dot"></span>Comms</span><span class="state asleep" style="justify-self:start">Asleep</span><span class="num2">380 MB</span><span class="num2">0 %</span><div class="share"><b style="width:12%"></b></div></div>
+            <div class="rrow" style="--h:330"><span class="nm"><span class="dot"></span>Design</span><span class="state" style="justify-self:start">Eco</span><span class="num2">1.2 GB</span><span class="num2">1 %</span><div class="share"><b style="width:38%"></b></div></div>
+            <div class="rrow" style="--h:150"><span class="nm"><span class="dot"></span>Admin</span><span class="state frozen" style="justify-self:start">Frozen</span><span class="num2">210 MB</span><span class="num2">0 %</span><div class="share"><b style="width:7%"></b></div></div>
+            <div class="rrow" style="--h:255"><span class="nm"><span class="dot"></span>Deep Work</span><span class="state" style="justify-self:start;color:var(--muted)">Here</span><span class="num2">1.6 GB</span><span class="num2">9 %</span><div class="share"><b style="width:50%"></b></div></div>
+            <div class="rfoot"><span>Parked: 1.8 GB instead of 3.9 GB</span><button class="link">Free memory now</button></div>
+          </div>
+          <div class="box" style="margin:0"><div class="label" style="margin-bottom:8px">Always visible <button class="link" style="float:right;margin-top:-4px">+ Pin app</button></div><span class="chip">Spotify ✕</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="label" style="margin:22px 2px 10px">Switch to</div>
+    <div class="shelf">
+      <button class="tile" style="--h:25"><div class="top"><span class="dot" style="margin-top:6px"></span><span class="name">Comms</span><span class="key">1</span></div><div class="ico"><i></i><i></i><i></i></div><div class="foot"><span class="chip">4 parked</span><span class="state asleep"><svg viewBox="0 0 16 16"><path d="M13 9.5A5.5 5.5 0 1 1 6.5 3a4.5 4.5 0 0 0 6.5 6.5z"/></svg>380 MB</span></div></button>
+      <button class="tile" style="--h:330"><div class="top"><span class="dot" style="margin-top:6px"></span><span class="name">Design</span><span class="key">2</span></div><div class="ico"><i></i><i></i><i></i></div><div class="foot"><span class="chip">3 parked</span><span class="state"><svg viewBox="0 0 16 16"><path d="M3 13c0-6 4-9 10-9 0 6-3 10-9 10M3 13l5-5"/></svg>1.2 GB</span></div></button>
+      <button class="tile" style="--h:150"><div class="top"><span class="dot" style="margin-top:6px"></span><span class="name">Admin</span><span class="key">3</span></div><div class="ico"><i></i><i></i></div><div class="foot"><span class="chip">2 parked</span><span class="state frozen"><svg viewBox="0 0 16 16"><path d="M8 1.5v13M2.4 4.7l11.2 6.6M2.4 11.3l11.2-6.6"/></svg>210 MB</span></div></button>
+      <button class="tile unsorted" style="--h:0"><div class="top"><span class="dot" style="margin-top:6px;background:var(--muted)"></span><span class="name">Unsorted</span><span class="key">0</span></div><div class="ico"><i></i></div><div class="foot"><span class="chip">1 parked</span><span class="state"><svg viewBox="0 0 16 16"><path d="M3 13c0-6 4-9 10-9 0 6-3 10-9 10M3 13l5-5"/></svg>340 MB</span></div></button>
+    </div>
+  </div>
+</section>
+
+<section id="states">
+  <div><span class="num">02</span> <h2>The states and the Resources card</h2></div>
+  <p class="note">A tile shows one word-sized state plus the memory of its whole process tree. CPU and the per-category share bar live only in the card. <b>Eco</b> = efficiency mode + low priority (always, when parked). <b>Asleep</b> = memory paged out (only under memory pressure). <b>Frozen</b> = suspended (only apps you allowed, only when memory stays tight). A category with no parked windows shows nothing extra.</p>
+  <div class="grid2">
+    <div class="card" style="padding:14px;display:grid;gap:12px;--h:25">
+      <span class="cap">Tile states</span>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+        <span class="state"><svg viewBox="0 0 16 16"><path d="M3 13c0-6 4-9 10-9 0 6-3 10-9 10M3 13l5-5"/></svg>Eco · 1.2 GB</span>
+        <span class="state asleep"><svg viewBox="0 0 16 16"><path d="M13 9.5A5.5 5.5 0 1 1 6.5 3a4.5 4.5 0 0 0 6.5 6.5z"/></svg>Asleep · 380 MB</span>
+        <span class="state frozen"><svg viewBox="0 0 16 16"><path d="M8 1.5v13M2.4 4.7l11.2 6.6M2.4 11.3l11.2-6.6"/></svg>Frozen · 210 MB</span>
+      </div>
+      <p class="note">Tooltip on the state: "Slowed down while parked. 5 apps." / "Memory paged out to make room. Wakes when you switch here." / "Paused because you allowed it. Wakes when you switch here."</p>
+    </div>
+    <div style="display:grid;gap:10px">
+      <span class="cap">Resources card - nothing parked</span>
+      <div class="box res" style="margin:0"><div class="label">Resources</div><p class="muted" style="font-size:12px">Nothing is parked, so nothing is slowed down. Park a category by switching away from it.</p></div>
+      <span class="cap">Resources card - some apps can't be touched</span>
+      <div class="box res" style="margin:0"><div class="label">Resources</div><div class="rrow" style="--h:25"><span class="nm"><span class="dot"></span>Comms</span><span class="state" style="justify-self:start">Eco</span><span class="num2">1.1 GB</span><span class="num2">1 %</span><div class="share"><b style="width:30%"></b></div></div><p class="muted" style="font-size:12px">2 apps run as administrator and stay at full speed. Catogarizer never asks for admin rights.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="menu">
+  <div><span class="num">03</span> <h2>Freeze permission and settings</h2></div>
+  <p class="note">Freezing is opt-in per app, set exactly like pinning: right-click a window row on the home. The setting for the whole feature is one checkbox in Settings (single column, the existing pattern); it applies at once like "Start with Windows".</p>
+  <div class="grid2">
+    <div class="menu">
+      <div class="hd">MOVE TO</div>
+      <div class="it"><span class="dot" style="--h:25"></span>Comms</div><div class="it"><span class="dot" style="--h:330"></span>Design</div>
+      <div class="sep"></div>
+      <div class="it">Pin app (always visible)</div>
+      <div class="it" style="background:var(--surface-2)">Allow freezing while parked</div>
+    </div>
+    <div class="card" style="padding:18px 20px;display:grid;gap:14px;max-width:460px">
+      <span class="cap">Settings (new part)</span>
+      <label class="check"><i class="on"></i><span>Save resources while categories are parked<small>Slows parked apps down, and frees memory when it gets tight. Nothing is closed and nothing is lost.</small></span></label>
+      <p class="muted" style="font-size:12px">Apps you allowed to freeze: <span class="chip">Slack ✕</span> <span class="chip">Teams ✕</span></p>
+    </div>
+    <div class="card" style="padding:18px 20px;display:grid;gap:12px;max-width:460px">
+      <span class="cap">Category editor (new part) - whole category</span>
+      <div class="label">While parked</div>
+      <label class="check"><i style="border-radius:50%"></i><span>Never freeze<small>Slowed down and, when memory is tight, paged out. Always safe.</small></span></label>
+      <label class="check"><i class="on" style="border-radius:50%"></i><span>Freeze when memory is tight<small>Only after paging out wasn't enough. Wakes when you switch here.</small></span></label>
+      <label class="check"><i style="border-radius:50%"></i><span>Freeze as soon as it is parked<small>Chat apps miss messages, downloads and syncs pause, calls drop - until you come back. Apps playing sound are never frozen.</small></span></label>
+    </div>
+  </div>
+</section>
+
+<section id="close">
+  <div><span class="num">04</span> <h2>Close category</h2></div>
+  <p class="note">Hero button <b>Close</b> + <span class="key">Ctrl</span><span class="key">W</span> for the active category, and a right-click entry on a tile for parked ones. Only windows are asked to close (<code>WM_CLOSE</code>), never the processes. The confirm lists the windows, so nothing closes by surprise. Apps that ask "Save?" stay open and are named in a banner afterwards - same banner component as launch problems, calm border instead of red.</p>
+  <div class="grid2">
+    <div class="dlg">
+      <h4>Close "Comms"?</h4>
+      <p class="muted">These 5 windows will be asked to close. Apps with unsaved work will ask you first. Their programs keep running (a chat app may stay in the tray).</p>
+      <ul><li><i style="width:16px;height:16px;border-radius:4px;background:var(--bg);display:block"></i>Inbox - Mailspring</li><li><i style="width:16px;height:16px;border-radius:4px;background:var(--bg);display:block"></i>#general - Slack</li><li><i style="width:16px;height:16px;border-radius:4px;background:var(--bg);display:block"></i>Calendar - Teams</li><li><i style="width:16px;height:16px;border-radius:4px;background:var(--bg);display:block"></i>Draft: Q4 plan - Notepad</li><li><i style="width:16px;height:16px;border-radius:4px;background:var(--bg);display:block"></i>Chat - Discord</li></ul>
+      <div class="acts"><button class="btn">Cancel</button><button class="btn danger">Close windows</button></div>
+    </div>
+    <div style="display:grid;gap:12px">
+      <span class="cap">Result - everything closed</span>
+      <div class="banner calm"><span><b>Comms</b> closed - 5 windows, 1.8 GB back.</span><span class="x"><button class="link">✕</button></span></div>
+      <span class="cap">Result - some windows wait for you</span>
+      <div class="banner calm"><span><b>Comms</b>: 3 of 5 windows closed. 2 are waiting for you (Notepad asks to save, Slack stayed open).</span><span class="x"><button class="btn small">Show them</button><button class="link">✕</button></span></div>
+      <span class="cap">Result - this category can't be closed</span>
+      <div class="banner"><span>Unsorted can't be closed as a whole. Move windows into a category first, or close them one by one.</span><span class="x"><button class="link">✕</button></span></div>
+    </div>
+  </div>
+</section>
+
+<section id="moment">
+  <div><span class="num">05</span> <h2>Signature moment - pick one</h2></div>
+  <p class="note">One per feature, protected from cleanup. Press play on each. They share the existing pill: click-through, never takes focus, rises from the taskbar edge, tinted in the category colour, reduced motion = fade only.</p>
+  <div class="grid2">
+    <div class="sig">
+      <div style="display:flex;align-items:baseline"><b>A · The tile falls asleep</b></div>
+      <div class="demo" style="--h:25"><button class="tile mini" id="miniA"><div class="top"><span class="dot" style="margin-top:6px"></span><span class="name">Comms</span><span class="key">1</span></div><div class="ico"><i></i><i></i><i></i></div><div class="foot"><span class="chip" id="aChip">here</span><span class="state"><span class="tick" id="aTick">1.4 GB</span></span></div></button></div>
+      <p class="note">When you leave a category its tile dims, the dot turns into a ring and the memory number counts down to what it keeps. Coming back reverses it. Seen on every switch.</p>
+      <button class="btn small" id="playA" style="justify-self:start">Play</button>
+    </div>
+    <div class="sig">
+      <div style="display:flex;align-items:baseline"><b>B · "Freed 1.4 GB"</b><span class="rec">RECOMMENDED</span></div>
+      <div class="demo" style="--h:25"><span class="muted">your screen, any app in front</span><div class="pill" id="pillB"><span class="dot"></span>Freed 1.4 GB <span class="sub">· Comms, Design asleep</span></div></div>
+      <p class="note">The one moment the old laptop would have stuttered: memory gets tight, Catogarizer puts parked categories to sleep, says so once, and nothing hangs. Appears only when it acted (PRINCIPLES value 6). "Free memory now" in the card shows the same pill.</p>
+      <button class="btn small" id="playB" style="justify-self:start">Play</button>
+    </div>
+    <div class="sig">
+      <div style="display:flex;align-items:baseline"><b>C · The receipt of a closed category</b></div>
+      <div class="demo" style="--h:330"><span class="muted">after "Close windows"</span><div class="pill" id="pillC"><span class="dot"></span>Design closed <span class="sub">· 5 windows · 1.8 GB back</span></div></div>
+      <p class="note">Closing ends with a number that makes the benefit tangible. Rarer than A or B, but the most "oh nice" for people who close a lot.</p>
+      <button class="btn small" id="playC" style="justify-self:start">Play</button>
+    </div>
+  </div>
+</section>
+</div>
+<script>
+const root=document.documentElement,tb=document.getElementById('theme');
+tb.onclick=()=>{const d=root.dataset.theme==='dark';root.dataset.theme=d?'light':'dark';tb.textContent='Theme: '+(d?'Fjord':'Night Shift')};
+function pill(id,btn){document.getElementById(btn).onclick=()=>{const p=document.getElementById(id);p.classList.remove('play');void p.offsetWidth;p.classList.add('play')}}
+pill('pillB','playB');pill('pillC','playC');
+let sleeping=false;
+document.getElementById('playA').onclick=()=>{
+  sleeping=!sleeping;const m=document.getElementById('miniA'),t=document.getElementById('aTick'),c=document.getElementById('aChip');
+  m.classList.toggle('sleep',sleeping);c.textContent=sleeping?'4 parked':'here';
+  const from=sleeping?1400:380,to=sleeping?380:1400,start=performance.now(),dur=900;
+  (function f(n){const k=Math.min(1,(n-start)/dur),e=1-Math.pow(1-k,3),v=Math.round(from+(to-from)*e);t.textContent=v>=1000?(v/1000).toFixed(1)+' GB':v+' MB';if(k<1)requestAnimationFrame(f)})(start);
+};
+</script>
+</body>
+</html>

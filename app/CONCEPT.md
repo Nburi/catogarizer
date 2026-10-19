@@ -111,6 +111,46 @@ second and removes itself, so the shelf never fills with leftovers.
   ("Keep"), a CLI command, closing an inactive temporary category from the
   shelf.
 
+### Resource saving for parked categories (decided 2026-10-19)
+Hiding a window only hides it; the app behind it keeps running at full speed.
+With many categories parked that is what makes a laptop struggle. Parked
+categories now cost as little as they safely can. Preview of every visual
+change: `design/resource-saving-preview.html`.
+- **Eco (always, when parked)**: every process tree whose windows are all
+  parked gets Windows' efficiency mode (EcoQoS) and a low priority. Undone on
+  the way back, off the switch path (value 2: a switch stays under 300 ms).
+- **Asleep (only under memory pressure)**: at 80 % RAM the working set of
+  parked trees is trimmed, longest-parked category first, only after it has
+  been parked 2 minutes. Calm again below 70 %.
+- **Frozen (only where the user allowed it)**: suspended processes. Allowed per
+  app (window context menu, like pinning) or per category (category editor:
+  never / when memory is tight / as soon as parked). "When memory is tight"
+  means still above 85 % 30 s after trimming. A frozen app stays frozen until its
+  category is shown again. Apps playing sound are never frozen. A tree is only
+  frozen when every one of its windows is parked and allowed.
+- **Never touched**: pinned apps, Catogarizer itself, system and host
+  processes (ApplicationFrameHost, explorer, dwm ...), any tree that owns a
+  visible window of the active category. No admin rights: what cannot be
+  opened is skipped and named in the Resources card.
+- **Crash safety (value 1)**: every applied state is written to a ledger first;
+  exit, crash handler and the next start undo it (a frozen process must never
+  outlive Catogarizer).
+- **Display (value 5)**: a parked tile shows one state word and the memory of
+  its whole process tree; CPU, share bar and "Free memory now" live in a
+  Resources card one level deeper. Quiet (value 6): the only message is a pill
+  when memory pressure was relieved ("Freed 1.4 GB").
+- **Signature moment**: the tile falls asleep. On leaving a category its tile
+  dims, the dot turns into a ring and, when memory was actually released, the
+  number counts down; returning reverses it. Reduced motion: fade only.
+- **Close a category** (hero button + Ctrl+W, tile context menu): windows are
+  asked to close (`WM_CLOSE`), never the processes; confirm lists the windows;
+  windows still open after ~4 s are named in a banner with "Show them". Works
+  for every category except Unsorted. Same explicit per-category user action
+  as closing a quick category, so it stays within PRINCIPLES.md value 1.
+- Out of scope for now: UWP apps (host-process windows), waking frozen chat
+  apps for notifications, closing from palette/tray/CLI, thresholds as
+  settings, GPU figures, a "never sleep" flag per category.
+
 ### App blocking
 - A category can carry a blocklist of apps that are not allowed to run
   while that category is the active/open one (soft block: a background
