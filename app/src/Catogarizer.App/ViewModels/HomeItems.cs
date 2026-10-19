@@ -74,8 +74,11 @@ public sealed record TemplateIcon(string Name, string ExecutablePath)
 }
 
 /// <summary>One category in the Resources card: what it costs over its whole process tree.</summary>
-public sealed record ResourceRow(string Name, Brush Color, string StateText, ResourceLevel Level, string BytesText, string CpuText, double SharePercent)
+public sealed record ResourceRow(string Name, System.Windows.Media.Color Hue, string StateText, ResourceLevel Level, string BytesText, string CpuText, double SharePercent)
 {
+    /// <summary>Built from <see cref="Hue"/> so two rows with the same colour are equal and an unchanged card is not rebuilt.</summary>
+    public Brush Color => ThemeService.FrozenBrush(Hue);
+
     public override string ToString() => $"{Name}, {StateText}, {BytesText}, {CpuText} CPU";
 }
 

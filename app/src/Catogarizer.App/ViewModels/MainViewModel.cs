@@ -352,7 +352,7 @@ public partial class MainViewModel : ObservableObject
                 ResourceLevel.Frozen => "Frozen",
                 _ => "Awake",
             };
-            return new ResourceRow(_library.NameOf(u.CategoryId), ThemeService.FrozenBrush(_themeService.ColorFor(category)), state, u.Level,
+            return new ResourceRow(_library.NameOf(u.CategoryId), _themeService.ColorFor(category), state, u.Level,
                 ByteSize.Format(u.PrivateBytes), $"{Math.Round(u.CpuPercent)} %", total > 0 ? u.PrivateBytes * 100.0 / total : 0);
         }));
 

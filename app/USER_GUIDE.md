@@ -147,6 +147,11 @@ closed. 2 are still open" and **Show them** takes you there. Closing the categor
 you're in takes you back to the one you came from (or Unsorted). The category itself
 stays, with its template. Unsorted can't be closed as a whole.
 
+An app that keeps its window hidden in the tray when you close it (many chat apps)
+can't be told apart from a window Catogarizer parked, so it counts as "still
+open" and comes back when you next switch to that category. Quit such an app
+from its tray icon.
+
 ## Quick categories
 
 For work you only need for a while, make a quick category instead of a real

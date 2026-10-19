@@ -18,11 +18,13 @@ public sealed class FakeProcessGovernor : IProcessGovernor
     public HashSet<int> Unreachable { get; } = [];
 
     public Action<int>? OnTrim { get; set; }
+    public Action<int>? OnEnterEco { get; set; }
     public Action<int>? OnSuspend { get; set; }
 
     public EcoMemento? EnterEco(int pid)
     {
         EnterEcoCalls.Add(pid);
+        OnEnterEco?.Invoke(pid);
         if (Unreachable.Contains(pid)) return null;
         Eco.Add(pid);
         return Original;

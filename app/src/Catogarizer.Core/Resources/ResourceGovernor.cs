@@ -42,6 +42,7 @@ public sealed class ResourceGovernor : IDisposable
     /// <summary>Below this the pill stays quiet - a few megabytes are not worth an announcement.</summary>
     public const long MinAnnouncedBytes = 50L * 1024 * 1024;
 
+    private static readonly TimeSpan AudioCacheFor = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(80);
     private static readonly TimeSpan PollWhileWatched = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan PollWhileParked = TimeSpan.FromSeconds(10);
@@ -97,7 +98,11 @@ public sealed class ResourceGovernor : IDisposable
     private bool _tight;
     private bool _announced;
     private DateTime? _severeSince;
-    private bool _hasParked;
+    private volatile bool _dirty;
+    private bool _stopped;
+    private IReadOnlySet<int> _playing = new HashSet<int>();
+    private bool _audioReliable = true;
+    private DateTime? _playingAt;
     private Timer? _timer;
     private bool _disposed;
 
@@ -173,7 +178,30 @@ public sealed class ResourceGovernor : IDisposable
     /// <summary>Asks for a look soon (a state change, the home opening). Cheap; bursts collapse into one.</summary>
     public void RequestTick()
     {
+        _dirty = true;
         if (_autoRun && !_disposed) _timer?.Change(Debounce, Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>
+    /// What the timer does each time it fires: a look if there is anything to do (something parked, something
+    /// slowed down, or the home open), and how long to wait until the next one. A request made during the look
+    /// asks again soon instead of being swallowed by the long poll. Public for tests.
+    /// </summary>
+    public TimeSpan Pulse()
+    {
+        // Cleared before the look, so anything requested while it runs is still pending afterwards.
+        _dirty = false;
+        var parked = HasParkedWindows();
+        var resting = HasState();
+        if (UsageWanted || parked || resting) Look(forceTrim: false);
+        return _dirty ? Debounce : UsageWanted ? PollWhileWatched : parked || resting ? PollWhileParked : PollIdle;
+    }
+
+    /// <summary>Asked of the sessions each time, not remembered: a stale "nothing is parked" would never look again.</summary>
+    private bool HasParkedWindows()
+    {
+        var active = _sessions.ActiveCategoryId;
+        return _sessions.GetSessions().Any(s => s.Key != active && s.Value.Count > 0);
     }
 
     /// <summary>One look: memory pressure, process trees, what each tree should be now, and the figures. Public for tests.</summary>
@@ -199,12 +227,16 @@ public sealed class ResourceGovernor : IDisposable
         Look(forceTrim: false);
     }
 
-    /// <summary>Exit, crash handler, setting switched off: every process goes back to how it was.</summary>
+    /// <summary>
+    /// Exit and crash handler: every process goes back to how it was, and the governor stops for good - a look
+    /// that fired between this and the process ending would slow everything down again.
+    /// </summary>
     public void ReleaseAll()
     {
         bool changed;
         lock (_gate)
         {
+            _stopped = true;
             ReleaseAllLocked();
             changed = RecomputeSignature();
         }
@@ -225,10 +257,11 @@ public sealed class ResourceGovernor : IDisposable
 
     private void TimerElapsed()
     {
+        var next = PollWhileParked;
         try
         {
             if (_disposed) return;
-            if (UsageWanted || _hasParked || HasState()) Look(forceTrim: false);
+            next = Pulse();
         }
         catch (Exception)
         {
@@ -236,7 +269,7 @@ public sealed class ResourceGovernor : IDisposable
         }
         finally
         {
-            if (!_disposed) _timer?.Change(NextDelay(), Timeout.InfiniteTimeSpan);
+            if (!_disposed) _timer?.Change(next, Timeout.InfiniteTimeSpan);
         }
     }
 
@@ -244,8 +277,6 @@ public sealed class ResourceGovernor : IDisposable
     {
         lock (_gate) return _state.Count > 0;
     }
-
-    private TimeSpan NextDelay() => UsageWanted ? PollWhileWatched : _hasParked || HasState() ? PollWhileParked : PollIdle;
 
     // ---------------- The look ----------------
 
@@ -255,6 +286,7 @@ public sealed class ResourceGovernor : IDisposable
         bool changed;
         lock (_gate)
         {
+            if (_stopped) return null;
             var now = _clock.Now;
             var sessions = _sessions.GetSessions();
             var active = _sessions.ActiveCategoryId;
@@ -272,7 +304,6 @@ public sealed class ResourceGovernor : IDisposable
 
             UpdateParkedSince(sessions, active, now);
             UpdatePressure(now);
-            _hasParked = _parkedSince.Count > 0;
 
             var groups = BuildGroups(sessions, active, byPid, children, UsageOf);
             var activePids = sessions.TryGetValue(active, out var activeWindows)
@@ -282,8 +313,8 @@ public sealed class ResourceGovernor : IDisposable
 
             var enabled = _settings.Enabled;
             var parkedGroups = groups.Where(g => g.Windows.Any(w => w.Category != active)).ToList();
-            var playing = parkedGroups.Count > 0 && enabled ? _audio.PlayingProcessIds() : new HashSet<int>();
-            var audioReliable = _audio.IsReliable;
+            var playing = parkedGroups.Count > 0 && enabled ? PlayingProcesses(now) : new HashSet<int>();
+            var audioReliable = _audioReliable;
             foreach (var pid in _awakeUntil.Where(p => p.Value <= now).Select(p => p.Key).ToList()) _awakeUntil.Remove(pid);
             foreach (var group in groups)
             {
@@ -317,6 +348,16 @@ public sealed class ResourceGovernor : IDisposable
         if (changed) Changed?.Invoke();
         if (announce is not null) Relieved?.Invoke(announce);
         return announce;
+    }
+
+    /// <summary>The audio session list is a COM round trip; a few seconds old is fresh enough to know who is playing.</summary>
+    private IReadOnlySet<int> PlayingProcesses(DateTime now)
+    {
+        if (_playingAt is { } at && now - at < AudioCacheFor) return _playing;
+        _playing = _audio.PlayingProcessIds();
+        _audioReliable = _audio.IsReliable;
+        _playingAt = now;
+        return _playing;
     }
 
     private void UpdateParkedSince(IReadOnlyDictionary<Guid, IReadOnlyList<OpenWindowInfo>> sessions, Guid active, DateTime now)

@@ -628,6 +628,100 @@ public sealed class ResourceGovernorTests
         Assert.Equal(ResourceLevel.Normal, _resources.Usage.Single(u => u.CategoryId == Comms).Level);
     }
 
+    // ---------------- The timer ----------------
+
+    [Fact]
+    public void Pulse_LooksWhenSomethingIsParked_EvenWithTheHomeHidden()
+    {
+        WorkActiveCommsParked();
+        _resources.UsageWanted = false;
+
+        var next = _resources.Pulse();
+
+        Assert.Contains(20, _governor.Eco);
+        Assert.Equal(TimeSpan.FromSeconds(10), next);
+    }
+
+    [Fact]
+    public void Pulse_WithNothingParkedAndNothingResting_DoesNoWorkAndWaitsLong()
+    {
+        _table.Add(10, 1, "code");
+        _sessions.Add(Work, 10, "code");
+
+        var next = _resources.Pulse();
+
+        Assert.Empty(_governor.EnterEcoCalls);
+        Assert.Empty(_resources.Usage);
+        Assert.Equal(TimeSpan.FromSeconds(30), next);
+    }
+
+    [Fact]
+    public void Pulse_WithTheHomeOpen_LooksEvenWhenNothingIsParkedAndPollsFast()
+    {
+        _table.Add(10, 1, "code");
+        _sessions.Add(Work, 10, "code");
+        _resources.UsageWanted = true;
+
+        var next = _resources.Pulse();
+
+        Assert.Single(_resources.Usage);
+        Assert.Equal(TimeSpan.FromSeconds(5), next);
+    }
+
+    [Fact]
+    public void Pulse_ARequestMadeDuringTheLook_AsksAgainSoonInsteadOfWaitingForTheLongPoll()
+    {
+        WorkActiveCommsParked();
+        // The user switches while the look is running.
+        _governor.OnEnterEco = _ => _resources.RequestTick();
+
+        var next = _resources.Pulse();
+
+        Assert.True(next < TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public void ReleaseAll_StopsTheGovernorForGood()
+    {
+        WorkActiveCommsParked();
+        _resources.Tick();
+
+        _resources.ReleaseAll();
+        _governor.EnterEcoCalls.Clear();
+        _resources.Tick();
+        _resources.Pulse();
+
+        Assert.Empty(_governor.EnterEcoCalls);
+        Assert.Empty(_governor.Eco);
+    }
+
+    [Fact]
+    public void Tick_AsksWindowsWhoPlaysSoundOnlyEveryFewSeconds()
+    {
+        WorkActiveCommsParked();
+        var asked = 0;
+        var audio = new CountingAudio(() => asked++);
+        var resources = new ResourceGovernor(_sessions, _table, _governor, _memory, audio, _ledger, _settings, _clock, OwnPid);
+
+        resources.Tick();
+        resources.Tick();
+        Later(TimeSpan.FromSeconds(4));
+        resources.Tick();
+
+        Assert.Equal(2, asked);
+    }
+
+    private sealed class CountingAudio(Action onAsk) : IAudioActivity
+    {
+        public bool IsReliable => true;
+
+        public IReadOnlySet<int> PlayingProcessIds()
+        {
+            onAsk();
+            return new HashSet<int>();
+        }
+    }
+
     [Fact]
     public void MemoryLoadPercent_IsWhatTheLastLookSaw()
     {
