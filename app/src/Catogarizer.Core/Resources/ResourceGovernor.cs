@@ -88,6 +88,7 @@ public sealed class ResourceGovernor : IDisposable
     private readonly Dictionary<Guid, DateTime> _parkedSince = new();
     private readonly Dictionary<int, PidState> _state = new();
     private readonly Dictionary<int, long> _untouchable = new();
+    private readonly Dictionary<int, DateTime> _awakeUntil = new();
     private readonly Dictionary<int, (TimeSpan Cpu, long StartTicks, DateTime At)> _previousCpu = new();
     private IReadOnlyList<ThrottleRecord> _lastSaved = [];
     private IReadOnlyList<CategoryResourceUsage> _usage = [];
@@ -184,6 +185,20 @@ public sealed class ResourceGovernor : IDisposable
     /// </summary>
     public RelievedMemory? FreeMemoryNow() => Look(forceTrim: true);
 
+    /// <summary>
+    /// Wakes these processes at once (resumes and speeds them up) and leaves them alone for <paramref name="hold"/>:
+    /// a category being closed has to be able to answer. Afterwards, if they are still parked, they rest again.
+    /// </summary>
+    public void Wake(IEnumerable<int> processIds, TimeSpan hold)
+    {
+        lock (_gate)
+        {
+            var until = _clock.Now + hold;
+            foreach (var pid in processIds) _awakeUntil[pid] = until;
+        }
+        Look(forceTrim: false);
+    }
+
     /// <summary>Exit, crash handler, setting switched off: every process goes back to how it was.</summary>
     public void ReleaseAll()
     {
@@ -269,10 +284,11 @@ public sealed class ResourceGovernor : IDisposable
             var parkedGroups = groups.Where(g => g.Windows.Any(w => w.Category != active)).ToList();
             var playing = parkedGroups.Count > 0 && enabled ? _audio.PlayingProcessIds() : new HashSet<int>();
             var audioReliable = _audio.IsReliable;
+            foreach (var pid in _awakeUntil.Where(p => p.Value <= now).Select(p => p.Key).ToList()) _awakeUntil.Remove(pid);
             foreach (var group in groups)
             {
                 group.Playing = group.Pids.Overlaps(playing);
-                group.Eligible = enabled && IsEligible(group, active, activePids, ownTree, byPid);
+                group.Eligible = enabled && IsEligible(group, active, activePids, ownTree, byPid) && !group.Pids.Overlaps(_awakeUntil.Keys);
                 group.ParkedSince = group.Windows
                     .Where(w => _parkedSince.ContainsKey(w.Category))
                     .Select(w => _parkedSince[w.Category])

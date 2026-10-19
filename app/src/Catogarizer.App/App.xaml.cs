@@ -148,6 +148,8 @@ public partial class App : Application
             Dispatcher.BeginInvoke(() => FlashPill(library.NameOf(returnedTo.CategoryId), CategoryColor(returnedTo.CategoryId), showBackArrow: true));
         };
 
+        var closeService = new CategoryCloseService(library, switcher, windowManager, temporary, resources);
+
         // Catogarizer acted for the user (memory got tight and parked categories were put to sleep): say so once.
         resources.Relieved += relieved => Dispatcher.BeginInvoke(() =>
         {
@@ -165,7 +167,7 @@ public partial class App : Application
         });
 
         var editorServices = new EditorServices(library, dialogService, installedAppFinder, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService, autostartService, triggerRunner, temporary, quickCategory, resources);
+            windowManager, monitorService, categoryActionService, autostartService, triggerRunner, temporary, quickCategory, resources, closeService);
         var updateNotifier = new UpdateNotifier();
         _updateNotifier = updateNotifier;
         var mainWindow = new MainWindow(editorServices, switcher, themeService, appBlockingService, updateNotifier, RegisterGlobalHotkey);

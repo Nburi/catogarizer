@@ -524,6 +524,29 @@ public sealed class ResourceGovernorTests
         Assert.Empty(_governor.Suspended);
     }
 
+    [Fact]
+    public void Wake_ResumesAtOnce_AndLeavesTheTreeAloneForTheHold_ThenItRestsAgain()
+    {
+        WorkActiveCommsParked();
+        _settings.Modes[Comms] = FreezeMode.Immediately;
+        _resources.Tick();
+        Later(TimeSpan.FromSeconds(6));
+        _resources.Tick();
+        Assert.Contains(20, _governor.Suspended);
+
+        _resources.Wake([20], TimeSpan.FromSeconds(20));
+        Assert.DoesNotContain(20, _governor.Suspended);
+        Assert.DoesNotContain(20, _governor.Eco);
+
+        Later(TimeSpan.FromSeconds(10));
+        _resources.Tick();
+        Assert.DoesNotContain(20, _governor.Suspended);
+
+        Later(TimeSpan.FromSeconds(11));
+        _resources.Tick();
+        Assert.Contains(20, _governor.Eco);
+    }
+
     // ---------------- Crash safety ----------------
 
     [Fact]

@@ -42,6 +42,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _activeName = "";
     [ObservableProperty] private bool _activeIsUnsorted;
     [ObservableProperty] private bool _activeIsTemporary;
+    /// <summary>The active category can be closed: everything but Unsorted.</summary>
+    [ObservableProperty] private bool _canCloseActive;
     /// <summary>The active category has an editor: not Unsorted, not a quick category.</summary>
     [ObservableProperty] private bool _canEditActive;
     [ObservableProperty] private Brush _activeColor = Brushes.Gray;
@@ -86,6 +88,17 @@ public partial class MainViewModel : ObservableObject
     /// <summary>The answer to "Free memory now" when there was nothing to free; gone with the next switch.</summary>
     [ObservableProperty] private string? _freeNowText;
     private Guid? _freeNowCategoryId;
+
+    // ---- Closing a category ----
+    [ObservableProperty] private bool _isClosing;
+
+    /// <summary>The calm line after a close: "Comms closed - 5 windows." or what stayed open. Gone with the next switch.</summary>
+    [ObservableProperty] private string? _closeReportText;
+
+    /// <summary>Some windows stayed open, so the banner offers a way to them.</summary>
+    [ObservableProperty] private bool _closeReportCanShow;
+    private CloseReport? _closeReport;
+    private Guid? _closeReportActiveId;
 
     // ---- Footer / chrome ----
     [ObservableProperty] private string? _nextTriggerText;
@@ -179,6 +192,7 @@ public partial class MainViewModel : ObservableObject
         var activeId = _switcher.ActiveCategoryId;
         ActiveIsUnsorted = active is null;
         ActiveIsTemporary = active is { IsTemporary: true };
+        CanCloseActive = active is not null;
         CanEditActive = active is { IsTemporary: false };
         ActiveName = _library.NameOf(activeId);
         var color = _themeService.ColorFor(active);
@@ -212,6 +226,7 @@ public partial class MainViewModel : ObservableObject
 
         // A launch problem belongs to the switch that caused it; the next switch clears it.
         if (Notice is not null && _noticeCategoryId != activeId) Notice = null;
+        if (CloseReportText is not null && _closeReportActiveId != activeId) CloseReportText = null;
 
         var blocked = active is null ? [] : _library.BlockedAppsOf(active);
         Replace(HeldBack, blocked.Select(b => new HeldBackRow(b.Name, PathOrNull(b.ProcessNameOrPath), RunningProcessOf(b.ProcessNameOrPath))));
@@ -447,27 +462,83 @@ public partial class MainViewModel : ObservableObject
         Refresh();
     }
 
-    /// <summary>Hero button, Ctrl+W: closes the active quick category, asking its windows to close first.</summary>
+    /// <summary>Hero button, Ctrl+W: closes the active category - its windows are asked to close, nothing is killed.</summary>
     [RelayCommand]
-    public async Task CloseTemporaryAsync()
-    {
-        var id = _switcher.ActiveCategoryId;
-        if (!_library.IsTemporary(id)) return;
+    public Task CloseActiveAsync() => CloseCategoryAsync(_switcher.ActiveCategoryId);
 
-        var count = _switcher.GetSessions().TryGetValue(id, out var windows) ? windows.Count : 0;
-        if (count > 0)
+    /// <summary>Right-click a tile on the shelf: closes that parked category without switching to it.</summary>
+    [RelayCommand]
+    public Task CloseShelfCategoryAsync(ShelfItem item) => CloseCategoryAsync(item.Id);
+
+    private async Task CloseCategoryAsync(Guid id)
+    {
+        if (!CategoryCloseService.CanClose(id)) return;
+
+        var windows = _switcher.GetSessions().TryGetValue(id, out var list) ? list : [];
+        if (windows.Count > 0)
         {
             var confirmed = _dialogService.ShowConfirm($"Close \"{_library.NameOf(id)}\"?",
-                (count == 1 ? "Its window will be asked to close." : $"Its {count} windows will be asked to close.")
-                + " Apps with unsaved work will ask you first, and the category stays until they are closed.",
-                "Close windows");
+                (windows.Count == 1 ? "Its window will be asked to close." : $"Its {windows.Count} windows will be asked to close.")
+                + " Apps with unsaved work will ask you first. The programs keep running; a chat app may stay in the tray.",
+                "Close windows",
+                windows.Select(w => w.Title.Length == 0 ? AppNames.ForProcess(w.ProcessId, w.ProcessName) : $"{w.Title} - {AppNames.ForProcess(w.ProcessId, w.ProcessName)}").ToList());
             if (!confirmed) return;
         }
 
         Notice = null;
-        await Task.Run(() => _services.Temporary.Close(id));
+        CloseReportText = null;
+        IsClosing = true;
+        CloseReport? report;
+        try
+        {
+            report = await Task.Run(() => _services.CloseService.Close(id));
+        }
+        finally
+        {
+            IsClosing = false;
+        }
+        ShowCloseReport(report);
         Refresh();
     }
+
+    /// <summary>All closed is one calm line; windows that stayed are named, with a way to them.</summary>
+    private void ShowCloseReport(CloseReport? report)
+    {
+        if (report is null || report.Requested == 0) return;
+
+        _closeReport = report;
+        _closeReportActiveId = _switcher.ActiveCategoryId;
+        CloseReportCanShow = report.StillOpen.Count > 0;
+        var windows = report.Requested == 1 ? "1 window" : $"{report.Requested} windows";
+        if (report.StillOpen.Count == 0)
+        {
+            CloseReportText = $"{report.CategoryName} closed - {windows}.";
+            return;
+        }
+
+        var names = string.Join(", ", report.StillOpen.Take(2).Select(w => w.Title.Length == 0 ? AppNames.ForProcess(w.ProcessId, w.ProcessName) : w.Title));
+        var more = report.StillOpen.Count > 2 ? $" and {report.StillOpen.Count - 2} more" : "";
+        CloseReportText = $"{report.CategoryName}: {report.Closed} of {report.Requested} windows closed. "
+            + (report.StillOpen.Count == 1 ? "1 is" : $"{report.StillOpen.Count} are") + $" still open: {names}{more}. "
+            + "An app may be asking to save, or it keeps its window in the tray.";
+    }
+
+    /// <summary>"Show them": goes to the category if it is parked, and brings the first window that stayed to the front.</summary>
+    [RelayCommand]
+    private async Task ShowRemainingAsync()
+    {
+        if (_closeReport is not { StillOpen.Count: > 0 } report) return;
+
+        CloseReportText = null;
+        if (_switcher.ActiveCategoryId != report.CategoryId)
+            ShowFailures(await Task.Run(() => _switcher.SwitchTo(report.CategoryId)));
+        var open = report.StillOpen.FirstOrDefault(w => _services.WindowManager.IsWindowOpen(w.Handle));
+        if (open is not null) _services.WindowManager.BringToFront(open.Handle);
+        Refresh();
+    }
+
+    [RelayCommand]
+    private void DismissCloseReport() => CloseReportText = null;
 
     [RelayCommand]
     private void EditActive()

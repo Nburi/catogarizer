@@ -8,6 +8,18 @@
         <TextBlock x:Name="HeadingText" FontSize="16" FontWeight="SemiBold"
                    Foreground="{DynamicResource InkBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
         <TextBlock x:Name="MessageText" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,20"/>
+        <!-- Optional: the things the confirmation is about, one per line (the windows a close will ask to close). -->
+        <ScrollViewer x:Name="ItemScroll" MaxHeight="150" VerticalScrollBarVisibility="Auto" Margin="0,-8,0,18" Visibility="Collapsed" Focusable="False">
+            <ItemsControl x:Name="ItemList" Focusable="False">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="{DynamicResource SmallRadius}" Padding="9,5" Margin="0,0,0,4">
+                            <TextBlock Text="{Binding}" FontSize="12.5" Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}"
                     Width="90" Margin="0,0,8,0" Click="CancelButton_Click" IsCancel="True"/>

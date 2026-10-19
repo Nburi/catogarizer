@@ -18,4 +18,5 @@ public sealed record EditorServices(
     TriggerRunner TriggerRunner,
     TemporaryCategoryService Temporary,
     QuickCategoryFlow QuickCategory,
-    ResourceGovernor Resources);
+    ResourceGovernor Resources,
+    CategoryCloseService CloseService);

@@ -37,10 +37,10 @@ public partial class MainWindow : Window
 
     private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.W && Keyboard.Modifiers == ModifierKeys.Control && _viewModel.ActiveIsTemporary)
+        if (e.Key == Key.W && Keyboard.Modifiers == ModifierKeys.Control && _viewModel.CanCloseActive)
         {
             e.Handled = true;
-            await _viewModel.CloseTemporaryAsync();
+            await _viewModel.CloseActiveAsync();
             return;
         }
 
@@ -65,6 +65,13 @@ public partial class MainWindow : Window
             menu.ItemsSource = _viewModel.BuildWindowMenu(row);
         else
             e.Handled = true;
+    }
+
+    /// <summary>Right-click menu of a shelf tile: close that category.</summary>
+    private async void ShelfMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Parent: ContextMenu { PlacementTarget: FrameworkElement { DataContext: ShelfItem item } } })
+            await _viewModel.CloseShelfCategoryAsync(item);
     }
 
     private async void WindowMenuItem_Click(object sender, RoutedEventArgs e)

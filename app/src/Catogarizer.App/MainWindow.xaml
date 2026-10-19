@@ -177,6 +177,25 @@
                 </Grid>
             </Border>
 
+            <!-- After closing a category: all closed, or what stayed open and a way to it. Calm, not a problem. -->
+            <Border Margin="0,0,0,14" CornerRadius="{DynamicResource ControlRadius}" Padding="14,10"
+                    Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                    Visibility="{Binding CloseReportText, Converter={StaticResource NullToCollapsedConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding CloseReportText}" TextWrapping="Wrap" Foreground="{DynamicResource InkBrush}" FontSize="12.5" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="Show them" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5" Margin="12,0,6,0"
+                            VerticalAlignment="Center" Command="{Binding ShowRemainingCommand}"
+                            Visibility="{Binding CloseReportCanShow, Converter={StaticResource BoolToVis}}"/>
+                    <Button Grid.Column="2" Content="&#x2715;" Style="{StaticResource GhostIconButtonStyle}"
+                            Command="{Binding DismissCloseReportCommand}" ToolTip="Dismiss" AutomationProperties.Name="Dismiss"/>
+                </Grid>
+            </Border>
+
             <!-- First launch: explain before any term (Unsorted, parked, held back) shows up. -->
             <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
                     CornerRadius="{DynamicResource CardRadius}" Padding="24,20" Margin="0,0,0,16"
@@ -236,10 +255,25 @@
                                     <Button Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Padding="12,6"
                                             Command="{Binding EditActiveCommand}" AutomationProperties.Name="Edit this category"
                                             Visibility="{Binding CanEditActive, Converter={StaticResource BoolToVis}}"/>
-                                    <Button Content="Close" Style="{StaticResource SecondaryButtonStyle}" Padding="12,6"
-                                            Command="{Binding CloseTemporaryCommand}" ToolTip="Close this category and its windows  ·  Ctrl+W"
-                                            AutomationProperties.Name="Close this quick category"
-                                            Visibility="{Binding ActiveIsTemporary, Converter={StaticResource BoolToVis}}"/>
+                                    <Button Style="{StaticResource SecondaryButtonStyle}" Padding="12,6" Margin="8,0,0,0"
+                                            Command="{Binding CloseActiveCommand}" ToolTip="Ask this category's windows to close  ·  Ctrl+W"
+                                            AutomationProperties.Name="Close this category"
+                                            Visibility="{Binding CanCloseActive, Converter={StaticResource BoolToVis}}">
+                                        <Button.Content>
+                                            <TextBlock>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="Close"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsClosing}" Value="True">
+                                                                <Setter Property="Text" Value="Closing..."/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Button.Content>
+                                    </Button>
                                 </StackPanel>
                             </Grid>
                             <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12.5" Margin="25,6,0,14">
@@ -473,7 +507,13 @@
                     <DataTemplate>
                         <Button Style="{StaticResource ShelfTileStyle}" AutomationProperties.Name="{Binding AutomationName}"
                                 Command="{Binding DataContext.SwitchToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                CommandParameter="{Binding}">
+                                CommandParameter="{Binding}"
+                                ContextMenuService.IsEnabled="{Binding CanClose}">
+                            <Button.ContextMenu>
+                                <ContextMenu Style="{StaticResource ThemedContextMenuStyle}">
+                                    <MenuItem Header="Close windows..." Style="{StaticResource ThemedMenuItemStyle}" Click="ShelfMenuItem_Click"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
                             <StackPanel>
                                 <Grid>
                                     <Grid.ColumnDefinitions>

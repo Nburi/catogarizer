@@ -99,6 +99,20 @@ public sealed class TemporaryCategoryService : IDisposable
         }
     }
 
+    /// <summary>
+    /// The category's windows are being closed by someone else (<see cref="CategoryCloseService"/>): it goes as
+    /// soon as the last one is gone, with no grace period, whether it is the active category or parked.
+    /// </summary>
+    public void ExpectClosed(Guid categoryId)
+    {
+        lock (_gate)
+        {
+            if (_library.Categories.All(c => c.Id != categoryId || !c.IsTemporary)) return;
+            WatchOf(categoryId).CloseRequested = true;
+            EnsurePolling();
+        }
+    }
+
     /// <summary>One look at every temporary category. Public so tests can drive it with a fake clock.</summary>
     public void Tick()
     {

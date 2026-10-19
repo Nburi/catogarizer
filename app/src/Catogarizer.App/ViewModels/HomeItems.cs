@@ -147,6 +147,9 @@ public sealed partial class ShelfItem : ObservableObject
         a is SolidColorBrush x && b is SolidColorBrush y ? x.Color == y.Color : ReferenceEquals(a, b);
 
     public bool CanEdit => !IsUnsorted && !IsTemporary;
+
+    /// <summary>Everything but Unsorted can be closed: its windows are asked to close.</summary>
+    public bool CanClose => !IsUnsorted;
     public bool HasBlocked => BlockedCount > 0;
     public string BlockedTooltip => BlockedCount == 1 ? "Holds back 1 app while active" : $"Holds back {BlockedCount} apps while active";
     public string AutomationName
