@@ -34,7 +34,25 @@ category's windows and brings back the new one's.
   High-Contrast Mono, Graphite Mica, Night Shift, Slate Dusk), switchable
   live, with matching title bars.
 - **Category colors** and real app icons everywhere.
+- **Quick categories**: a temporary category made in a second (home button,
+  `+` key, palette row, tray). Optional name, otherwise "Temp 1". It removes
+  itself when its last window closes (after a short grace period), when you
+  close it, or on restart, and takes you back to where you came from.
 - **CLI**: `switch "<category>"`, `back`, `show-all` next to `run "<trigger>"`.
+- **Saving resources.** Parked categories are slowed down (Windows' efficiency
+  mode and a low priority), their memory is paged out when RAM gets tight, and
+  apps or whole categories you allow are frozen - all undone the moment you
+  switch back, on exit, in the crash handler and on the next start. Every parked
+  tile shows its memory and a state glyph, falls asleep visibly, and a Resources
+  card lists CPU and memory per category with a **Free memory now** button. A
+  pill says "Freed 1.4 GB" when memory pressure was relieved. Apps playing
+  sound, pinned apps, system processes and anything with a window in the active
+  category are never touched. New in Settings: **Save resources while categories
+  are parked** and the list of apps allowed to freeze.
+- **Close category** for every category (hero **Close**, **Ctrl+W**, tile
+  right-click): the windows are asked to close, never the processes; windows that
+  stay open (a Save prompt, an app that keeps running in the tray) are named with
+  a way to them.
 
 ### Changed
 - Blocking follows the active category only. The outgoing category's

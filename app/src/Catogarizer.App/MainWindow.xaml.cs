@@ -37,10 +37,25 @@ public partial class MainWindow : Window
 
     private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.W && Keyboard.Modifiers == ModifierKeys.Control && _viewModel.CanCloseActive)
+        {
+            e.Handled = true;
+            await _viewModel.CloseActiveAsync();
+            return;
+        }
+
         if (Keyboard.FocusedElement is TextBox || Keyboard.Modifiers != ModifierKeys.None) return;
         if (KeyDigits.Of(e.Key) is not { } number) return;
         e.Handled = true;
         await _viewModel.SwitchByNumberAsync(number);
+    }
+
+    /// <summary>"+" starts a quick category; text input (not a key code) so it works on every keyboard layout.</summary>
+    private async void Window_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (e.Text != "+" || Keyboard.FocusedElement is TextBox) return;
+        e.Handled = true;
+        await _viewModel.NewQuickCategoryAsync();
     }
 
     /// <summary>Built per opening, so "Pin"/"Unpin" always matches the current state.</summary>
@@ -50,6 +65,13 @@ public partial class MainWindow : Window
             menu.ItemsSource = _viewModel.BuildWindowMenu(row);
         else
             e.Handled = true;
+    }
+
+    /// <summary>Right-click menu of a shelf tile: close that category.</summary>
+    private async void ShelfMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Parent: ContextMenu { PlacementTarget: FrameworkElement { DataContext: ShelfItem item } } })
+            await _viewModel.CloseShelfCategoryAsync(item);
     }
 
     private async void WindowMenuItem_Click(object sender, RoutedEventArgs e)
@@ -64,6 +86,9 @@ public partial class MainWindow : Window
                 break;
             case PinMenuEntry:
                 await _viewModel.TogglePinAsync(row);
+                break;
+            case FreezeMenuEntry:
+                await _viewModel.ToggleFreezeAsync(row);
                 break;
         }
     }

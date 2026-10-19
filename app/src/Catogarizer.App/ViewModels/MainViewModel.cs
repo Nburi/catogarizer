@@ -8,6 +8,7 @@ using System.Windows.Threading;
 using Catogarizer.App.Services;
 using Catogarizer.Core.Automation;
 using Catogarizer.Core.Models;
+using Catogarizer.Core.Resources;
 using Catogarizer.Core.Services;
 using Catogarizer.Core.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -27,6 +28,7 @@ public partial class MainViewModel : ObservableObject
     private readonly EditorServices _services;
     private readonly LibraryService _library;
     private readonly CategorySwitcher _switcher;
+    private readonly ResourceGovernor _resources;
     private readonly ThemeService _themeService;
     private readonly IDialogService _dialogService;
     private readonly Action<string> _onHotkeyChanged;
@@ -39,6 +41,11 @@ public partial class MainViewModel : ObservableObject
     // ---- Now ----
     [ObservableProperty] private string _activeName = "";
     [ObservableProperty] private bool _activeIsUnsorted;
+    [ObservableProperty] private bool _activeIsTemporary;
+    /// <summary>The active category can be closed: everything but Unsorted.</summary>
+    [ObservableProperty] private bool _canCloseActive;
+    /// <summary>The active category has an editor: not Unsorted, not a quick category.</summary>
+    [ObservableProperty] private bool _canEditActive;
     [ObservableProperty] private Brush _activeColor = Brushes.Gray;
     [ObservableProperty] private Brush _heroTint = Brushes.Transparent;
     [ObservableProperty] private string _activeSinceText = "";
@@ -67,6 +74,32 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<ShelfItem> Shelf { get; } = new();
     [ObservableProperty] private bool _hasCategories;
 
+    // ---- Resources ----
+    public ObservableCollection<ResourceRow> ResourceRows { get; } = new();
+    [ObservableProperty] private string _memoryLoadText = "";
+    [ObservableProperty] private string? _parkedBytesText;
+
+    /// <summary>The one calm line under the Resources rows: off, nothing parked, or what could not be slowed down.</summary>
+    [ObservableProperty] private string? _resourcesNote;
+
+    /// <summary>"Free memory now" is offered while something is parked and the setting is on.</summary>
+    [ObservableProperty] private bool _canFreeMemory;
+
+    /// <summary>The answer to "Free memory now" when there was nothing to free; gone with the next switch.</summary>
+    [ObservableProperty] private string? _freeNowText;
+    private Guid? _freeNowCategoryId;
+
+    // ---- Closing a category ----
+    [ObservableProperty] private bool _isClosing;
+
+    /// <summary>The calm line after a close: "Comms closed - 5 windows." or what stayed open. Gone with the next switch.</summary>
+    [ObservableProperty] private string? _closeReportText;
+
+    /// <summary>Some windows stayed open, so the banner offers a way to them.</summary>
+    [ObservableProperty] private bool _closeReportCanShow;
+    private CloseReport? _closeReport;
+    private Guid? _closeReportActiveId;
+
     // ---- Footer / chrome ----
     [ObservableProperty] private string? _nextTriggerText;
     [ObservableProperty] private IReadOnlyList<string> _hotkeyKeys = [];
@@ -82,6 +115,7 @@ public partial class MainViewModel : ObservableObject
         _library = services.Library;
         _dialogService = services.Dialogs;
         _switcher = switcher;
+        _resources = services.Resources;
         _themeService = themeService;
         _onHotkeyChanged = onHotkeyChanged;
         _updateNotifier = updateNotifier;
@@ -95,6 +129,7 @@ public partial class MainViewModel : ObservableObject
         _refreshDebounce.Stop();
 
         switcher.StateChanged += RequestRefresh;
+        _resources.Changed += RequestRefresh;
         themeService.ThemeChanged += RequestRefresh;
         updateNotifier.Changed += RequestRefresh;
         appBlockingService.AppBlocked += name =>
@@ -110,7 +145,19 @@ public partial class MainViewModel : ObservableObject
     /// Set by the view. While the home sits hidden in the tray, events don't refresh it - windows
     /// appear all day - and showing it refreshes once instead.
     /// </summary>
-    public bool IsViewVisible { get; set; }
+    public bool IsViewVisible
+    {
+        get => _isViewVisible;
+        set
+        {
+            _isViewVisible = value;
+            // Figures are only measured every few seconds while someone looks at them.
+            _resources.UsageWanted = value;
+            if (value) _resources.RequestTick();
+        }
+    }
+
+    private bool _isViewVisible;
 
     /// <summary>Safe from any thread; bursts of events collapse into one refresh.</summary>
     public void RequestRefresh() => _dispatcher.BeginInvoke(() =>
@@ -127,12 +174,14 @@ public partial class MainViewModel : ObservableObject
         var categories = _library.Categories.OrderBy(c => c.SortOrder).ToList();
         var active = categories.FirstOrDefault(c => c.Id == activeId);
 
-        HasCategories = categories.Count > 0;
+        // Quick categories don't count: with only one of those, the first-run card still has a job.
+        HasCategories = categories.Any(c => !c.IsTemporary);
         HotkeyKeys = _library.Settings.CommandPaletteHotkey.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
         RefreshNow(active, sessions);
         RefreshBack(categories, sessions);
         RefreshShelf(categories, activeId, sessions);
+        RefreshResources(categories, activeId, sessions);
         RefreshPinned();
         RefreshNextTrigger(categories);
         UpdateText = _updateNotifier.Visible is { } update ? $"Version {update.Latest} is available." : null;
@@ -142,6 +191,9 @@ public partial class MainViewModel : ObservableObject
     {
         var activeId = _switcher.ActiveCategoryId;
         ActiveIsUnsorted = active is null;
+        ActiveIsTemporary = active is { IsTemporary: true };
+        CanCloseActive = active is not null;
+        CanEditActive = active is { IsTemporary: false };
         ActiveName = _library.NameOf(activeId);
         var color = _themeService.ColorFor(active);
         ActiveColor = ThemeService.FrozenBrush(color);
@@ -169,15 +221,18 @@ public partial class MainViewModel : ObservableObject
         NoWindowsText = windows.Count > 0 ? null
             : opening ? $"Opening {string.Join(", ", _library.AppsOf(active!).Select(a => a.Name))}..."
             : active is null ? "Nothing open outside your categories."
+            : active.IsTemporary ? "Windows you open now join this category. It disappears when the last one closes."
             : "Windows you open now join this category.";
 
         // A launch problem belongs to the switch that caused it; the next switch clears it.
         if (Notice is not null && _noticeCategoryId != activeId) Notice = null;
+        if (CloseReportText is not null && _closeReportActiveId != activeId) CloseReportText = null;
 
         var blocked = active is null ? [] : _library.BlockedAppsOf(active);
         Replace(HeldBack, blocked.Select(b => new HeldBackRow(b.Name, PathOrNull(b.ProcessNameOrPath), RunningProcessOf(b.ProcessNameOrPath))));
         HeldBackEmptyText = blocked.Count > 0 ? null
             : active is null ? "Unsorted never holds anything back."
+            : active.IsTemporary ? "Quick categories don't hold anything back."
             : "Nothing is held back here. Add distracting apps in the editor.";
         // Only for this visit: coming back later, an old attempt would read like a new one.
         LastBlockedText = _lastBlocked is { } last && last.CategoryId == activeId && last.At >= _switcher.ActiveSince
@@ -217,6 +272,7 @@ public partial class MainViewModel : ObservableObject
                 KeyText = _library.KeyOf(category.Id),
                 Color = ThemeService.FrozenBrush(_themeService.ColorFor(category)),
                 IsUnsorted = false,
+                IsTemporary = category.IsTemporary,
                 Icons = apps.Take(MaxShelfIcons).Select(a => new TemplateIcon(a.Name, a.ExecutablePath)).ToList(),
                 MoreIconsText = apps.Count > MaxShelfIcons ? $"+{apps.Count - MaxShelfIcons}" : null,
                 StateText = CategoryStateText.Describe(parked, missing, apps.Count, isUnsorted: false,
@@ -245,6 +301,7 @@ public partial class MainViewModel : ObservableObject
                 KeyText = _library.KeyOf(CategorySwitchService.Uncategorized),
                 Color = ThemeService.FrozenBrush(_themeService.ColorFor(null)),
                 IsUnsorted = true,
+                IsTemporary = false,
                 Icons = parkedApps.Take(MaxShelfIcons).Select(x => new TemplateIcon(AppNames.ForProcess(x.Window.ProcessId, x.Window.ProcessName), x.Path!)).ToList(),
                 MoreIconsText = parkedApps.Count > MaxShelfIcons ? $"+{parkedApps.Count - MaxShelfIcons}" : null,
                 StateText = CategoryStateText.Describe(parked, 0, 0, isUnsorted: true),
@@ -255,10 +312,63 @@ public partial class MainViewModel : ObservableObject
             });
         }
 
+        var usage = _resources.Usage;
+        foreach (var item in items)
+        {
+            var costs = usage.FirstOrDefault(u => u.CategoryId == item.Id);
+            item.Level = costs?.Level ?? ResourceLevel.Normal;
+            item.MemoryBytes = costs?.PrivateBytes ?? 0;
+        }
+
+        // Same tiles as before: update only what they cost, in place, so a tile can animate falling asleep
+        // (a rebuilt tile would start over, and the shelf would flicker every few seconds).
+        if (Shelf.Count == items.Count && Shelf.Zip(items).All(pair => pair.First.SameEntryAs(pair.Second)))
+        {
+            foreach (var (shown, fresh) in Shelf.Zip(items))
+            {
+                shown.Level = fresh.Level;
+                shown.MemoryBytes = fresh.MemoryBytes;
+            }
+            return;
+        }
+
         // Keep the item a switch is running on, so its "Opening..." state survives refreshes.
         var switching = Shelf.FirstOrDefault(s => s.IsSwitching)?.Id;
         Replace(Shelf, items);
         if (switching is { } id && Shelf.FirstOrDefault(s => s.Id == id) is { } still) still.IsSwitching = true;
+    }
+
+    private void RefreshResources(List<Category> categories, Guid activeId, IReadOnlyDictionary<Guid, IReadOnlyList<OpenWindowInfo>> sessions)
+    {
+        var usage = _resources.Usage;
+        var total = usage.Sum(u => u.PrivateBytes);
+        Replace(ResourceRows, usage.OrderByDescending(u => u.PrivateBytes).Select(u =>
+        {
+            var category = categories.FirstOrDefault(c => c.Id == u.CategoryId);
+            var state = u.CategoryId == activeId ? "Here" : u.Level switch
+            {
+                ResourceLevel.Eco => "Eco",
+                ResourceLevel.Asleep => "Asleep",
+                ResourceLevel.Frozen => "Frozen",
+                _ => "Awake",
+            };
+            return new ResourceRow(_library.NameOf(u.CategoryId), _themeService.ColorFor(category), state, u.Level,
+                ByteSize.Format(u.PrivateBytes), $"{Math.Round(u.CpuPercent)} %", total > 0 ? u.PrivateBytes * 100.0 / total : 0);
+        }));
+
+        var parked = usage.Where(u => u.CategoryId != activeId).ToList();
+        var parkedBytes = parked.Sum(u => u.PrivateBytes);
+        ParkedBytesText = parkedBytes > 0 ? $"Parked: {ByteSize.Format(parkedBytes)}" : null;
+        MemoryLoadText = _resources.MemoryLoadPercent > 0 ? $"Memory {_resources.MemoryLoadPercent} % used" : "";
+
+        var untouchable = parked.Sum(u => u.UntouchableProcesses);
+        var anythingParked = sessions.Any(s => s.Key != activeId && s.Value.Count > 0);
+        CanFreeMemory = anythingParked && _library.Settings.SaveResources;
+        if (FreeNowText is not null && _freeNowCategoryId != activeId) FreeNowText = null;
+        ResourcesNote = !_library.Settings.SaveResources ? "Resource saving is off. Turn it on in Settings."
+            : !anythingParked ? "Nothing is parked, so nothing is slowed down. Park a category by switching away from it."
+            : untouchable > 0 ? $"{untouchable} {(untouchable == 1 ? "process runs" : "processes run")} as administrator or are protected and stay at full speed. Catogarizer never asks for admin rights."
+            : null;
     }
 
     private void RefreshPinned() =>
@@ -343,16 +453,113 @@ public partial class MainViewModel : ObservableObject
         OpenEditor(category.Id, suggestOpenApps: true);
     }
 
+    /// <summary>Home button, <c>+</c> key: a category for the next hour that removes itself (CONCEPT.md "Temporary categories").</summary>
+    [RelayCommand]
+    public async Task NewQuickCategoryAsync()
+    {
+        Notice = null;
+        await _services.QuickCategory.StartAsync();
+        Refresh();
+    }
+
+    /// <summary>Hero button, Ctrl+W: closes the active category - its windows are asked to close, nothing is killed.</summary>
+    [RelayCommand]
+    public Task CloseActiveAsync() => CloseCategoryAsync(_switcher.ActiveCategoryId);
+
+    /// <summary>Right-click a tile on the shelf: closes that parked category without switching to it.</summary>
+    [RelayCommand]
+    public Task CloseShelfCategoryAsync(ShelfItem item) => CloseCategoryAsync(item.Id);
+
+    private async Task CloseCategoryAsync(Guid id)
+    {
+        if (!CategoryCloseService.CanClose(id)) return;
+
+        var windows = _switcher.GetSessions().TryGetValue(id, out var list) ? list : [];
+        if (windows.Count > 0)
+        {
+            var confirmed = _dialogService.ShowConfirm($"Close \"{_library.NameOf(id)}\"?",
+                (windows.Count == 1 ? "Its window will be asked to close." : $"Its {windows.Count} windows will be asked to close.")
+                + " Apps with unsaved work will ask you first. The programs keep running; a chat app may stay in the tray.",
+                "Close windows",
+                windows.Select(WindowLabel).ToList());
+            if (!confirmed) return;
+        }
+
+        Notice = null;
+        CloseReportText = null;
+        IsClosing = true;
+        CloseReport? report;
+        try
+        {
+            report = await Task.Run(() => _services.CloseService.Close(id));
+        }
+        finally
+        {
+            IsClosing = false;
+        }
+        ShowCloseReport(report);
+        Refresh();
+    }
+
+    /// <summary>"Title - App", or just one of them when they say the same ("Zeichentabelle - Zeichentabelle" reads like a stutter).</summary>
+    private static string WindowLabel(OpenWindowInfo window)
+    {
+        var app = AppNames.ForProcess(window.ProcessId, window.ProcessName);
+        var title = window.Title.Trim();
+        return title.Length == 0 ? app
+            : string.Equals(title, app, StringComparison.OrdinalIgnoreCase) || title.EndsWith(" - " + app, StringComparison.OrdinalIgnoreCase) ? title
+            : $"{title} - {app}";
+    }
+
+    /// <summary>All closed is one calm line; windows that stayed are named, with a way to them.</summary>
+    private void ShowCloseReport(CloseReport? report)
+    {
+        if (report is null || report.Requested == 0) return;
+
+        _closeReport = report;
+        _closeReportActiveId = _switcher.ActiveCategoryId;
+        CloseReportCanShow = report.StillOpen.Count > 0;
+        var windows = report.Requested == 1 ? "1 window" : $"{report.Requested} windows";
+        if (report.StillOpen.Count == 0)
+        {
+            CloseReportText = $"{report.CategoryName} closed - {windows}.";
+            return;
+        }
+
+        var names = string.Join(", ", report.StillOpen.Take(2).Select(WindowLabel));
+        var more = report.StillOpen.Count > 2 ? $" and {report.StillOpen.Count - 2} more" : "";
+        CloseReportText = $"{report.CategoryName}: {report.Closed} of {report.Requested} windows closed. "
+            + (report.StillOpen.Count == 1 ? "1 is" : $"{report.StillOpen.Count} are") + $" still open: {names}{more}. "
+            + "An app may be asking to save, or it keeps its window in the tray.";
+    }
+
+    /// <summary>"Show them": goes to the category if it is parked, and brings the first window that stayed to the front.</summary>
+    [RelayCommand]
+    private async Task ShowRemainingAsync()
+    {
+        if (_closeReport is not { StillOpen.Count: > 0 } report) return;
+
+        CloseReportText = null;
+        if (_switcher.ActiveCategoryId != report.CategoryId)
+            ShowFailures(await Task.Run(() => _switcher.SwitchTo(report.CategoryId)));
+        var open = report.StillOpen.FirstOrDefault(w => _services.WindowManager.IsWindowOpen(w.Handle));
+        if (open is not null) _services.WindowManager.BringToFront(open.Handle);
+        Refresh();
+    }
+
+    [RelayCommand]
+    private void DismissCloseReport() => CloseReportText = null;
+
     [RelayCommand]
     private void EditActive()
     {
-        if (!ActiveIsUnsorted) OpenEditor(_switcher.ActiveCategoryId);
+        if (CanEditActive) OpenEditor(_switcher.ActiveCategoryId);
     }
 
     [RelayCommand]
     private void EditCategory(ShelfItem item)
     {
-        if (!item.IsUnsorted) OpenEditor(item.Id);
+        if (item.CanEdit) OpenEditor(item.Id);
     }
 
     private void OpenEditor(Guid categoryId, bool suggestOpenApps = false)
@@ -389,6 +596,7 @@ public partial class MainViewModel : ObservableObject
         var saved = _dialogService.ShowSettings(vm);
         if (saved && vm.HotkeyChanged)
             _onHotkeyChanged(_library.Settings.CommandPaletteHotkey);
+        if (saved) _resources.RequestTick();
         Refresh();
     }
 
@@ -452,7 +660,44 @@ public partial class MainViewModel : ObservableObject
             entries.Add(new MenuSeparatorEntry());
         }
         entries.Add(new PinMenuEntry(_switcher.FindPinned(row.ProcessName) is null ? "Pin app (always visible)" : "Unpin app"));
+        entries.Add(new FreezeMenuEntry(_library.FindFreezableApp(row.ProcessName) is null ? "Allow freezing while parked" : "Don't freeze this app"));
         return entries;
+    }
+
+    /// <summary>Context menu on a window row: lets the app be suspended while its category is parked, or takes that back.</summary>
+    public async Task ToggleFreezeAsync(WindowRow row)
+    {
+        Notice = null;
+        var path = AppNames.ExecutableOf(row.ProcessId) ?? row.ProcessName;
+        try
+        {
+            await Task.Run(() =>
+            {
+                if (_library.FindFreezableApp(row.ProcessName) is { } allowed) _library.RemoveFreezableApp(allowed.Id);
+                else _library.AddFreezableApp(row.AppName, path);
+            });
+        }
+        catch (ArgumentException)
+        {
+            _noticeCategoryId = _switcher.ActiveCategoryId;
+            NoticeCanEdit = false;
+            Notice = $"{row.AppName} couldn't be changed.";
+            NoticeRaised?.Invoke(this, EventArgs.Empty);
+        }
+        _resources.RequestTick();
+        Refresh();
+    }
+
+    /// <summary>"Free memory now" in the Resources card: pages out every parked app that may be touched, whatever the load.</summary>
+    [RelayCommand]
+    private async Task FreeMemoryNowAsync()
+    {
+        FreeNowText = null;
+        _freeNowCategoryId = _switcher.ActiveCategoryId;
+        var freed = await Task.Run(_resources.FreeMemoryNow);
+        // Success is the "Freed ..." pill, which fires on its own; only an empty result needs words.
+        if (freed is null) FreeNowText = "Nothing more to free right now.";
+        Refresh();
     }
 
     /// <summary>Context menu on a window row: pins the window's app so it is never hidden, or unpins it.</summary>

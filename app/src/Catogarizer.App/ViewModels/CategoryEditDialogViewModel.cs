@@ -9,6 +9,7 @@ public partial class CategoryEditDialogViewModel : ObservableObject
 {
     private readonly IReadOnlyList<Category> _existingCategories;
     private readonly Guid? _editingCategoryId;
+    private readonly string? _quickSuggestion;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
@@ -17,15 +18,24 @@ public partial class CategoryEditDialogViewModel : ObservableObject
     [ObservableProperty]
     private string? _errorMessage;
 
-    public string HeadingText => _editingCategoryId is null ? "New category" : "Rename category";
-    public string SaveButtonText => _editingCategoryId is null ? "Add" : "Save";
+    /// <summary>A quick (temporary) category: the name is optional and an empty one is replaced by a generated one.</summary>
+    public bool IsQuick => _quickSuggestion is not null;
+
+    public string HeadingText => IsQuick ? "Quick category" : _editingCategoryId is null ? "New category" : "Rename category";
+    public string SaveButtonText => IsQuick ? "Start" : _editingCategoryId is null ? "Add" : "Save";
+
+    public string HintText => IsQuick
+        ? $"Optional. Left empty it is called {_quickSuggestion}. It disappears when its last window closes, when you close it, or when Catogarizer restarts."
+        : "For example Deep Work, Comms or Study. Next you pick the apps it opens.";
 
     public event EventHandler? RequestClose;
 
-    public CategoryEditDialogViewModel(IReadOnlyList<Category> existingCategories, Category? editing = null)
+    /// <param name="quickSuggestion">Set for a quick category: the name it gets when the field stays empty.</param>
+    public CategoryEditDialogViewModel(IReadOnlyList<Category> existingCategories, Category? editing = null, string? quickSuggestion = null)
     {
         _existingCategories = existingCategories;
         _editingCategoryId = editing?.Id;
+        _quickSuggestion = quickSuggestion;
         if (editing is not null) _name = editing.Name;
     }
 
@@ -38,5 +48,6 @@ public partial class CategoryEditDialogViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanSave))]
     private void Save() => RequestClose?.Invoke(this, EventArgs.Empty);
 
-    private bool CanSave() => CategoryValidator.ValidateName(Name, _existingCategories, _editingCategoryId).IsValid;
+    private bool CanSave() => (IsQuick && Name.Trim().Length == 0)
+        || CategoryValidator.ValidateName(Name, _existingCategories, _editingCategoryId).IsValid;
 }

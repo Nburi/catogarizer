@@ -7,8 +7,12 @@
         Icon="Assets/app.ico"
         Background="{DynamicResource BgBrush}"
         FontFamily="{StaticResource UiFont}"
-        PreviewKeyDown="Window_PreviewKeyDown" SizeChanged="Window_SizeChanged">
+        PreviewKeyDown="Window_PreviewKeyDown" PreviewTextInput="Window_PreviewTextInput" SizeChanged="Window_SizeChanged">
     <Window.Resources>
+        <!-- State glyphs of a parked category tile: leaf = Eco, moon = Asleep, snowflake = Frozen. -->
+        <Geometry x:Key="LeafGeometry">M3,13 C3,7 7,4 13,4 C13,10 10,14 4,14 M3,13 L8,8</Geometry>
+        <Geometry x:Key="MoonGeometry">M13,9.5 A5.5,5.5 0 1 1 6.5,3 A4.5,4.5 0 0 0 13,9.5 Z</Geometry>
+        <Geometry x:Key="SnowGeometry">M8,1.5 L8,14.5 M2.4,4.7 L13.6,11.3 M2.4,11.3 L13.6,4.7</Geometry>
         <Geometry x:Key="ShieldGeometry">M8,1.8 L13,3.6 L13,7.7 C13,10.7 10.9,12.9 8,14.2 C5.1,12.9 3,10.7 3,7.7 L3,3.6 Z</Geometry>
 
         <Style x:Key="BoxStyle" TargetType="Border">
@@ -43,9 +47,30 @@
                             <Border.RenderTransform>
                                 <TranslateTransform x:Name="Lift"/>
                             </Border.RenderTransform>
-                            <ContentPresenter/>
+                            <ContentPresenter x:Name="Body"/>
                         </Border>
                         <ControlTemplate.Triggers>
+                            <!-- The tile falls asleep: its content dims slowly when the category is put to rest, and wakes quickly. -->
+                            <DataTrigger Binding="{Binding IsResting}" Value="True">
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Body" Storyboard.TargetProperty="Opacity" To="0.62" Duration="0:0:0.6">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Body" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.ExitActions>
+                            </DataTrigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Tile" Property="BorderBrush" Value="{Binding Color}"/>
                                 <Trigger.EnterActions>
@@ -106,6 +131,10 @@
                     <Button Content="&#x2699;" Style="{StaticResource GhostIconButtonStyle}" Width="34" Height="34" FontSize="15"
                             Margin="0,0,8,0" Command="{Binding OpenSettingsCommand}" ToolTip="Settings"
                             AutomationProperties.Name="Settings"/>
+                    <Button Content="+ Quick category" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                            Command="{Binding NewQuickCategoryCommand}"
+                            ToolTip="A temporary category that disappears when its last window closes  ·  press +"
+                            AutomationProperties.Name="New quick category"/>
                     <Button Content="+ New category" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding NewCategoryCommand}"/>
                 </StackPanel>
             </Grid>
@@ -145,6 +174,25 @@
                             Visibility="{Binding NoticeCanEdit, Converter={StaticResource BoolToVis}}"/>
                     <Button Grid.Column="2" Content="&#x2715;" Style="{StaticResource GhostIconButtonStyle}"
                             Command="{Binding DismissNoticeCommand}" ToolTip="Dismiss" AutomationProperties.Name="Dismiss"/>
+                </Grid>
+            </Border>
+
+            <!-- After closing a category: all closed, or what stayed open and a way to it. Calm, not a problem. -->
+            <Border Margin="0,0,0,14" CornerRadius="{DynamicResource ControlRadius}" Padding="14,10"
+                    Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                    Visibility="{Binding CloseReportText, Converter={StaticResource NullToCollapsedConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding CloseReportText}" TextWrapping="Wrap" Foreground="{DynamicResource InkBrush}" FontSize="12.5" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="Show them" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5" Margin="12,0,6,0"
+                            VerticalAlignment="Center" Command="{Binding ShowRemainingCommand}"
+                            Visibility="{Binding CloseReportCanShow, Converter={StaticResource BoolToVis}}"/>
+                    <Button Grid.Column="2" Content="&#x2715;" Style="{StaticResource GhostIconButtonStyle}"
+                            Command="{Binding DismissCloseReportCommand}" ToolTip="Dismiss" AutomationProperties.Name="Dismiss"/>
                 </Grid>
             </Border>
 
@@ -198,10 +246,35 @@
                                 <TextBlock Grid.Column="1" Text="{Binding ActiveName}" FontFamily="{DynamicResource HeadingFont}" FontSize="34"
                                            FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"
                                            VerticalAlignment="Center"/>
-                                <Button Grid.Column="2" Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Padding="12,6"
-                                        VerticalAlignment="Center" Margin="12,0,0,0" Command="{Binding EditActiveCommand}"
-                                        AutomationProperties.Name="Edit this category"
-                                        Visibility="{Binding ActiveIsUnsorted, Converter={StaticResource InverseBoolToVis}}"/>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                                    <Border Style="{StaticResource KeycapStyle}" Margin="0,0,10,0" Padding="7,2" VerticalAlignment="Center"
+                                            ToolTip="Temporary: it is not saved and disappears when its last window closes"
+                                            Visibility="{Binding ActiveIsTemporary, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="TEMP" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                    </Border>
+                                    <Button Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Padding="12,6"
+                                            Command="{Binding EditActiveCommand}" AutomationProperties.Name="Edit this category"
+                                            Visibility="{Binding CanEditActive, Converter={StaticResource BoolToVis}}"/>
+                                    <Button Style="{StaticResource SecondaryButtonStyle}" Padding="12,6" Margin="8,0,0,0"
+                                            Command="{Binding CloseActiveCommand}" ToolTip="Ask this category's windows to close  ·  Ctrl+W"
+                                            AutomationProperties.Name="Close this category"
+                                            Visibility="{Binding CanCloseActive, Converter={StaticResource BoolToVis}}">
+                                        <Button.Content>
+                                            <TextBlock>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="Close"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsClosing}" Value="True">
+                                                                <Setter Property="Text" Value="Closing..."/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Button.Content>
+                                    </Button>
+                                </StackPanel>
                             </Grid>
                             <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12.5" Margin="25,6,0,14">
                                 <Run Text="{Binding ActiveSinceText, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding WindowCountText, Mode=OneWay}"/>
@@ -280,6 +353,73 @@
                                                Visibility="{Binding HeldBackEmptyText, Converter={StaticResource NullToCollapsedConverter}}"/>
                                     <TextBlock Text="{Binding LastBlockedText}" Style="{StaticResource MutedTextStyle}" FontSize="11.5" TextWrapping="Wrap" Margin="0,2,0,0"
                                                Visibility="{Binding LastBlockedText, Converter={StaticResource NullToCollapsedConverter}}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Resources: what each category costs. One level deeper than the tiles (PRINCIPLES.md, value 5). -->
+                            <Border Style="{StaticResource BoxStyle}">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock Text="RESOURCES" Style="{StaticResource SectionLabelStyle}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding MemoryLoadText}" Style="{StaticResource MutedTextStyle}" FontSize="11.5"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <ItemsControl ItemsSource="{Binding ResourceRows}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,8" AutomationProperties.Name="{Binding}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto" MinWidth="58"/>
+                                                        <ColumnDefinition Width="Auto" MinWidth="38"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+                                                    <Ellipse Width="9" Height="9" Fill="{Binding Color}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding StateText}" FontSize="11.5" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding StateText}" Value="Asleep">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding StateText}" Value="Frozen">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Grid.Column="3" Text="{Binding BytesText}" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"
+                                                               Foreground="{DynamicResource MutedBrush}" TextAlignment="Right" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="4" Text="{Binding CpuText}" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"
+                                                               Foreground="{DynamicResource MutedBrush}" TextAlignment="Right" VerticalAlignment="Center"/>
+                                                    <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,4,0,0" Style="{StaticResource ShareBarStyle}"
+                                                                 Value="{Binding SharePercent, Mode=OneWay}" Foreground="{Binding Color}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding ResourcesNote}" Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap"
+                                               Visibility="{Binding ResourcesNote, Converter={StaticResource NullToCollapsedConverter}}"/>
+                                    <Grid Margin="0,2,0,0">
+                                        <TextBlock Text="{Binding ParkedBytesText}" Style="{StaticResource MutedTextStyle}" FontSize="12" VerticalAlignment="Center"
+                                                   Visibility="{Binding ParkedBytesText, Converter={StaticResource NullToCollapsedConverter}}"/>
+                                        <Button Content="Free memory now" Style="{StaticResource GhostRowButtonStyle}" Padding="6,2" HorizontalAlignment="Right"
+                                                Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold"
+                                                Command="{Binding FreeMemoryNowCommand}" AutomationProperties.Name="Free memory now"
+                                                ToolTip="Pages out every parked app that may be touched, whatever the memory load"
+                                                Visibility="{Binding CanFreeMemory, Converter={StaticResource BoolToVis}}"/>
+                                    </Grid>
+                                    <TextBlock Text="{Binding FreeNowText}" Style="{StaticResource MutedTextStyle}" FontSize="12" Margin="0,2,0,0"
+                                               Visibility="{Binding FreeNowText, Converter={StaticResource NullToCollapsedConverter}}"/>
                                 </StackPanel>
                             </Border>
 
@@ -367,7 +507,13 @@
                     <DataTemplate>
                         <Button Style="{StaticResource ShelfTileStyle}" AutomationProperties.Name="{Binding AutomationName}"
                                 Command="{Binding DataContext.SwitchToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                CommandParameter="{Binding}">
+                                CommandParameter="{Binding}"
+                                ContextMenuService.IsEnabled="{Binding CanClose}">
+                            <Button.ContextMenu>
+                                <ContextMenu Style="{StaticResource ThemedContextMenuStyle}">
+                                    <MenuItem Header="Close windows..." Style="{StaticResource ThemedMenuItemStyle}" Click="ShelfMenuItem_Click"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
                             <StackPanel>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -376,7 +522,56 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <Ellipse Width="9" Height="9" Fill="{Binding Color}" VerticalAlignment="Top" Margin="0,6,8,0"/>
+                                    <Grid Width="9" Height="9" VerticalAlignment="Top" Margin="0,6,8,0">
+                                        <Ellipse Fill="{Binding Color}">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsResting}" Value="True">
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.5"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                            <DataTrigger.ExitActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.ExitActions>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <Ellipse Stroke="{Binding Color}" StrokeThickness="1.6" Opacity="0">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsResting}" Value="True">
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.5"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                            <DataTrigger.ExitActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.ExitActions>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                    </Grid>
                                     <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                                TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="38" VerticalAlignment="Top"
                                                ToolTip="{Binding Name}"/>
@@ -384,7 +579,12 @@
                                             Margin="4,-4,2,-4" ToolTip="Edit" AutomationProperties.Name="{Binding Name, StringFormat=Edit {0}}"
                                             Command="{Binding DataContext.EditCategoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             CommandParameter="{Binding}"
-                                            Visibility="{Binding IsUnsorted, Converter={StaticResource InverseBoolToVis}}"/>
+                                            Visibility="{Binding CanEdit, Converter={StaticResource BoolToVis}}"/>
+                                    <Border Grid.Column="2" Style="{StaticResource KeycapStyle}" Margin="4,0,6,0" Padding="6,1" VerticalAlignment="Top"
+                                            ToolTip="Temporary: disappears when its last window closes"
+                                            Visibility="{Binding IsTemporary, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="TEMP" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                    </Border>
                                     <Border Grid.Column="3" Style="{StaticResource KeycapStyle}" VerticalAlignment="Top"
                                             Visibility="{Binding KeyText, Converter={StaticResource NullToCollapsedConverter}}">
                                         <TextBlock Text="{Binding KeyText}" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" FontWeight="SemiBold"
@@ -430,12 +630,53 @@
                                             </TextBlock.Style>
                                         </TextBlock>
                                     </Border>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                ToolTip="{Binding BlockedTooltip}"
-                                                Visibility="{Binding HasBlocked, Converter={StaticResource BoolToVis}}">
-                                        <Path Data="{StaticResource ShieldGeometry}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.4"
-                                              Width="12" Height="13" Stretch="Uniform" Margin="0,0,4,0"/>
-                                        <TextBlock Text="{Binding BlockedCount}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,10,0"
+                                                    ToolTip="{Binding BlockedTooltip}"
+                                                    Visibility="{Binding HasBlocked, Converter={StaticResource BoolToVis}}">
+                                            <Path Data="{StaticResource ShieldGeometry}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.4"
+                                                  Width="12" Height="13" Stretch="Uniform" Margin="0,0,4,0"/>
+                                            <TextBlock Text="{Binding BlockedCount}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                        </StackPanel>
+                                        <!-- What the category costs: a state glyph (only when it was put to rest) and its memory. -->
+                                        <StackPanel Orientation="Horizontal" ToolTip="{Binding LevelTooltip}"
+                                                    Visibility="{Binding HasMemory, Converter={StaticResource BoolToVis}}">
+                                            <Path Width="13" Height="13" Stretch="Uniform" StrokeThickness="1.5" StrokeLineJoin="Round"
+                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" Margin="0,0,5,0" VerticalAlignment="Center"
+                                                  Visibility="{Binding IsResting, Converter={StaticResource BoolToVis}}">
+                                                <Path.Style>
+                                                    <Style TargetType="Path">
+                                                        <Setter Property="Data" Value="{StaticResource LeafGeometry}"/>
+                                                        <Setter Property="Stroke" Value="{DynamicResource MutedBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LevelKind}" Value="Asleep">
+                                                                <Setter Property="Data" Value="{StaticResource MoonGeometry}"/>
+                                                                <Setter Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding LevelKind}" Value="Frozen">
+                                                                <Setter Property="Data" Value="{StaticResource SnowGeometry}"/>
+                                                                <Setter Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Path.Style>
+                                            </Path>
+                                            <c:MemoryText Bytes="{Binding MemoryBytes}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center">
+                                                <c:MemoryText.Style>
+                                                    <Style TargetType="c:MemoryText">
+                                                        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LevelKind}" Value="Asleep">
+                                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding LevelKind}" Value="Frozen">
+                                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </c:MemoryText.Style>
+                                            </c:MemoryText>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>

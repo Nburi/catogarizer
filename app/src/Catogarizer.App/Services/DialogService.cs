@@ -28,8 +28,8 @@ public sealed class DialogService : IDialogService
 
     public void ShowCategoryEditor(CategoryEditorViewModel viewModel) => ShowModal(new CategoryEditorWindow(viewModel));
 
-    public bool ShowConfirm(string heading, string message, string confirmText = "Delete") =>
-        ShowModal(new ConfirmWindow(heading, message, confirmText)) == true;
+    public bool ShowConfirm(string heading, string message, string confirmText = "Delete", IReadOnlyList<string>? items = null) =>
+        ShowModal(new ConfirmWindow(heading, message, confirmText, items)) == true;
 
     public (bool Saved, WindowRect? Placement) ShowPlacement(PlacementDialogViewModel viewModel)
     {

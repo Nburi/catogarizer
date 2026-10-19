@@ -117,6 +117,24 @@ public partial class CategoryEditorViewModel : ObservableObject
         }
     }
 
+    // ---------------- While parked ----------------
+
+    // Three radio buttons over one setting: each reads "is this the mode" and sets it when it becomes checked.
+    public bool FreezeNever { get => Category.FreezeMode == FreezeMode.Never; set { if (value) SetFreezeMode(FreezeMode.Never); } }
+    public bool FreezeWhenTight { get => Category.FreezeMode == FreezeMode.WhenTight; set { if (value) SetFreezeMode(FreezeMode.WhenTight); } }
+    public bool FreezeImmediately { get => Category.FreezeMode == FreezeMode.Immediately; set { if (value) SetFreezeMode(FreezeMode.Immediately); } }
+
+    private void SetFreezeMode(FreezeMode mode)
+    {
+        if (Category.FreezeMode == mode) return;
+        _library.SetFreezeMode(CategoryId, mode);
+        OnPropertyChanged(nameof(FreezeNever));
+        OnPropertyChanged(nameof(FreezeWhenTight));
+        OnPropertyChanged(nameof(FreezeImmediately));
+        // The governor follows the new permission on its next look: right away if it was frozen and may not be now.
+        _services.Resources.RequestTick();
+    }
+
     // ---------------- Apps it opens with ----------------
 
     private void RefreshLists()

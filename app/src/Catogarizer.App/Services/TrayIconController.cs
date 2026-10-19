@@ -23,12 +23,15 @@ public sealed class TrayIconController : IDisposable
     private readonly Window _mainWindow;
     private readonly Action<SwitchResult> _onSwitched;
     private readonly UpdateNotifier _updateNotifier;
+    private readonly QuickCategoryFlow _quickCategory;
     private readonly TaskbarIcon _icon;
     private bool _isExiting;
 
     public TrayIconController(LibraryService library, CategorySwitcher switcher, IAppBlockingService appBlockingService,
-        IAutostartService autostartService, Window mainWindow, UpdateNotifier updateNotifier, Action<SwitchResult> onSwitched)
+        IAutostartService autostartService, Window mainWindow, UpdateNotifier updateNotifier, QuickCategoryFlow quickCategory,
+        Action<SwitchResult> onSwitched)
     {
+        _quickCategory = quickCategory;
         _library = library;
         _switcher = switcher;
         _autostartService = autostartService;
@@ -132,6 +135,10 @@ public sealed class TrayIconController : IDisposable
             menu.Items.Add(SwitchItem(category.Id, category.Name, category.Id == active));
         menu.Items.Add(SwitchItem(CategorySwitchService.Uncategorized, CategorySwitchService.UncategorizedName,
             active == CategorySwitchService.Uncategorized));
+
+        var quickItem = new MenuItem { Header = "New quick category..." };
+        quickItem.Click += (_, _) => _quickCategory.Begin();
+        menu.Items.Add(quickItem);
 
         menu.Items.Add(new Separator());
 

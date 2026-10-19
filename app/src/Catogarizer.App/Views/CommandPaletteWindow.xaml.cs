@@ -91,6 +91,14 @@ public partial class CommandPaletteWindow : Window
         }
     }
 
+    /// <summary>"+" before anything is typed starts a quick category; text input, so it works on every keyboard layout.</summary>
+    private void Window_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (e.Text != "+" || ViewModel.SearchText.Length != 0) return;
+        e.Handled = true;
+        ViewModel.StartQuickCategory();
+    }
+
     /// <summary>With many categories the list scrolls; the keyboard selection must never be off-screen.</summary>
     private void RevealSelection()
     {

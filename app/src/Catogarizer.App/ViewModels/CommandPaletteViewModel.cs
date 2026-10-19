@@ -43,6 +43,7 @@ public partial class CommandPaletteViewModel : ObservableObject
     private readonly CategorySwitcher _switcher;
     private readonly ThemeService _themeService;
     private readonly Action<SwitchResult> _onSwitched;
+    private readonly QuickCategoryFlow _quickCategory;
     private List<PaletteEntry> _all = [];
 
     [ObservableProperty]
@@ -58,11 +59,13 @@ public partial class CommandPaletteViewModel : ObservableObject
 
     public event EventHandler? RequestClose;
 
-    public CommandPaletteViewModel(LibraryService library, CategorySwitcher switcher, ThemeService themeService, Action<SwitchResult> onSwitched)
+    public CommandPaletteViewModel(LibraryService library, CategorySwitcher switcher, ThemeService themeService,
+        QuickCategoryFlow quickCategory, Action<SwitchResult> onSwitched)
     {
         _library = library;
         _switcher = switcher;
         _themeService = themeService;
+        _quickCategory = quickCategory;
         _onSwitched = onSwitched;
         BuildEntries();
         PinnedText = library.PinnedApps.Count == 0 ? null : "Always visible: " + string.Join(", ", library.PinnedApps.Select(p => p.Name));
@@ -162,6 +165,15 @@ public partial class CommandPaletteViewModel : ObservableObject
         }
         if (result is not null) _onSwitched(result);
         Close();
+    }
+
+    /// <summary>The "+ Quick category" row and the <c>+</c> key: the palette steps aside, then the name dialog opens.</summary>
+    [RelayCommand]
+    public void StartQuickCategory()
+    {
+        if (IsBusy) return;
+        Close();
+        _quickCategory.Begin();
     }
 
     [RelayCommand]

@@ -35,11 +35,17 @@ public sealed class LibraryService
         Save();
     }
 
+    /// <summary>Every category, including the temporary ones that exist only in memory.</summary>
     public IReadOnlyList<Category> Categories => _config.Categories;
+
+    /// <summary>The categories that are saved - what automation can point at.</summary>
+    public IReadOnlyList<Category> PermanentCategories => _config.Categories.Where(c => !c.IsTemporary).ToList();
     public IReadOnlyList<AppEntry> Apps => _config.Apps;
     public IReadOnlyList<BlockedApp> BlockedApps => _config.BlockedApps;
     /// <summary>Read from the window watcher's thread; mutations replace the list instead of changing it.</summary>
     public IReadOnlyList<PinnedApp> PinnedApps => _config.PinnedApps;
+    /// <summary>Read from the resource governor's thread; mutations replace the list instead of changing it.</summary>
+    public IReadOnlyList<FreezableApp> FreezableApps => _config.FreezableApps;
     public IReadOnlyList<Trigger> Triggers => _config.Triggers;
 
     public IReadOnlyList<AppEntry> AppsOf(Category category) =>
@@ -88,6 +94,13 @@ public sealed class LibraryService
         Save();
     }
 
+    /// <summary>The "Save resources while categories are parked" setting.</summary>
+    public void SetSaveResources(bool saveResources)
+    {
+        _config.Settings.SaveResources = saveResources;
+        Save();
+    }
+
     public void SetTheme(string themeId)
     {
         if (!Theming.ThemeCatalog.Exists(themeId))
@@ -111,6 +124,40 @@ public sealed class LibraryService
         };
         _config.Categories.Add(category);
         Save();
+        return category;
+    }
+
+    public bool IsTemporary(Guid categoryId) => _config.Categories.Any(c => c.Id == categoryId && c.IsTemporary);
+
+    /// <summary>The name an unnamed quick category gets: "Temp 1", or the lowest free number after it.</summary>
+    public string NextTemporaryName()
+    {
+        for (var number = 1; ; number++)
+        {
+            var name = $"Temp {number}";
+            if (!_config.Categories.Any(c => string.Equals(c.Name.Trim(), name, StringComparison.OrdinalIgnoreCase)))
+                return name;
+        }
+    }
+
+    /// <summary>
+    /// Adds a quick category (see <see cref="Category.IsTemporary"/>) at the end of the shelf. A blank
+    /// name becomes <see cref="NextTemporaryName"/>. Nothing is saved: it never reaches the config file.
+    /// </summary>
+    public Category AddTemporaryCategory(string? name)
+    {
+        var finalName = string.IsNullOrWhiteSpace(name) ? NextTemporaryName() : name.Trim();
+        var validation = CategoryValidator.ValidateName(finalName, _config.Categories);
+        if (!validation.IsValid) throw new ArgumentException(validation.ErrorMessage, nameof(name));
+
+        var category = new Category
+        {
+            Name = finalName,
+            IsTemporary = true,
+            SortOrder = _config.Categories.Select(c => c.SortOrder).DefaultIfEmpty(-1).Max() + 1,
+            Hue = Theming.CategoryHues.Next(_config.Categories.Select(c => c.Hue).OfType<double>()),
+        };
+        _config.Categories.Add(category);
         return category;
     }
 
@@ -256,6 +303,46 @@ public sealed class LibraryService
         Save();
     }
 
+    // ---------------- Freezable apps and categories ----------------
+
+    /// <summary>Allows the app to be suspended while parked. Adding one that is already allowed returns the existing entry.</summary>
+    public FreezableApp AddFreezableApp(string name, string processNameOrPath)
+    {
+        var nameValidation = BlockedAppValidator.ValidateName(name);
+        if (!nameValidation.IsValid) throw new ArgumentException(nameValidation.ErrorMessage, nameof(name));
+        var valueValidation = BlockedAppValidator.ValidateProcessNameOrPath(processNameOrPath);
+        if (!valueValidation.IsValid) throw new ArgumentException(valueValidation.ErrorMessage, nameof(processNameOrPath));
+
+        if (FindFreezableApp(ProcessPattern.ProcessName(processNameOrPath)) is { } existing) return existing;
+
+        var allowed = new FreezableApp { Name = name.Trim(), ProcessNameOrPath = processNameOrPath };
+        _config.FreezableApps = [.. _config.FreezableApps, allowed];
+        Save();
+        return allowed;
+    }
+
+    public void RemoveFreezableApp(Guid freezableAppId)
+    {
+        _config.FreezableApps = _config.FreezableApps.Where(a => a.Id != freezableAppId).ToList();
+        Save();
+    }
+
+    /// <summary>The entry that covers this process (matched by process name, like pinning), or null.</summary>
+    public FreezableApp? FindFreezableApp(string processName) =>
+        _config.FreezableApps.FirstOrDefault(a => string.Equals(ProcessPattern.ProcessName(a.ProcessNameOrPath), processName, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Never for Unsorted, quick categories and anything unknown.</summary>
+    public FreezeMode FreezeModeOf(Guid categoryId) =>
+        _config.Categories.FirstOrDefault(c => c.Id == categoryId) is { IsTemporary: false } category ? category.FreezeMode : FreezeMode.Never;
+
+    public void SetFreezeMode(Guid categoryId, FreezeMode mode)
+    {
+        var category = GetCategoryOrThrow(categoryId);
+        if (category.IsTemporary) throw new InvalidOperationException("A quick category has no settings.");
+        category.FreezeMode = mode;
+        Save();
+    }
+
     // ---------------- Category <-> App links ----------------
 
     public void AddAppToCategory(Guid categoryId, Guid appId)
@@ -351,5 +438,24 @@ public sealed class LibraryService
         _config.BlockedApps.FirstOrDefault(b => b.Id == blockedAppId)
         ?? throw new InvalidOperationException($"No blocked app with id {blockedAppId}.");
 
-    private void Save() => _configStore.Save(_config);
+    /// <summary>Temporary categories live in <see cref="_config"/> for the running app but are left out of the file.</summary>
+    private void Save()
+    {
+        if (!_config.Categories.Any(c => c.IsTemporary))
+        {
+            _configStore.Save(_config);
+            return;
+        }
+
+        _configStore.Save(new AppConfig
+        {
+            Categories = _config.Categories.Where(c => !c.IsTemporary).ToList(),
+            Apps = _config.Apps,
+            BlockedApps = _config.BlockedApps,
+            PinnedApps = _config.PinnedApps,
+            FreezableApps = _config.FreezableApps,
+            Triggers = _config.Triggers,
+            Settings = _config.Settings,
+        });
+    }
 }

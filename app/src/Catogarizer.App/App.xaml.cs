@@ -12,6 +12,7 @@ using Catogarizer.App.Views;
 using Catogarizer.Core.Automation;
 using Catogarizer.Core.Cli;
 using Catogarizer.Core.Persistence;
+using Catogarizer.Core.Resources;
 using Catogarizer.Core.Services;
 using Catogarizer.Win32;
 
@@ -32,7 +33,10 @@ public partial class App : Application
     private IAppBlockingService? _appBlockingService;
     private TriggerSchedulerService? _triggerScheduler;
     private CategorySwitchService? _switchService;
+    private ResourceGovernor? _resources;
     private CategorySwitcher? _switcher;
+    private TemporaryCategoryService? _temporary;
+    private QuickCategoryFlow? _quickCategory;
     private UpdateNotifier? _updateNotifier;
     private CommandPaletteWindow? _paletteWindow;
     private SwitchPillWindow? _pill;
@@ -111,6 +115,13 @@ public partial class App : Application
         // snapshots what's open into Unsorted.
         var switchService = new CategorySwitchService(windowManager, windowFinder, new WindowWatcher(windowFinder),
             categoryActionService, () => library.PinnedApps, new SystemClock(), new JsonHiddenWindowStore(DataFilePath("hidden.json")));
+
+        // Before the windows come back: an app a crashed run left frozen must be running again by the time its
+        // window is shown. Then it follows the sessions and slows parked categories down (value 1, nothing is lost).
+        var resources = new ResourceGovernor(switchService, new ProcessTable(), new ProcessGovernor(), new SystemMemory(),
+            new AudioActivity(), new JsonThrottleLedger(DataFilePath("throttled.json")), new LibraryResourceSettings(library), autoRun: true);
+        resources.Initialize();
+        _resources = resources;
         switchService.Initialize();
         var switcher = new CategorySwitcher(library, switchService, appBlockingService);
         _switchService = switchService;
@@ -122,8 +133,41 @@ public partial class App : Application
         triggerScheduler.Start(() => library.Triggers);
         _triggerScheduler = triggerScheduler;
 
+        var temporary = new TemporaryCategoryService(library, switcher, windowManager, new SystemClock(), autoPoll: true);
+        var quickCategory = new QuickCategoryFlow(library, temporary, dialogService);
+        _temporary = temporary;
+        _quickCategory = quickCategory;
+        // Catogarizer acted for the user (made a category, or left one that emptied): say so with the
+        // same pill the double-tap uses, so a changed desktop never comes unexplained.
+        temporary.Started += category => Dispatcher.BeginInvoke(() =>
+            FlashPill(category.Name, themeService.ColorFor(category), showBackArrow: false));
+        temporary.Vanished += (_, returnedTo) =>
+        {
+            if (returnedTo is null) return;
+            OnSwitched(returnedTo);
+            Dispatcher.BeginInvoke(() => FlashPill(library.NameOf(returnedTo.CategoryId), CategoryColor(returnedTo.CategoryId), showBackArrow: true));
+        };
+
+        var closeService = new CategoryCloseService(library, switcher, windowManager, temporary, resources);
+
+        // Catogarizer acted for the user (memory got tight and parked categories were put to sleep): say so once.
+        resources.Relieved += relieved => Dispatcher.BeginInvoke(() =>
+        {
+            var names = relieved.CategoryIds.Select(library.NameOf).ToList();
+            var detail = names.Count switch
+            {
+                0 => null,
+                1 => $"{names[0]} asleep",
+                2 => $"{names[0]}, {names[1]} asleep",
+                _ => $"{names.Count} categories asleep",
+            };
+            _pill ??= new SwitchPillWindow();
+            _pill.Flash($"Freed {ByteSize.Format(relieved.FreedBytes)}",
+                relieved.CategoryIds.Count > 0 ? CategoryColor(relieved.CategoryIds[0]) : null, showBackArrow: false, detail, longRead: true);
+        });
+
         var editorServices = new EditorServices(library, dialogService, installedAppFinder, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService, autostartService, triggerRunner);
+            windowManager, monitorService, categoryActionService, autostartService, triggerRunner, temporary, quickCategory, resources, closeService);
         var updateNotifier = new UpdateNotifier();
         _updateNotifier = updateNotifier;
         var mainWindow = new MainWindow(editorServices, switcher, themeService, appBlockingService, updateNotifier, RegisterGlobalHotkey);
@@ -132,7 +176,7 @@ public partial class App : Application
         if (!library.Settings.StartMinimized && !command.IsRelayed)
             mainWindow.Show();
 
-        _trayIconController = new TrayIconController(library, switcher, appBlockingService, autostartService, mainWindow, updateNotifier, OnSwitched);
+        _trayIconController = new TrayIconController(library, switcher, appBlockingService, autostartService, mainWindow, updateNotifier, quickCategory, OnSwitched);
         updateNotifier.Start();
 
         RegisterGlobalHotkey(library.Settings.CommandPaletteHotkey);
@@ -329,7 +373,7 @@ public partial class App : Application
                 return;
             }
 
-            var vm = new CommandPaletteViewModel(_library!, _switcher!, _themeService!, OnSwitched);
+            var vm = new CommandPaletteViewModel(_library!, _switcher!, _themeService!, _quickCategory!, OnSwitched);
             _paletteWindow = new CommandPaletteWindow(vm);
             _paletteWindow.Show();
             _paletteWindow.Activate();
@@ -351,11 +395,17 @@ public partial class App : Application
             return;
         }
 
-        _pill.Flash(_library!.NameOf(previous), CategoryColor(previous), showBackArrow: true);
+        FlashPill(_library!.NameOf(previous), CategoryColor(previous), showBackArrow: true);
         Task.Run(() =>
         {
             if (_switcher.SwitchBack() is { } result) OnSwitched(result);
         });
+    }
+
+    private void FlashPill(string text, Color color, bool showBackArrow)
+    {
+        _pill ??= new SwitchPillWindow();
+        _pill.Flash(text, color, showBackArrow);
     }
 
     private Color CategoryColor(Guid id) =>
@@ -364,6 +414,9 @@ public partial class App : Application
     /// <summary>Never leave a window hidden behind when Catogarizer stops (PRINCIPLES.md, value 1).</summary>
     private void RestoreHiddenWindows()
     {
+        // Frozen and slowed-down apps first, so a window that comes back is not a frozen one.
+        try { _resources?.ReleaseAll(); }
+        catch { /* throttled.json lets the next start finish the job */ }
         try { _switcher?.ShowAllAndReset(); }
         catch { /* shutting down anyway; hidden.json lets the next start finish the job */ }
     }
@@ -371,6 +424,8 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         RestoreHiddenWindows();
+        _temporary?.Dispose();
+        _resources?.Dispose();
         _switchService?.Dispose();
         _hotkeyService?.Dispose();
         _trayIconController?.Dispose();

@@ -12,7 +12,7 @@
         <TextBox x:Name="NameBox" Style="{StaticResource ThemedTextBoxStyle}" MaxLength="60"
                  AutomationProperties.Name="Category name"
                  Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
-        <TextBlock Text="For example Deep Work, Comms or Study. Next you pick the apps it opens."
+        <TextBlock Text="{Binding HintText}"
                    Style="{StaticResource MutedTextStyle}" FontSize="11.5" Margin="0,5,0,0" TextWrapping="Wrap"/>
         <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource ErrorTextStyle}"
                    Visibility="{Binding ErrorMessage, Converter={StaticResource NullToCollapsedConverter}}"/>

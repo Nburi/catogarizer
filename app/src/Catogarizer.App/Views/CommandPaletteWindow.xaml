@@ -7,7 +7,7 @@
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
         WindowStartupLocation="Manual"
         FontFamily="{StaticResource UiFont}"
-        PreviewKeyDown="Window_PreviewKeyDown" Deactivated="Window_Deactivated">
+        PreviewKeyDown="Window_PreviewKeyDown" PreviewTextInput="Window_PreviewTextInput" Deactivated="Window_Deactivated">
     <Border x:Name="Root" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}"
             BorderThickness="1" CornerRadius="{DynamicResource CardRadius}" Margin="24" Opacity="0">
         <Border.RenderTransform>
@@ -124,15 +124,35 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
+            <!-- Quick category: the mouse path of the + key -->
+            <Button Style="{StaticResource GhostRowButtonStyle}" HorizontalContentAlignment="Stretch" Margin="8,0,8,4" Padding="10,7"
+                    Command="{Binding StartQuickCategoryCommand}" AutomationProperties.Name="New quick category">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="28"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource KeycapStyle}" HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <TextBlock Text="+" FontFamily="Cascadia Mono, Consolas" FontSize="10.5" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Grid.Column="1" Text="Quick category" FontSize="13" FontWeight="SemiBold" Margin="4,0,10,0"
+                               Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="gone when its last window closes" Style="{StaticResource MutedTextStyle}" FontSize="11.5"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                </Grid>
+            </Button>
+
             <!-- Hints -->
-            <Rectangle Height="1" Fill="{DynamicResource BorderBrush2}" Margin="0,4,0,0"/>
+            <Rectangle Height="1" Fill="{DynamicResource BorderBrush2}" Margin="0,0,0,0"/>
             <Grid Margin="18,10,18,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="11.5" TextTrimming="CharacterEllipsis"
-                           Text="&#x2191;&#x2193; select  ·  Enter switch  ·  1–9 jump  ·  hotkey twice = back"/>
+                           Text="&#x2191;&#x2193; select  ·  Enter switch  ·  1–9 jump  ·  + quick  ·  hotkey twice = back"/>
                 <TextBlock Grid.Column="1" Text="{Binding PinnedText}" Style="{StaticResource MutedTextStyle}" FontSize="11.5"
                            Margin="12,0,0,0" MaxWidth="220" TextTrimming="CharacterEllipsis"
                            Visibility="{Binding PinnedText, Converter={StaticResource NullToCollapsedConverter}}"/>

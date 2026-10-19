@@ -28,6 +28,8 @@
                     <Ellipse x:Name="Dot" Width="9" Height="9" VerticalAlignment="Center" Margin="0,1,9,0"/>
                     <TextBlock x:Name="Label" FontSize="14.5" FontWeight="SemiBold"
                                Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="Detail" FontSize="13" Margin="8,0,0,0" Visibility="Collapsed"
+                               Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>

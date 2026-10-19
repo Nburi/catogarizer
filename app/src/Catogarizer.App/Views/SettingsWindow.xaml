@@ -76,7 +76,37 @@
         <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}"
                    Foreground="{DynamicResource InkBrush}" FontSize="13.5" Margin="0,0,0,12"/>
         <CheckBox Content="Start minimized to tray" IsChecked="{Binding StartMinimized}"
-                   Foreground="{DynamicResource InkBrush}" FontSize="13.5" Margin="0,0,0,18"/>
+                   Foreground="{DynamicResource InkBrush}" FontSize="13.5" Margin="0,0,0,12"/>
+        <CheckBox Content="Save resources while categories are parked" IsChecked="{Binding SaveResources}"
+                   Foreground="{DynamicResource InkBrush}" FontSize="13.5" Margin="0,0,0,4"/>
+        <TextBlock Text="Slows parked apps down, and frees memory when it gets tight. Nothing is closed and nothing is lost."
+                   Style="{StaticResource MutedTextStyle}" FontSize="11.5" TextWrapping="Wrap" Margin="26,0,0,10"/>
+        <TextBlock Text="Allowed to freeze while parked" Style="{StaticResource FieldLabelStyle}" Margin="26,0,0,5"/>
+        <ItemsControl ItemsSource="{Binding FreezableApps}" Margin="26,0,0,0" Focusable="False">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush2}" BorderThickness="1"
+                            CornerRadius="13" Padding="10,2,2,2" Margin="0,0,6,6">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"/>
+                            <Button Content="&#x2715;" Style="{StaticResource GhostIconButtonStyle}" Width="20" Height="20" FontSize="9" Margin="4,0,0,0"
+                                    ToolTip="Don't freeze this app" AutomationProperties.Name="Don't freeze this app"
+                                    Command="{Binding DataContext.RemoveFreezableCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}"/>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="None yet. Right-click a window on the home and choose Allow freezing while parked."
+                   Style="{StaticResource MutedTextStyle}" FontSize="11.5" TextWrapping="Wrap" Margin="26,0,0,0"
+                   Visibility="{Binding FreezableApps.Count, Converter={StaticResource ZeroToVisibleConverter}}"/>
+        <Border Height="18"/>
 
         <TextBlock Text="Command palette shortcut" Style="{StaticResource FieldLabelStyle}"/>
         <!-- A read-only TextBox, not a Border: it takes focus on click and screen readers announce it as a field. -->

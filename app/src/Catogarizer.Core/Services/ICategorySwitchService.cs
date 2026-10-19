@@ -15,9 +15,8 @@ public sealed record SwitchResult(Guid CategoryId, bool RestoredSession, int Win
 /// either restores the incoming category's own saved session or opens its
 /// template fresh.
 /// </summary>
-public interface ICategorySwitchService : IDisposable
+public interface ICategorySwitchService : IWindowSessions, IDisposable
 {
-    Guid ActiveCategoryId { get; }
 
     /// <summary>The category that was active before the current one, if there was a switch yet.</summary>
     Guid? PreviousCategoryId { get; }
@@ -26,12 +25,6 @@ public interface ICategorySwitchService : IDisposable
 
     /// <summary>True while the active category's template apps are being launched (a switch that restores never sets it).</summary>
     bool IsOpeningApps { get; }
-
-    /// <summary>
-    /// Raised after a switch, a reset, or a change to any session's window set.
-    /// Can fire on a background thread (the window watcher's).
-    /// </summary>
-    event Action? StateChanged;
 
     /// <summary>
     /// Shows any windows a previous (crashed) run left hidden, snapshots
@@ -47,9 +40,6 @@ public interface ICategorySwitchService : IDisposable
     /// doesn't have one. A no-op if <paramref name="categoryId"/> is already active.
     /// </summary>
     SwitchResult SwitchTo(Guid categoryId, IReadOnlyList<AppEntry> templateApps);
-
-    /// <summary>Still-open windows per category, with their current titles.</summary>
-    IReadOnlyDictionary<Guid, IReadOnlyList<OpenWindowInfo>> GetSessions();
 
     /// <summary>
     /// Emergency exit and shutdown path: shows every window Catogarizer hid,

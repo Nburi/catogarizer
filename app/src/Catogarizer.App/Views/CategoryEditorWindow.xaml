@@ -276,6 +276,32 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <!-- While parked -->
+                <StackPanel Margin="0,24,0,0">
+                    <TextBlock Text="While parked" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,10"
+                               Text="Apps of a parked category are always slowed down, and paged out when memory gets tight. Freezing stops them completely."/>
+                    <RadioButton Style="{StaticResource ThemedRadioStyle}" GroupName="Freeze" IsChecked="{Binding FreezeNever}" Margin="0,0,0,10">
+                        <StackPanel>
+                            <TextBlock Text="Never freeze" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                            <TextBlock Text="Always safe: nothing is paused." Style="{StaticResource MutedTextStyle}" FontSize="12"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource ThemedRadioStyle}" GroupName="Freeze" IsChecked="{Binding FreezeWhenTight}" Margin="0,0,0,10">
+                        <StackPanel>
+                            <TextBlock Text="Freeze when memory is tight" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                            <TextBlock Text="Only after paging out was not enough. Wakes when you switch here." Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource ThemedRadioStyle}" GroupName="Freeze" IsChecked="{Binding FreezeImmediately}">
+                        <StackPanel>
+                            <TextBlock Text="Freeze as soon as it is parked" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                            <TextBlock Text="Chat apps miss messages, downloads and syncs pause, calls drop - until you come back. Apps playing sound are never frozen."
+                                       Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
 

@@ -12,7 +12,8 @@ public interface IDialogService
 
     void ShowCategoryEditor(CategoryEditorViewModel viewModel);
 
-    bool ShowConfirm(string heading, string message, string confirmText = "Delete");
+    /// <param name="items">What the confirmation is about, one per line (shown in a short list); null for none.</param>
+    bool ShowConfirm(string heading, string message, string confirmText = "Delete", IReadOnlyList<string>? items = null);
 
     /// <returns>(true, placement) if saved (placement may itself be null - "cleared"), (false, _) if cancelled.</returns>
     (bool Saved, WindowRect? Placement) ShowPlacement(PlacementDialogViewModel viewModel);
