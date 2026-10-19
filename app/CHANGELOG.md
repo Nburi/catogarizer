@@ -56,6 +56,11 @@ category's windows and brings back the new one's.
   switch is off, the editor warns that music stops and online games lose their
   connection. A parked category that stays awake only because of sound shows a
   small speaker badge on its tile and in the Resources card.
+- **Which build is this?** Settings shows the version (hover for the exe it runs
+  from). A development build also says so: a DEV chip with the commit in the home
+  header, "development build" in the window title and tray tooltip, and a message
+  when it is swallowed by an already running Catogarizer. The installed app looks
+  the same as before.
 - **Close category** for every category (hero **Close**, **Ctrl+W**, tile
   right-click): the windows are asked to close, never the processes; windows that
   stay open (a Save prompt, an app that keeps running in the tray) are named with

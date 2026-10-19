@@ -91,7 +91,7 @@ public sealed class TrayIconController : IDisposable
         }
     }
 
-    private void UpdateToolTip() => _icon.ToolTipText = $"Catogarizer · {_library.NameOf(_switcher.ActiveCategoryId)}";
+    private void UpdateToolTip() => _icon.ToolTipText = AppBuildInfo.Current.TrayText(_library.NameOf(_switcher.ActiveCategoryId));
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {

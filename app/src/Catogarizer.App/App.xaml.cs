@@ -66,6 +66,19 @@ public partial class App : Application
             }
             else
             {
+                // A development build swallowed by a running instance (usually the installed app) looks exactly
+                // like a build that does nothing - and the person testing it ends up looking at the old one.
+                // Only development builds say so; the installed app stays silent. Native for the same reason as below.
+                if (AppBuildInfo.Current.IsDevelopment)
+                {
+                    MessageBox.Show(
+                        "Another Catogarizer is already running, probably the installed one, so this development build did not start. "
+                        + "Quit the running one from the tray (Exit) and start this build again.",
+                        AppBuildInfo.Current.WindowTitle,
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+
                 // Another instance is already running - ask it to show itself instead of
                 // starting a second one.
                 try
