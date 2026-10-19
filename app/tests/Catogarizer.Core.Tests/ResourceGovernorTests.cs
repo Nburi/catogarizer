@@ -606,6 +606,16 @@ public sealed class ResourceGovernorTests
     }
 
     [Fact]
+    public void MemoryLoadPercent_IsWhatTheLastLookSaw()
+    {
+        _memory.LoadPercent = 74;
+
+        _resources.Tick();
+
+        Assert.Equal(74, _resources.MemoryLoadPercent);
+    }
+
+    [Fact]
     public void Tick_RaisesChanged_OnlyWhenSomethingChanged()
     {
         WorkActiveCommsParked();

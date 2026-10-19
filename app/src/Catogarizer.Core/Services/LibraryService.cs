@@ -94,6 +94,13 @@ public sealed class LibraryService
         Save();
     }
 
+    /// <summary>The "Save resources while categories are parked" setting.</summary>
+    public void SetSaveResources(bool saveResources)
+    {
+        _config.Settings.SaveResources = saveResources;
+        Save();
+    }
+
     public void SetTheme(string themeId)
     {
         if (!Theming.ThemeCatalog.Exists(themeId))

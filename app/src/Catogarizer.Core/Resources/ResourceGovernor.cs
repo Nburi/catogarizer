@@ -92,6 +92,7 @@ public sealed class ResourceGovernor : IDisposable
     private IReadOnlyList<ThrottleRecord> _lastSaved = [];
     private IReadOnlyList<CategoryResourceUsage> _usage = [];
     private string _usageSignature = "";
+    private int _lastLoad;
     private bool _tight;
     private bool _announced;
     private DateTime? _severeSince;
@@ -128,6 +129,15 @@ public sealed class ResourceGovernor : IDisposable
         get
         {
             lock (_gate) return _usage;
+        }
+    }
+
+    /// <summary>Physical memory in use at the last look, 0-100.</summary>
+    public int MemoryLoadPercent
+    {
+        get
+        {
+            lock (_gate) return _lastLoad;
         }
     }
 
@@ -306,7 +316,7 @@ public sealed class ResourceGovernor : IDisposable
 
     private void UpdatePressure(DateTime now)
     {
-        var load = _memory.LoadPercent;
+        var load = _lastLoad = _memory.LoadPercent;
         if (!_tight)
         {
             if (load >= TightLoad)

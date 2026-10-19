@@ -8,6 +8,7 @@ using System.Windows.Threading;
 using Catogarizer.App.Services;
 using Catogarizer.Core.Automation;
 using Catogarizer.Core.Models;
+using Catogarizer.Core.Resources;
 using Catogarizer.Core.Services;
 using Catogarizer.Core.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -27,6 +28,7 @@ public partial class MainViewModel : ObservableObject
     private readonly EditorServices _services;
     private readonly LibraryService _library;
     private readonly CategorySwitcher _switcher;
+    private readonly ResourceGovernor _resources;
     private readonly ThemeService _themeService;
     private readonly IDialogService _dialogService;
     private readonly Action<string> _onHotkeyChanged;
@@ -70,6 +72,14 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<ShelfItem> Shelf { get; } = new();
     [ObservableProperty] private bool _hasCategories;
 
+    // ---- Resources ----
+    public ObservableCollection<ResourceRow> ResourceRows { get; } = new();
+    [ObservableProperty] private string _memoryLoadText = "";
+    [ObservableProperty] private string? _parkedBytesText;
+
+    /// <summary>The one calm line under the Resources rows: off, nothing parked, or what could not be slowed down.</summary>
+    [ObservableProperty] private string? _resourcesNote;
+
     // ---- Footer / chrome ----
     [ObservableProperty] private string? _nextTriggerText;
     [ObservableProperty] private IReadOnlyList<string> _hotkeyKeys = [];
@@ -85,6 +95,7 @@ public partial class MainViewModel : ObservableObject
         _library = services.Library;
         _dialogService = services.Dialogs;
         _switcher = switcher;
+        _resources = services.Resources;
         _themeService = themeService;
         _onHotkeyChanged = onHotkeyChanged;
         _updateNotifier = updateNotifier;
@@ -98,6 +109,7 @@ public partial class MainViewModel : ObservableObject
         _refreshDebounce.Stop();
 
         switcher.StateChanged += RequestRefresh;
+        _resources.Changed += RequestRefresh;
         themeService.ThemeChanged += RequestRefresh;
         updateNotifier.Changed += RequestRefresh;
         appBlockingService.AppBlocked += name =>
@@ -113,7 +125,19 @@ public partial class MainViewModel : ObservableObject
     /// Set by the view. While the home sits hidden in the tray, events don't refresh it - windows
     /// appear all day - and showing it refreshes once instead.
     /// </summary>
-    public bool IsViewVisible { get; set; }
+    public bool IsViewVisible
+    {
+        get => _isViewVisible;
+        set
+        {
+            _isViewVisible = value;
+            // Figures are only measured every few seconds while someone looks at them.
+            _resources.UsageWanted = value;
+            if (value) _resources.RequestTick();
+        }
+    }
+
+    private bool _isViewVisible;
 
     /// <summary>Safe from any thread; bursts of events collapse into one refresh.</summary>
     public void RequestRefresh() => _dispatcher.BeginInvoke(() =>
@@ -137,6 +161,7 @@ public partial class MainViewModel : ObservableObject
         RefreshNow(active, sessions);
         RefreshBack(categories, sessions);
         RefreshShelf(categories, activeId, sessions);
+        RefreshResources(categories, activeId, sessions);
         RefreshPinned();
         RefreshNextTrigger(categories);
         UpdateText = _updateNotifier.Visible is { } update ? $"Version {update.Latest} is available." : null;
@@ -265,10 +290,61 @@ public partial class MainViewModel : ObservableObject
             });
         }
 
+        var usage = _resources.Usage;
+        foreach (var item in items)
+        {
+            var costs = usage.FirstOrDefault(u => u.CategoryId == item.Id);
+            item.Level = costs?.Level ?? ResourceLevel.Normal;
+            item.MemoryBytes = costs?.PrivateBytes ?? 0;
+        }
+
+        // Same tiles as before: update only what they cost, in place, so a tile can animate falling asleep
+        // (a rebuilt tile would start over, and the shelf would flicker every few seconds).
+        if (Shelf.Count == items.Count && Shelf.Zip(items).All(pair => pair.First.SameEntryAs(pair.Second)))
+        {
+            foreach (var (shown, fresh) in Shelf.Zip(items))
+            {
+                shown.Level = fresh.Level;
+                shown.MemoryBytes = fresh.MemoryBytes;
+            }
+            return;
+        }
+
         // Keep the item a switch is running on, so its "Opening..." state survives refreshes.
         var switching = Shelf.FirstOrDefault(s => s.IsSwitching)?.Id;
         Replace(Shelf, items);
         if (switching is { } id && Shelf.FirstOrDefault(s => s.Id == id) is { } still) still.IsSwitching = true;
+    }
+
+    private void RefreshResources(List<Category> categories, Guid activeId, IReadOnlyDictionary<Guid, IReadOnlyList<OpenWindowInfo>> sessions)
+    {
+        var usage = _resources.Usage;
+        var total = usage.Sum(u => u.PrivateBytes);
+        Replace(ResourceRows, usage.OrderByDescending(u => u.PrivateBytes).Select(u =>
+        {
+            var category = categories.FirstOrDefault(c => c.Id == u.CategoryId);
+            var state = u.CategoryId == activeId ? "Here" : u.Level switch
+            {
+                ResourceLevel.Eco => "Eco",
+                ResourceLevel.Asleep => "Asleep",
+                ResourceLevel.Frozen => "Frozen",
+                _ => "Awake",
+            };
+            return new ResourceRow(_library.NameOf(u.CategoryId), ThemeService.FrozenBrush(_themeService.ColorFor(category)), state, u.Level,
+                ByteSize.Format(u.PrivateBytes), $"{Math.Round(u.CpuPercent)} %", total > 0 ? u.PrivateBytes * 100.0 / total : 0);
+        }));
+
+        var parked = usage.Where(u => u.CategoryId != activeId).ToList();
+        var parkedBytes = parked.Sum(u => u.PrivateBytes);
+        ParkedBytesText = parkedBytes > 0 ? $"Parked: {ByteSize.Format(parkedBytes)}" : null;
+        MemoryLoadText = _resources.MemoryLoadPercent > 0 ? $"Memory {_resources.MemoryLoadPercent} % used" : "";
+
+        var untouchable = parked.Sum(u => u.UntouchableProcesses);
+        var anythingParked = sessions.Any(s => s.Key != activeId && s.Value.Count > 0);
+        ResourcesNote = !_library.Settings.SaveResources ? "Resource saving is off. Turn it on in Settings."
+            : !anythingParked ? "Nothing is parked, so nothing is slowed down. Park a category by switching away from it."
+            : untouchable > 0 ? $"{untouchable} {(untouchable == 1 ? "process runs" : "processes run")} as administrator or are protected and stay at full speed. Catogarizer never asks for admin rights."
+            : null;
     }
 
     private void RefreshPinned() =>
@@ -430,6 +506,7 @@ public partial class MainViewModel : ObservableObject
         var saved = _dialogService.ShowSettings(vm);
         if (saved && vm.HotkeyChanged)
             _onHotkeyChanged(_library.Settings.CommandPaletteHotkey);
+        if (saved) _resources.RequestTick();
         Refresh();
     }
 

@@ -9,6 +9,10 @@
         FontFamily="{StaticResource UiFont}"
         PreviewKeyDown="Window_PreviewKeyDown" PreviewTextInput="Window_PreviewTextInput" SizeChanged="Window_SizeChanged">
     <Window.Resources>
+        <!-- State glyphs of a parked category tile: leaf = Eco, moon = Asleep, snowflake = Frozen. -->
+        <Geometry x:Key="LeafGeometry">M3,13 C3,7 7,4 13,4 C13,10 10,14 4,14 M3,13 L8,8</Geometry>
+        <Geometry x:Key="MoonGeometry">M13,9.5 A5.5,5.5 0 1 1 6.5,3 A4.5,4.5 0 0 0 13,9.5 Z</Geometry>
+        <Geometry x:Key="SnowGeometry">M8,1.5 L8,14.5 M2.4,4.7 L13.6,11.3 M2.4,11.3 L13.6,4.7</Geometry>
         <Geometry x:Key="ShieldGeometry">M8,1.8 L13,3.6 L13,7.7 C13,10.7 10.9,12.9 8,14.2 C5.1,12.9 3,10.7 3,7.7 L3,3.6 Z</Geometry>
 
         <Style x:Key="BoxStyle" TargetType="Border">
@@ -43,9 +47,30 @@
                             <Border.RenderTransform>
                                 <TranslateTransform x:Name="Lift"/>
                             </Border.RenderTransform>
-                            <ContentPresenter/>
+                            <ContentPresenter x:Name="Body"/>
                         </Border>
                         <ControlTemplate.Triggers>
+                            <!-- The tile falls asleep: its content dims slowly when the category is put to rest, and wakes quickly. -->
+                            <DataTrigger Binding="{Binding IsResting}" Value="True">
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Body" Storyboard.TargetProperty="Opacity" To="0.62" Duration="0:0:0.6">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Body" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.ExitActions>
+                            </DataTrigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Tile" Property="BorderBrush" Value="{Binding Color}"/>
                                 <Trigger.EnterActions>
@@ -297,6 +322,64 @@
                                 </StackPanel>
                             </Border>
 
+                            <!-- Resources: what each category costs. One level deeper than the tiles (PRINCIPLES.md, value 5). -->
+                            <Border Style="{StaticResource BoxStyle}">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock Text="RESOURCES" Style="{StaticResource SectionLabelStyle}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding MemoryLoadText}" Style="{StaticResource MutedTextStyle}" FontSize="11.5"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <ItemsControl ItemsSource="{Binding ResourceRows}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,8" AutomationProperties.Name="{Binding}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto" MinWidth="58"/>
+                                                        <ColumnDefinition Width="Auto" MinWidth="38"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+                                                    <Ellipse Width="9" Height="9" Fill="{Binding Color}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding StateText}" FontSize="11.5" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding StateText}" Value="Asleep">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding StateText}" Value="Frozen">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Grid.Column="3" Text="{Binding BytesText}" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"
+                                                               Foreground="{DynamicResource MutedBrush}" TextAlignment="Right" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="4" Text="{Binding CpuText}" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"
+                                                               Foreground="{DynamicResource MutedBrush}" TextAlignment="Right" VerticalAlignment="Center"/>
+                                                    <ProgressBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4" Margin="0,4,0,0" Style="{StaticResource ShareBarStyle}"
+                                                                 Value="{Binding SharePercent, Mode=OneWay}" Foreground="{Binding Color}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding ResourcesNote}" Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap"
+                                               Visibility="{Binding ResourcesNote, Converter={StaticResource NullToCollapsedConverter}}"/>
+                                    <TextBlock Text="{Binding ParkedBytesText}" Style="{StaticResource MutedTextStyle}" FontSize="12" Margin="0,2,0,0"
+                                               Visibility="{Binding ParkedBytesText, Converter={StaticResource NullToCollapsedConverter}}"/>
+                                </StackPanel>
+                            </Border>
+
                             <!-- Always visible -->
                             <Border Style="{StaticResource BoxStyle}">
                                 <StackPanel>
@@ -390,7 +473,56 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <Ellipse Width="9" Height="9" Fill="{Binding Color}" VerticalAlignment="Top" Margin="0,6,8,0"/>
+                                    <Grid Width="9" Height="9" VerticalAlignment="Top" Margin="0,6,8,0">
+                                        <Ellipse Fill="{Binding Color}">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsResting}" Value="True">
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.5"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                            <DataTrigger.ExitActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.ExitActions>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <Ellipse Stroke="{Binding Color}" StrokeThickness="1.6" Opacity="0">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsResting}" Value="True">
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.5"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                            <DataTrigger.ExitActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.ExitActions>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                    </Grid>
                                     <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                                TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="38" VerticalAlignment="Top"
                                                ToolTip="{Binding Name}"/>
@@ -449,12 +581,53 @@
                                             </TextBlock.Style>
                                         </TextBlock>
                                     </Border>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                ToolTip="{Binding BlockedTooltip}"
-                                                Visibility="{Binding HasBlocked, Converter={StaticResource BoolToVis}}">
-                                        <Path Data="{StaticResource ShieldGeometry}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.4"
-                                              Width="12" Height="13" Stretch="Uniform" Margin="0,0,4,0"/>
-                                        <TextBlock Text="{Binding BlockedCount}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,10,0"
+                                                    ToolTip="{Binding BlockedTooltip}"
+                                                    Visibility="{Binding HasBlocked, Converter={StaticResource BoolToVis}}">
+                                            <Path Data="{StaticResource ShieldGeometry}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.4"
+                                                  Width="12" Height="13" Stretch="Uniform" Margin="0,0,4,0"/>
+                                            <TextBlock Text="{Binding BlockedCount}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                        </StackPanel>
+                                        <!-- What the category costs: a state glyph (only when it was put to rest) and its memory. -->
+                                        <StackPanel Orientation="Horizontal" ToolTip="{Binding LevelTooltip}"
+                                                    Visibility="{Binding HasMemory, Converter={StaticResource BoolToVis}}">
+                                            <Path Width="13" Height="13" Stretch="Uniform" StrokeThickness="1.5" StrokeLineJoin="Round"
+                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" Margin="0,0,5,0" VerticalAlignment="Center"
+                                                  Visibility="{Binding IsResting, Converter={StaticResource BoolToVis}}">
+                                                <Path.Style>
+                                                    <Style TargetType="Path">
+                                                        <Setter Property="Data" Value="{StaticResource LeafGeometry}"/>
+                                                        <Setter Property="Stroke" Value="{DynamicResource MutedBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LevelKind}" Value="Asleep">
+                                                                <Setter Property="Data" Value="{StaticResource MoonGeometry}"/>
+                                                                <Setter Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding LevelKind}" Value="Frozen">
+                                                                <Setter Property="Data" Value="{StaticResource SnowGeometry}"/>
+                                                                <Setter Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Path.Style>
+                                            </Path>
+                                            <c:MemoryText Bytes="{Binding MemoryBytes}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center">
+                                                <c:MemoryText.Style>
+                                                    <Style TargetType="c:MemoryText">
+                                                        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LevelKind}" Value="Asleep">
+                                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding LevelKind}" Value="Frozen">
+                                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </c:MemoryText.Style>
+                                            </c:MemoryText>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>

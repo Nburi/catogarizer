@@ -12,6 +12,7 @@ using Catogarizer.App.Views;
 using Catogarizer.Core.Automation;
 using Catogarizer.Core.Cli;
 using Catogarizer.Core.Persistence;
+using Catogarizer.Core.Resources;
 using Catogarizer.Core.Services;
 using Catogarizer.Win32;
 
@@ -32,6 +33,7 @@ public partial class App : Application
     private IAppBlockingService? _appBlockingService;
     private TriggerSchedulerService? _triggerScheduler;
     private CategorySwitchService? _switchService;
+    private ResourceGovernor? _resources;
     private CategorySwitcher? _switcher;
     private TemporaryCategoryService? _temporary;
     private QuickCategoryFlow? _quickCategory;
@@ -113,6 +115,13 @@ public partial class App : Application
         // snapshots what's open into Unsorted.
         var switchService = new CategorySwitchService(windowManager, windowFinder, new WindowWatcher(windowFinder),
             categoryActionService, () => library.PinnedApps, new SystemClock(), new JsonHiddenWindowStore(DataFilePath("hidden.json")));
+
+        // Before the windows come back: an app a crashed run left frozen must be running again by the time its
+        // window is shown. Then it follows the sessions and slows parked categories down (value 1, nothing is lost).
+        var resources = new ResourceGovernor(switchService, new ProcessTable(), new ProcessGovernor(), new SystemMemory(),
+            new AudioActivity(), new JsonThrottleLedger(DataFilePath("throttled.json")), new LibraryResourceSettings(library), autoRun: true);
+        resources.Initialize();
+        _resources = resources;
         switchService.Initialize();
         var switcher = new CategorySwitcher(library, switchService, appBlockingService);
         _switchService = switchService;
@@ -140,7 +149,7 @@ public partial class App : Application
         };
 
         var editorServices = new EditorServices(library, dialogService, installedAppFinder, processLauncher, windowFinder,
-            windowManager, monitorService, categoryActionService, autostartService, triggerRunner, temporary, quickCategory);
+            windowManager, monitorService, categoryActionService, autostartService, triggerRunner, temporary, quickCategory, resources);
         var updateNotifier = new UpdateNotifier();
         _updateNotifier = updateNotifier;
         var mainWindow = new MainWindow(editorServices, switcher, themeService, appBlockingService, updateNotifier, RegisterGlobalHotkey);
@@ -387,6 +396,9 @@ public partial class App : Application
     /// <summary>Never leave a window hidden behind when Catogarizer stops (PRINCIPLES.md, value 1).</summary>
     private void RestoreHiddenWindows()
     {
+        // Frozen and slowed-down apps first, so a window that comes back is not a frozen one.
+        try { _resources?.ReleaseAll(); }
+        catch { /* throttled.json lets the next start finish the job */ }
         try { _switcher?.ShowAllAndReset(); }
         catch { /* shutting down anyway; hidden.json lets the next start finish the job */ }
     }
@@ -395,6 +407,7 @@ public partial class App : Application
     {
         RestoreHiddenWindows();
         _temporary?.Dispose();
+        _resources?.Dispose();
         _switchService?.Dispose();
         _hotkeyService?.Dispose();
         _trayIconController?.Dispose();

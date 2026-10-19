@@ -130,3 +130,32 @@ public sealed class FreezePermissionTests : IDisposable
         if (Directory.Exists(_dir)) Directory.Delete(_dir, recursive: true);
     }
 }
+
+public sealed class ByteSizeTests
+{
+    [Theory]
+    [InlineData(0L, "0 MB")]
+    [InlineData(380L * 1024 * 1024, "380 MB")]
+    [InlineData(1023L * 1024 * 1024, "1023 MB")]
+    [InlineData(1024L * 1024 * 1024, "1.0 GB")]
+    [InlineData(1500L * 1024 * 1024, "1.5 GB")]
+    public void Format_ReadsLikeTaskManager(long bytes, string expected)
+    {
+        Assert.Equal(expected, Catogarizer.Core.Resources.ByteSize.Format(bytes));
+    }
+}
+
+public sealed class SaveResourcesSettingTests
+{
+    [Fact]
+    public void SetSaveResources_IsOnByDefault_AndPersists()
+    {
+        var store = new Catogarizer.Core.Tests.Fakes.FakeConfigStore();
+        var library = new Catogarizer.Core.Services.LibraryService(store, fileExists: _ => true);
+        Assert.True(library.Settings.SaveResources);
+
+        library.SetSaveResources(false);
+
+        Assert.False(store.Load().Settings.SaveResources);
+    }
+}

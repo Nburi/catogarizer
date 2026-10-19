@@ -1,4 +1,5 @@
 using Catogarizer.Core.Automation;
+using Catogarizer.Core.Resources;
 using Catogarizer.Core.Services;
 
 namespace Catogarizer.App.Services;
@@ -16,4 +17,5 @@ public sealed record EditorServices(
     IAutostartService Autostart,
     TriggerRunner TriggerRunner,
     TemporaryCategoryService Temporary,
-    QuickCategoryFlow QuickCategory);
+    QuickCategoryFlow QuickCategory,
+    ResourceGovernor Resources);

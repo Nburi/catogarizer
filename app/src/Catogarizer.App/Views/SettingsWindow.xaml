@@ -76,7 +76,11 @@
         <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}"
                    Foreground="{DynamicResource InkBrush}" FontSize="13.5" Margin="0,0,0,12"/>
         <CheckBox Content="Start minimized to tray" IsChecked="{Binding StartMinimized}"
-                   Foreground="{DynamicResource InkBrush}" FontSize="13.5" Margin="0,0,0,18"/>
+                   Foreground="{DynamicResource InkBrush}" FontSize="13.5" Margin="0,0,0,12"/>
+        <CheckBox Content="Save resources while categories are parked" IsChecked="{Binding SaveResources}"
+                   Foreground="{DynamicResource InkBrush}" FontSize="13.5" Margin="0,0,0,4"/>
+        <TextBlock Text="Slows parked apps down, and frees memory when it gets tight. Nothing is closed and nothing is lost."
+                   Style="{StaticResource MutedTextStyle}" FontSize="11.5" TextWrapping="Wrap" Margin="26,0,0,18"/>
 
         <TextBlock Text="Command palette shortcut" Style="{StaticResource FieldLabelStyle}"/>
         <!-- A read-only TextBox, not a Border: it takes focus on click and screen readers announce it as a field. -->

@@ -29,6 +29,9 @@ public partial class SettingsViewModel : ObservableObject
     private bool _startMinimized;
 
     [ObservableProperty]
+    private bool _saveResources;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private string _hotkeyText;
 
@@ -61,6 +64,7 @@ public partial class SettingsViewModel : ObservableObject
         _themeService = themeService;
         _startWithWindows = autostartService.IsEnabled;
         _startMinimized = library.Settings.StartMinimized;
+        _saveResources = library.Settings.SaveResources;
         _hotkeyText = library.Settings.CommandPaletteHotkey;
 
         Themes = ThemeCatalog.All.Select(t => new ThemeOption(t.Id, t.Name, t.Description,
@@ -95,6 +99,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         HotkeyChanged = !string.Equals(_library.Settings.CommandPaletteHotkey, HotkeyText, StringComparison.OrdinalIgnoreCase);
         _library.UpdateSettings(StartMinimized, HotkeyText);
+        _library.SetSaveResources(SaveResources);
         _library.SetTheme(SelectedTheme.Id);
         _isSaved = true;
         RequestClose?.Invoke(this, EventArgs.Empty);
