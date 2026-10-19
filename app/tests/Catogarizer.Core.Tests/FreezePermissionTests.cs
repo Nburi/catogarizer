@@ -73,6 +73,45 @@ public sealed class FreezePermissionTests : IDisposable
     }
 
     [Fact]
+    public void SoundKeepsACategoryAwake_ByDefault_AndTheChoiceIsSavedPerCategory()
+    {
+        var games = _library.AddCategory("Games");
+        var work = _library.AddCategory("Work");
+
+        Assert.True(_library.KeepSoundAwakeOf(games.Id));
+
+        _library.SetKeepSoundAwake(games.Id, false);
+
+        Assert.False(_library.KeepSoundAwakeOf(games.Id));
+        Assert.True(_library.KeepSoundAwakeOf(work.Id));
+        Assert.False(_store.Load().Categories.Single(c => c.Id == games.Id).KeepSoundAwake);
+    }
+
+    [Fact]
+    public void SoundAlwaysProtects_UnsortedQuickCategoriesAndUnknownOnes_AndAQuickCategoryCannotBeSet()
+    {
+        var quick = _library.AddTemporaryCategory(null);
+
+        Assert.True(_library.KeepSoundAwakeOf(CategorySwitchService.Uncategorized));
+        Assert.True(_library.KeepSoundAwakeOf(quick.Id));
+        Assert.True(_library.KeepSoundAwakeOf(Guid.NewGuid()));
+        Assert.Throws<InvalidOperationException>(() => _library.SetKeepSoundAwake(quick.Id, false));
+    }
+
+    [Fact]
+    public void OldConfigsWithoutTheSoundChoice_KeepSoundAwake_AndTheGovernorSettingsFollowTheLibrary()
+    {
+        var old = JsonSerializer.Deserialize<AppConfig>("""{"Categories":[{"Name":"Old"}]}""")!;
+        Assert.True(old.Categories.Single().KeepSoundAwake);
+
+        var settings = new LibraryResourceSettings(_library);
+        var games = _library.AddCategory("Games");
+        Assert.True(settings.KeepsSoundAwake(games.Id));
+        _library.SetKeepSoundAwake(games.Id, false);
+        Assert.False(settings.KeepsSoundAwake(games.Id));
+    }
+
+    [Fact]
     public void TheConfigFileNamesTheModeInWords_AndOldConfigsWithoutItStayAtNever()
     {
         var path = Path.Combine(_dir, "config.json");

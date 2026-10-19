@@ -119,8 +119,16 @@ moment you switch back:
   apps miss messages, downloads and syncs wait, calls drop - until you switch
   back. Allow it for one app (right-click a window on the home, **Allow freezing
   while parked**) or for a whole category (in its editor: **While parked** -
-  never, when memory is tight, or as soon as it is parked). Apps that are
-  playing sound are never frozen, or touched at all.
+  never, when memory is tight, or as soon as it is parked). Freezing stops
+  everything in the app: music cuts out, calls drop, online games lose their
+  connection.
+- **Sound.** Apps that are playing sound are not touched at all while their
+  category is parked, so music, calls and videos keep going. Games are the
+  exception you probably want: their sound effects would keep them awake forever.
+  In the category editor, turn off **Keep apps that play sound running** for such
+  a category (the editor warns you when that, together with freezing, will stop
+  sound). An app you explicitly allowed to freeze is frozen even while it plays
+  sound. A parked tile with a small speaker badge is awake only because of sound.
 
 Each parked tile shows what its category holds in memory, and a leaf (Eco), moon
 (Asleep) or snowflake (Frozen). Falling asleep is visible: the tile dims and its

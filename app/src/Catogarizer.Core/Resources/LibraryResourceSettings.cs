@@ -21,4 +21,6 @@ public sealed class LibraryResourceSettings : IResourceSettings
     public bool IsAppFreezable(string processName) => _library.FindFreezableApp(processName) is not null;
 
     public FreezeMode FreezeModeOf(Guid categoryId) => _library.FreezeModeOf(categoryId);
+
+    public bool KeepsSoundAwake(Guid categoryId) => _library.KeepSoundAwakeOf(categoryId);
 }

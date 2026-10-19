@@ -131,9 +131,27 @@ public partial class CategoryEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(FreezeNever));
         OnPropertyChanged(nameof(FreezeWhenTight));
         OnPropertyChanged(nameof(FreezeImmediately));
+        OnPropertyChanged(nameof(ShowFreezeWarning));
         // The governor follows the new permission on its next look: right away if it was frozen and may not be now.
         _services.Resources.RequestTick();
     }
+
+    /// <summary>Apps playing sound are left alone while parked (the default). Off for games; saved at once like the radios.</summary>
+    public bool KeepSoundAwake
+    {
+        get => _library.KeepSoundAwakeOf(CategoryId);
+        set
+        {
+            if (value == KeepSoundAwake) return;
+            _library.SetKeepSoundAwake(CategoryId, value);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ShowFreezeWarning));
+            _services.Resources.RequestTick();
+        }
+    }
+
+    /// <summary>Freezing is allowed here and sound no longer protects: music will stop, so say so where it is decided.</summary>
+    public bool ShowFreezeWarning => Category.FreezeMode != FreezeMode.Never && !KeepSoundAwake;
 
     // ---------------- Apps it opens with ----------------
 

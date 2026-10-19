@@ -41,6 +41,12 @@ public partial class SettingsViewModel : ObservableObject
 
     public IReadOnlyList<ThemeOption> Themes { get; }
 
+    /// <summary>"Version 1.2.0" or "Development build 1.0.0 (414baed)" - which Catogarizer this is.</summary>
+    public string BuildText => AppBuildInfo.Current.Summary;
+
+    /// <summary>The running exe, as a tooltip: tells the installed app from a freshly built one.</summary>
+    public string BuildPath => AppBuildInfo.ExePath;
+
     /// <summary>Apps the user allowed to be suspended while parked. Removing one takes effect at once, like unpinning.</summary>
     public System.Collections.ObjectModel.ObservableCollection<FreezableApp> FreezableApps { get; }
 

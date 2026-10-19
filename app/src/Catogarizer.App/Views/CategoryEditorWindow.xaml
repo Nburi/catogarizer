@@ -281,7 +281,7 @@
                 <StackPanel Margin="0,24,0,0">
                     <TextBlock Text="While parked" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,10"
-                               Text="Apps of a parked category are always slowed down, and paged out when memory gets tight. Freezing stops them completely."/>
+                               Text="Apps of a parked category are slowed down, and paged out when memory gets tight. Freezing stops them completely."/>
                     <RadioButton Style="{StaticResource ThemedRadioStyle}" GroupName="Freeze" IsChecked="{Binding FreezeNever}" Margin="0,0,0,10">
                         <StackPanel>
                             <TextBlock Text="Never freeze" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
@@ -297,10 +297,21 @@
                     <RadioButton Style="{StaticResource ThemedRadioStyle}" GroupName="Freeze" IsChecked="{Binding FreezeImmediately}">
                         <StackPanel>
                             <TextBlock Text="Freeze as soon as it is parked" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                            <TextBlock Text="Chat apps miss messages, downloads and syncs pause, calls drop - until you come back. Apps playing sound are never frozen."
+                            <TextBlock Text="Chat apps miss messages, downloads and syncs pause, calls drop - until you come back."
                                        Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap"/>
                         </StackPanel>
                     </RadioButton>
+
+                    <CheckBox Content="Keep apps that play sound running" IsChecked="{Binding KeepSoundAwake}"
+                              Foreground="{DynamicResource InkBrush}" FontSize="13.5" FontWeight="SemiBold" Margin="0,20,0,0"/>
+                    <TextBlock Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap" Margin="26,3,0,0"
+                               Text="Music, calls and videos in this category are not slowed down or frozen while it is parked. Turn it off for games: their sound effects then don't keep them awake."/>
+                    <Border Margin="26,10,0,0" Padding="12,9" CornerRadius="{DynamicResource ControlRadius}"
+                            Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="3,0,0,0"
+                            Visibility="{Binding ShowFreezeWarning, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Style="{StaticResource BaseTextStyle}" FontSize="12.5" TextWrapping="Wrap"
+                                   Text="This category's apps can be frozen even while they play sound: music stops, calls drop and online games lose their connection until you switch back."/>
+                    </Border>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

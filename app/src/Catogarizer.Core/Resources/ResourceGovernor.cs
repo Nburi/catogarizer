@@ -13,7 +13,8 @@ namespace Catogarizer.Core.Resources;
 ///
 /// Process trees, not windows: the category model is per window, but efficiency mode, paging and suspending
 /// are per process. A tree that owns any window of the active category (a browser with two windows in two
-/// categories), a pinned app, Catogarizer itself, a system process or anything playing sound is left alone.
+/// categories), a pinned app, Catogarizer itself, a system process or anything playing sound is left alone -
+/// sound only while the category keeps it awake (the default) and the app is not explicitly allowed to freeze.
 ///
 /// Every applied state is in the <see cref="IThrottleLedger"/> before a process is suspended, so a crash
 /// never leaves one frozen (PRINCIPLES.md value 1). Polling, like every other watcher here (STACK.md).
@@ -71,6 +72,12 @@ public sealed class ResourceGovernor : IDisposable
         public List<(Guid Category, OpenWindowInfo Window)> Windows { get; } = [];
         public bool Eligible { get; set; }
         public bool Playing { get; set; }
+
+        /// <summary>Playing sound that the user's settings say must not be interrupted.</summary>
+        public bool SoundProtected { get; set; }
+
+        /// <summary>Would rest if it were silent: sound is the only thing keeping it awake.</summary>
+        public bool HeldBySound { get; set; }
         public DateTime ParkedSince { get; set; }
     }
 
@@ -321,7 +328,10 @@ public sealed class ResourceGovernor : IDisposable
             foreach (var group in groups)
             {
                 group.Playing = group.Pids.Overlaps(playing);
-                group.Eligible = enabled && IsEligible(group, active, activePids, own, byPid) && !group.Pids.Overlaps(_awakeUntil.Keys);
+                group.SoundProtected = group.Playing && SoundProtects(group);
+                var otherwiseEligible = enabled && IsEligible(group, active, activePids, own, byPid) && !group.Pids.Overlaps(_awakeUntil.Keys);
+                group.Eligible = otherwiseEligible && !group.SoundProtected;
+                group.HeldBySound = otherwiseEligible && group.SoundProtected;
                 group.ParkedSince = group.Windows
                     .Where(w => _parkedSince.ContainsKey(w.Category))
                     .Select(w => _parkedSince[w.Category])
@@ -446,7 +456,6 @@ public sealed class ResourceGovernor : IDisposable
     private bool IsEligible(Group group, Guid active, HashSet<int> activePids, HashSet<int> own, Dictionary<int, ProcessNode> byPid)
     {
         if (group.Windows.Any(w => w.Category == active)) return false;
-        if (group.Playing) return false;
         if (group.Pids.Overlaps(activePids) || group.Pids.Overlaps(own)) return false;
         foreach (var pid in group.Pids)
         {
@@ -455,6 +464,14 @@ public sealed class ResourceGovernor : IDisposable
         }
         return true;
     }
+
+    /// <summary>
+    /// Whether sound makes this group untouchable. The most careful window decides, like <see cref="ModeOf"/>: one
+    /// window whose category keeps sound awake protects the whole tree - except an app the user explicitly allowed
+    /// to freeze, which has said it does not mind (otherwise "allowed" would silently never happen for a game).
+    /// </summary>
+    private bool SoundProtects(Group group) =>
+        group.Windows.Any(w => _settings.KeepsSoundAwake(w.Category) && !_settings.IsAppFreezable(w.Window.ProcessName));
 
     // ---------------- Levels ----------------
 
@@ -555,7 +572,8 @@ public sealed class ResourceGovernor : IDisposable
         foreach (var group in eligible)
         {
             var mode = ModeOf(group);
-            var allowed = mode != FreezeMode.Never && audioReliable;
+            // Unreadable audio only matters where sound would have protected the group; for the rest nothing is at risk.
+            var allowed = mode != FreezeMode.Never && (audioReliable || !SoundProtects(group));
             var states = group.Pids.Select(p => (Pid: p, State: _state.GetValueOrDefault(p))).Where(x => x.State is not null).ToList();
 
             if (!allowed)
@@ -610,7 +628,7 @@ public sealed class ResourceGovernor : IDisposable
     private void RecomputeUsage(List<Group> groups, Guid active, DateTime now, Func<int, ProcessUsage?> usageOf)
     {
         var cores = Math.Max(1, Environment.ProcessorCount);
-        var perCategory = new Dictionary<Guid, (long Bytes, double Cpu, int Untouchable, List<(ResourceLevel Level, long Bytes)> Trees)>();
+        var perCategory = new Dictionary<Guid, (long Bytes, double Cpu, int Untouchable, List<(ResourceLevel Level, long Bytes)> Trees, bool Held)>();
         var cpuNow = new Dictionary<int, (TimeSpan Cpu, long StartTicks, DateTime At)>();
 
         foreach (var group in groups)
@@ -637,14 +655,14 @@ public sealed class ResourceGovernor : IDisposable
 
             var level = group.Eligible && levels.Count > 0 ? levels.Min() : ResourceLevel.Normal;
             var owner = OwnerOf(group, active);
-            if (!perCategory.TryGetValue(owner, out var sum)) sum = (0, 0, 0, []);
+            if (!perCategory.TryGetValue(owner, out var sum)) sum = (0, 0, 0, [], false);
             sum.Trees.Add((level, bytes));
-            perCategory[owner] = (sum.Bytes + bytes, sum.Cpu + cpu, sum.Untouchable + untouchable, sum.Trees);
+            perCategory[owner] = (sum.Bytes + bytes, sum.Cpu + cpu, sum.Untouchable + untouchable, sum.Trees, sum.Held || group.HeldBySound);
         }
 
         _previousCpu.Clear();
         foreach (var (pid, value) in cpuNow) _previousCpu[pid] = value;
-        _usage = perCategory.Select(p => new CategoryResourceUsage(p.Key, p.Value.Bytes, p.Value.Cpu, MajorityLevel(p.Value.Trees), p.Value.Untouchable)).ToList();
+        _usage = perCategory.Select(p => new CategoryResourceUsage(p.Key, p.Value.Bytes, p.Value.Cpu, MajorityLevel(p.Value.Trees), p.Value.Untouchable, p.Value.Held)).ToList();
     }
 
     /// <summary>
@@ -681,7 +699,7 @@ public sealed class ResourceGovernor : IDisposable
     private bool RecomputeSignature()
     {
         var signature = string.Join(";", _usage.OrderBy(u => u.CategoryId)
-            .Select(u => $"{u.CategoryId:N}:{u.PrivateBytes / (10L * 1024 * 1024)}:{(int)Math.Round(u.CpuPercent)}:{(int)u.Level}:{u.UntouchableProcesses}"));
+            .Select(u => $"{u.CategoryId:N}:{u.PrivateBytes / (10L * 1024 * 1024)}:{(int)Math.Round(u.CpuPercent)}:{(int)u.Level}:{u.UntouchableProcesses}:{(u.HeldAwakeBySound ? 1 : 0)}"));
         if (signature == _usageSignature) return false;
         _usageSignature = signature;
         return true;

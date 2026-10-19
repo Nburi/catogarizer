@@ -20,6 +20,13 @@ public partial class MainWindow : Window
         IAppBlockingService appBlockingService, UpdateNotifier updateNotifier, Action<string> onHotkeyChanged)
     {
         InitializeComponent();
+        var build = Services.AppBuildInfo.Current;
+        Title = build.WindowTitle;
+        if (build.DevChipText is { } chip)
+        {
+            DevChipText.Text = chip;
+            DevChip.Visibility = Visibility.Visible;
+        }
         _viewModel = new MainViewModel(services, switcher, themeService, appBlockingService, updateNotifier, onHotkeyChanged);
         DataContext = _viewModel;
         _viewModel.NoticeRaised += (_, _) => PageScroll.ScrollToTop();

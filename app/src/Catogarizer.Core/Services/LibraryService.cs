@@ -343,6 +343,18 @@ public sealed class LibraryService
         Save();
     }
 
+    /// <summary>True for Unsorted, quick categories and anything unknown: they have no editor, so sound always protects.</summary>
+    public bool KeepSoundAwakeOf(Guid categoryId) =>
+        _config.Categories.FirstOrDefault(c => c.Id == categoryId) is not { IsTemporary: false } category || category.KeepSoundAwake;
+
+    public void SetKeepSoundAwake(Guid categoryId, bool keepAwake)
+    {
+        var category = GetCategoryOrThrow(categoryId);
+        if (category.IsTemporary) throw new InvalidOperationException("A quick category has no settings.");
+        category.KeepSoundAwake = keepAwake;
+        Save();
+    }
+
     // ---------------- Category <-> App links ----------------
 
     public void AddAppToCategory(Guid categoryId, Guid appId)

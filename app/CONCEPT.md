@@ -126,8 +126,18 @@ change: `design/resource-saving-preview.html`.
   app (window context menu, like pinning) or per category (category editor:
   never / when memory is tight / as soon as parked). "When memory is tight"
   means still above 85 % 30 s after trimming. A frozen app stays frozen until its
-  category is shown again. Apps playing sound are never frozen. A tree is only
-  frozen when every one of its windows is parked and allowed.
+  category is shown again. A tree is only frozen when every one of its windows
+  is parked and allowed.
+- **Sound (decided 2026-10-19)**: an app playing sound is left alone at every
+  level - while its category keeps sound awake, which is the default. Windows
+  does not say whether a stream is music or a game's effects, so instead of
+  guessing it is a per-category choice (`Category.KeepSoundAwake`, editor:
+  "Keep apps that play sound running"). Off, the category rests and freezes by
+  its normal rules, and the editor warns that sound stops. An app explicitly
+  allowed to freeze is no longer protected by sound (otherwise "allowed" would
+  silently never happen for a game). The most careful window of a shared tree
+  decides. A category awake only because of sound shows a speaker badge on its
+  tile (it lights up as the tile dims, so the badge is the "light left on").
 - **Never touched**: pinned apps, Catogarizer itself, system and host
   processes (ApplicationFrameHost, explorer, dwm ...), any tree that owns a
   visible window of the active category. No admin rights: what cannot be
