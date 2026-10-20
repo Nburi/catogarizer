@@ -73,7 +73,24 @@ public sealed class WindowManager : IWindowManager
     public void BringToFront(IntPtr handle)
     {
         if (IsIconic(handle)) ShowWindow(handle, SW_RESTORE);
-        SetForegroundWindow(handle);
+        if (SetForegroundWindow(handle) && GetForegroundWindow() == handle) return;
+
+        // Windows refuses the call when Catogarizer did not receive the last input (a hotkey from a
+        // background process, a CLI/trigger switch) and only flashes the taskbar button. Sharing the
+        // input queue of the current foreground thread lifts that restriction - no fake keystroke needed.
+        var foreground = GetForegroundWindow();
+        var foregroundThread = foreground == IntPtr.Zero ? 0u : (uint)GetWindowThreadProcessId(foreground, out _);
+        var ownThread = GetCurrentThreadId();
+        var attached = foregroundThread != 0 && foregroundThread != ownThread
+                       && AttachThreadInput(ownThread, foregroundThread, true);
+        try
+        {
+            SetForegroundWindow(handle);
+        }
+        finally
+        {
+            if (attached) AttachThreadInput(ownThread, foregroundThread, false);
+        }
     }
 
     public int GetProcessId(IntPtr handle)

@@ -120,6 +120,7 @@ public sealed class CategorySwitchService : ICategorySwitchService
             if (incoming.Count > 0)
             {
                 Reveal(incoming);
+                FocusTopWindow();
                 result = new SwitchResult(categoryId, true, incoming.Count, []);
             }
             else
@@ -131,6 +132,8 @@ public sealed class CategorySwitchService : ICategorySwitchService
                     if (unhidden) PersistHidden();
                 }
                 Reveal(claimed);
+                // With apps to open, they take the foreground themselves (Open brings adopted ones up).
+                if (templateApps.Count == 0) FocusTopWindow();
 
                 // Launching can take seconds: tell the UI where we are now, not only once it's done.
                 IsOpeningApps = templateApps.Count > 0;
@@ -364,6 +367,29 @@ public sealed class CategorySwitchService : ICategorySwitchService
             foreach (var window in windows) changed |= _hidden.Remove(window.Handle);
             if (changed) PersistHidden();
         }
+    }
+
+    /// <summary>
+    /// Hiding the old category's windows leaves the keyboard with nobody - Windows does not hand the
+    /// foreground to a window that was merely re-shown. So after a switch the topmost visible window of
+    /// the active category (the one used last) gets the focus; if the category has none, the topmost
+    /// visible app window does. Minimized windows are skipped: a switch must not pop them open.
+    /// Caller holds _switchLock.
+    /// </summary>
+    private void FocusTopWindow()
+    {
+        HashSet<IntPtr> active;
+        lock (_lock) active = OpenWindows(ActiveCategoryId).Select(w => w.Handle).ToHashSet();
+
+        // EnumWindows (behind FindAllAppWindows) walks the z-order from the top.
+        var candidates = _windowFinder.FindAllAppWindows()
+            .Where(w => w.ProcessId != _ownProcessId
+                        && _windowManager.IsWindowVisible(w.Handle)
+                        && !_windowManager.IsMinimized(w.Handle))
+            .ToList();
+
+        var target = candidates.FirstOrDefault(w => active.Contains(w.Handle)) ?? candidates.FirstOrDefault();
+        if (target is not null) _windowManager.BringToFront(target.Handle);
     }
 
     /// <summary>Caller holds _lock. Also forgets closed windows so the hidden ledger doesn't grow stale.</summary>

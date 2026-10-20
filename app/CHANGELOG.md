@@ -79,6 +79,10 @@ category's windows and brings back the new one's.
 ### Fixed
 - Tray notifications (e.g. "app held back") could crash the app.
 - CLI commands sent while a switch was running could get lost.
+- After a category switch the keyboard focus sat on nothing (the old window
+  was hidden), so you had to Alt+Tab once before typing. The switch now
+  focuses the topmost window of the new category (or the topmost visible app
+  window if it has none); minimized windows stay minimized.
 - Many review findings: honest empty/loading/error states, a missing app's
   row says "Not found at <path>" and only offers Edit/Remove, labels for
   screen readers, placement dialog Save only after a change, "Run now" on an
