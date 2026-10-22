@@ -565,4 +565,88 @@ public sealed class CategorySwitchServiceTests
         Assert.DoesNotContain(sessions[comms], w => w.Handle == new IntPtr(8));
         Assert.Empty(_hiddenStore.Records);
     }
+
+    [Fact]
+    public void SwitchTo_BackToAParkedCategory_FocusesItsTopmostWindow()
+    {
+        _windowFinder.RunningWindows.Add(Window(1, "explorer"));
+        _windowFinder.RunningWindows.Add(Window(2, "outlook"));
+        _service.Initialize();
+        _service.SwitchTo(Guid.NewGuid(), []);
+        _windowManager.BringToFrontCalls.Clear();
+
+        _service.SwitchTo(CategorySwitchService.Uncategorized, []);
+
+        // The finder lists windows top of the z-order first.
+        Assert.Equal([new IntPtr(1)], _windowManager.BringToFrontCalls);
+    }
+
+    [Fact]
+    public void SwitchTo_FocusesAWindowOfTheNewCategoryNotAPinnedOne()
+    {
+        _pinnedApps.Add(new PinnedApp { Name = "Spotify", ProcessNameOrPath = "spotify" });
+        _windowFinder.RunningWindows.Add(Window(1, "spotify"));
+        _windowFinder.RunningWindows.Add(Window(2, "explorer"));
+        _service.Initialize();
+        var comms = Guid.NewGuid();
+        _service.SwitchTo(comms, []);
+        _windowFinder.RunningWindows.Add(Window(3, "Teams"));
+        _windowWatcher.RaiseWindowAppeared(Window(3, "Teams"));
+        _service.SwitchTo(CategorySwitchService.Uncategorized, []);
+        _windowManager.BringToFrontCalls.Clear();
+
+        _service.SwitchTo(comms, []);
+
+        Assert.Equal([new IntPtr(3)], _windowManager.BringToFrontCalls);
+    }
+
+    [Fact]
+    public void SwitchTo_CategoryWithoutWindows_FocusesTheTopmostVisibleWindow()
+    {
+        _pinnedApps.Add(new PinnedApp { Name = "Spotify", ProcessNameOrPath = "spotify" });
+        _windowFinder.RunningWindows.Add(Window(1, "spotify"));
+        _service.Initialize();
+
+        _service.SwitchTo(Guid.NewGuid(), []);
+
+        Assert.Equal([new IntPtr(1)], _windowManager.BringToFrontCalls);
+    }
+
+    [Fact]
+    public void SwitchTo_SkipsMinimizedWindowsWhenFocusing()
+    {
+        _windowFinder.RunningWindows.Add(Window(1, "explorer"));
+        _windowFinder.RunningWindows.Add(Window(2, "outlook"));
+        _service.Initialize();
+        _service.SwitchTo(Guid.NewGuid(), []);
+        _windowManager.Minimized.Add(new IntPtr(1));
+        _windowManager.BringToFrontCalls.Clear();
+
+        _service.SwitchTo(CategorySwitchService.Uncategorized, []);
+
+        Assert.Equal([new IntPtr(2)], _windowManager.BringToFrontCalls);
+    }
+
+    [Fact]
+    public void SwitchTo_NeverFocusesCatogarizerItself()
+    {
+        _windowFinder.RunningWindows.Add(new OpenWindowInfo(new IntPtr(9), "Catogarizer", "Catogarizer.App", OwnProcessId));
+        _service.Initialize();
+
+        _service.SwitchTo(Guid.NewGuid(), []);
+
+        Assert.Empty(_windowManager.BringToFrontCalls);
+    }
+
+    [Fact]
+    public void SwitchTo_WithAppsToOpen_LeavesTheForegroundToTheLaunchedApps()
+    {
+        _pinnedApps.Add(new PinnedApp { Name = "Spotify", ProcessNameOrPath = "spotify" });
+        _windowFinder.RunningWindows.Add(Window(1, "spotify"));
+        _service.Initialize();
+
+        _service.SwitchTo(Guid.NewGuid(), [App("VSCode")]);
+
+        Assert.Empty(_windowManager.BringToFrontCalls);
+    }
 }
