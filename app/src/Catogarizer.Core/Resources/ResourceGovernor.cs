@@ -33,6 +33,15 @@ public sealed class ResourceGovernor : IDisposable
     /// <summary>Trimming stops once memory has fallen below this.</summary>
     public const int RelievedLoad = 75;
 
+    /// <summary>CPU or GPU use that starts a busy episode. Like <see cref="SevereLoad"/> it must last <see cref="SevereFor"/>.</summary>
+    public const int BusyLoad = 90;
+
+    /// <summary>A busy episode survives dips down to this; below it the clock starts over.</summary>
+    public const int BusyRelaxedLoad = 80;
+
+    /// <summary>A parked tree using at least this share of the machine's CPU or GPU is part of the load. Freezing the others would not help.</summary>
+    public const int LoadSourceShare = 5;
+
     public static readonly TimeSpan MinParkedToTrim = TimeSpan.FromMinutes(2);
     public static readonly TimeSpan RetrimInterval = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan SevereFor = TimeSpan.FromSeconds(30);
@@ -79,12 +88,21 @@ public sealed class ResourceGovernor : IDisposable
         /// <summary>Would rest if it were silent: sound is the only thing keeping it awake.</summary>
         public bool HeldBySound { get; set; }
         public DateTime ParkedSince { get; set; }
+
+        /// <summary>Share of the whole machine's CPU the tree used since the last look, 0-100.</summary>
+        public double CpuPercent { get; set; }
+
+        /// <summary>Share of the busiest graphics engine the tree used, 0-100.</summary>
+        public int GpuPercent { get; set; }
+
+        public bool IsLoadSource => CpuPercent >= LoadSourceShare || GpuPercent >= LoadSourceShare;
     }
 
     private readonly IWindowSessions _sessions;
     private readonly IProcessTable _table;
     private readonly IProcessGovernor _governor;
     private readonly ISystemMemory _memory;
+    private readonly ISystemLoad? _load;
     private readonly IAudioActivity _audio;
     private readonly IThrottleLedger _ledger;
     private readonly IResourceSettings _settings;
@@ -105,6 +123,7 @@ public sealed class ResourceGovernor : IDisposable
     private bool _tight;
     private bool _announced;
     private DateTime? _severeSince;
+    private DateTime? _busySince;
     private volatile bool _dirty;
     private bool _stopped;
     private IReadOnlySet<int> _playing = new HashSet<int>();
@@ -114,14 +133,16 @@ public sealed class ResourceGovernor : IDisposable
     private bool _disposed;
 
     /// <param name="autoRun">Runs <see cref="Tick"/> on a timer and after state changes. Tests drive Tick by hand.</param>
+    /// <param name="load">CPU and GPU load. Without it only memory pressure freezes "when the PC is under load".</param>
     public ResourceGovernor(IWindowSessions sessions, IProcessTable table, IProcessGovernor governor, ISystemMemory memory,
         IAudioActivity audio, IThrottleLedger ledger, IResourceSettings settings, IClock? clock = null,
-        int? ownProcessId = null, bool autoRun = false)
+        int? ownProcessId = null, bool autoRun = false, ISystemLoad? load = null)
     {
         _sessions = sessions;
         _table = table;
         _governor = governor;
         _memory = memory;
+        _load = load;
         _audio = audio;
         _ledger = ledger;
         _settings = settings;
@@ -345,10 +366,12 @@ public sealed class ResourceGovernor : IDisposable
                 EnterEco(eligible, UsageOf);
                 SaveLedger();
                 announce = Trim(eligible, forceTrim, now, active);
+                UpdateLoad(eligible, now, UsageOf);
                 Freeze(eligible, now, audioReliable);
             }
             else
             {
+                _busySince = null;
                 ReleaseAllLocked();
             }
 
@@ -402,6 +425,32 @@ public sealed class ResourceGovernor : IDisposable
 
         if (_tight && load >= SevereLoad) _severeSince ??= now;
         else if (load < TightLoad) _severeSince = null;
+    }
+
+    /// <summary>
+    /// CPU and GPU pressure, tracked like the severe memory pressure: a busy episode starts at <see cref="BusyLoad"/>
+    /// and is forgotten below <see cref="BusyRelaxedLoad"/>. Also measures what each eligible tree contributes.
+    /// Only looks while some eligible tree freezes "when the PC is under load" - nobody else needs the figures.
+    /// </summary>
+    private void UpdateLoad(List<Group> eligible, DateTime now, Func<int, ProcessUsage?> usageOf)
+    {
+        if (_load is null || !eligible.Any(g => ModeOf(g) == FreezeMode.WhenTight))
+        {
+            _busySince = null;
+            return;
+        }
+
+        var sample = _load.Sample();
+        var busy = Math.Max(sample.CpuPercent, sample.GpuPercent);
+        if (busy >= BusyLoad) _busySince ??= now;
+        else if (busy < BusyRelaxedLoad) _busySince = null;
+
+        var cores = Math.Max(1, Environment.ProcessorCount);
+        foreach (var group in eligible)
+        {
+            group.CpuPercent = group.Pids.Sum(pid => usageOf(pid) is { } usage ? CpuPercentOf(pid, usage, now, cores) : 0);
+            group.GpuPercent = Math.Min(100, group.Pids.Sum(pid => sample.GpuByProcess.GetValueOrDefault(pid)));
+        }
     }
 
     // ---------------- Process trees ----------------
@@ -590,7 +639,7 @@ public sealed class ResourceGovernor : IDisposable
             var parkedFor = now - group.ParkedSince;
             var wanted = mode == FreezeMode.Immediately
                 ? parkedFor >= FreezeSettle
-                : _severeSince is { } since && now - since >= SevereFor && parkedFor >= MinParkedToTrim;
+                : (MemorySevere(now) && parkedFor >= MinParkedToTrim) || (group.IsLoadSource && LoadSustained(now) && parkedFor >= FreezeSettle);
             if (!wanted) continue;
 
             var targets = states.Where(x => x.State!.Level < ResourceLevel.Frozen && !x.State.FreezeFailed).ToList();
@@ -609,6 +658,12 @@ public sealed class ResourceGovernor : IDisposable
             SaveLedger();
         }
     }
+
+    /// <summary>Paging out was not enough: memory has stayed severe for a while.</summary>
+    private bool MemorySevere(DateTime now) => _severeSince is { } since && now - since >= SevereFor;
+
+    /// <summary>The processor or the graphics card has been maxed out for a while.</summary>
+    private bool LoadSustained(DateTime now) => _busySince is { } since && now - since >= SevereFor;
 
     /// <summary>The most careful permission among the group's windows: one window that may not be frozen decides for all.</summary>
     private FreezeMode ModeOf(Group group)
@@ -644,8 +699,7 @@ public sealed class ResourceGovernor : IDisposable
                 {
                     bytes += u.PrivateBytes;
                     cpuNow[pid] = (u.CpuTime, u.StartTicks, now);
-                    if (_previousCpu.TryGetValue(pid, out var before) && before.StartTicks == u.StartTicks && now > before.At)
-                        cpu += (u.CpuTime - before.Cpu).TotalSeconds / ((now - before.At).TotalSeconds * cores) * 100;
+                    cpu += CpuPercentOf(pid, u, now, cores);
                 }
 
                 var start = usage?.StartTicks ?? -1;
@@ -664,6 +718,12 @@ public sealed class ResourceGovernor : IDisposable
         foreach (var (pid, value) in cpuNow) _previousCpu[pid] = value;
         _usage = perCategory.Select(p => new CategoryResourceUsage(p.Key, p.Value.Bytes, p.Value.Cpu, MajorityLevel(p.Value.Trees), p.Value.Untouchable, p.Value.Held)).ToList();
     }
+
+    /// <summary>Share of the whole machine's CPU this process used since the previous look; 0 when there was none.</summary>
+    private double CpuPercentOf(int pid, ProcessUsage usage, DateTime now, int cores) =>
+        _previousCpu.TryGetValue(pid, out var before) && before.StartTicks == usage.StartTicks && now > before.At
+            ? (usage.CpuTime - before.Cpu).TotalSeconds / ((now - before.At).TotalSeconds * cores) * 100
+            : 0;
 
     /// <summary>
     /// What most of the category's memory is doing: the highest level that at least half of its bytes have reached.
