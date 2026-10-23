@@ -290,8 +290,9 @@
                     </RadioButton>
                     <RadioButton Style="{StaticResource ThemedRadioStyle}" GroupName="Freeze" IsChecked="{Binding FreezeWhenTight}" Margin="0,0,0,10">
                         <StackPanel>
-                            <TextBlock Text="Freeze when memory is tight" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                            <TextBlock Text="Only after paging out was not enough. Wakes when you switch here." Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap"/>
+                            <TextBlock Text="Freeze when the PC is under load" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                            <TextBlock Text="When memory stays tight after paging out, or the processor or graphics card stay maxed out and these apps are part of it. Wakes when you switch here."
+                                       Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap"/>
                         </StackPanel>
                     </RadioButton>
                     <RadioButton Style="{StaticResource ThemedRadioStyle}" GroupName="Freeze" IsChecked="{Binding FreezeImmediately}">

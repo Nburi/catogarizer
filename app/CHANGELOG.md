@@ -49,6 +49,11 @@ category's windows and brings back the new one's.
   sound, pinned apps, system processes and anything with a window in the active
   category are never touched. New in Settings: **Save resources while categories
   are parked** and the list of apps allowed to freeze.
+- **Freeze under CPU and GPU load.** The category option "Freeze when memory is
+  tight" is now **Freeze when the PC is under load**: besides memory pressure, a
+  parked app is frozen when the processor or the graphics card stay above 90 % for
+  30 seconds and that app uses at least 5 % of it itself. Quiet parked apps are
+  left running. Existing settings keep working.
 - **Sound no longer decides for games.** In the category editor, **Keep apps that
   play sound running** (on by default) can be switched off per category, so a game
   whose sound effects kept it awake rests like everything else. An app you allowed

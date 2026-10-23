@@ -9,7 +9,10 @@ public enum FreezeMode
     /// <summary>Slowed down and, when memory is tight, paged out - never suspended.</summary>
     Never = 0,
 
-    /// <summary>Suspended only when paging out was not enough.</summary>
+    /// <summary>
+    /// Suspended only when the PC is under load: paging out was not enough for memory, or the CPU or GPU stay maxed
+    /// out and these apps use a share of it. (Named for memory, the first trigger; the name is saved in config files.)
+    /// </summary>
     WhenTight = 1,
 
     /// <summary>Suspended shortly after the category is parked.</summary>
