@@ -17,6 +17,7 @@ switch (mode)
     case "child-tray": RunTrayChild(); return;
     case "audio": Audio(); return;
     case "close": CloseBehaviour(); return;
+    case "load": Load(); return;
 }
 
 var table = new ProcessTable();
@@ -118,6 +119,21 @@ static void Audio()
     var audio = new AudioActivity();
     var ids = audio.PlayingProcessIds();
     Console.WriteLine($"reliable: {audio.IsReliable}; playing: {(ids.Count == 0 ? "(nothing)" : string.Join(", ", ids.Select(i => $"{i}={Name(i)}")))}");
+}
+
+static void Load()
+{
+    Console.WriteLine("\n== System load: CPU + GPU (read-only) ==");
+    var load = new SystemLoad();
+    for (var i = 0; i < 6; i++)
+    {
+        Thread.Sleep(1100);
+        var watch = Stopwatch.StartNew();
+        var sample = load.Sample();
+        watch.Stop();
+        var top = string.Join(", ", sample.GpuByProcess.OrderByDescending(p => p.Value).Take(3).Select(p => $"{p.Key}={Name(p.Key)} {p.Value} %"));
+        Console.WriteLine($"#{i + 1}: cpu {sample.CpuPercent} %  gpu {sample.GpuPercent} %  ({sample.GpuByProcess.Count} processes use the GPU: {(top == "" ? "-" : top)})  took {watch.Elapsed.TotalMilliseconds:F1} ms");
+    }
 }
 
 static void CloseBehaviour()

@@ -124,8 +124,13 @@ change: `design/resource-saving-preview.html`.
   been parked 2 minutes. Calm again below 70 %.
 - **Frozen (only where the user allowed it)**: suspended processes. Allowed per
   app (window context menu, like pinning) or per category (category editor:
-  never / when memory is tight / as soon as parked). "When memory is tight"
-  means still above 85 % 30 s after trimming. A frozen app stays frozen until its
+  never / when the PC is under load / as soon as parked). "Under load" is any of:
+  memory still above 85 % 30 s after trimming; CPU or GPU at 90 % or more for 30 s
+  (an episode survives dips down to 80 %, resets below). The CPU/GPU case freezes
+  only parked trees that use at least 5 % of the machine's CPU or of the busiest
+  GPU engine themselves (decided 2026-10-23): freezing an idle app would not
+  relieve anything. The enum value stays `FreezeMode.WhenTight`, so saved
+  settings keep working. A frozen app stays frozen until its
   category is shown again. A tree is only frozen when every one of its windows
   is parked and allowed.
 - **Sound (decided 2026-10-19)**: an app playing sound is left alone at every
@@ -159,7 +164,8 @@ change: `design/resource-saving-preview.html`.
   as closing a quick category, so it stays within PRINCIPLES.md value 1.
 - Out of scope for now: UWP apps (host-process windows), waking frozen chat
   apps for notifications, closing from palette/tray/CLI, thresholds as
-  settings, GPU figures, a "never sleep" flag per category.
+  settings, GPU figures in the Resources card (the GPU is only read to decide
+  on freezing), a "never sleep" flag per category.
 
 ### App blocking
 - A category can carry a blocklist of apps that are not allowed to run

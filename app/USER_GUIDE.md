@@ -119,9 +119,12 @@ moment you switch back:
   apps miss messages, downloads and syncs wait, calls drop - until you switch
   back. Allow it for one app (right-click a window on the home, **Allow freezing
   while parked**) or for a whole category (in its editor: **While parked** -
-  never, when memory is tight, or as soon as it is parked). Freezing stops
-  everything in the app: music cuts out, calls drop, online games lose their
-  connection.
+  never, when the PC is under load, or as soon as it is parked). "Under load"
+  means memory is still above 85 % after paging out, or the processor or the
+  graphics card have been above 90 % for 30 seconds - and in that second case
+  only the parked apps that use a noticeable share of it themselves (5 % or
+  more) are frozen, the quiet ones keep running. Freezing stops everything in
+  the app: music cuts out, calls drop, online games lose their connection.
 - **Sound.** Apps that are playing sound are not touched at all while their
   category is parked, so music, calls and videos keep going. Games are the
   exception you probably want: their sound effects would keep them awake forever.

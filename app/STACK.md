@@ -85,6 +85,15 @@ Apps`, already on `%PATH%`) expects.
     pages once per process and would add up wrongly over an Electron tree.
   - *Freeze*: `NtSuspendProcess`/`NtResumeProcess` stop and restart a process
     cleanly (a ticking loop stopped, then continued).
+  - *CPU / GPU load* (2026-10-23, `SystemLoad`): CPU from `GetSystemTimes` deltas.
+    The GPU has no plain Win32 call; the "GPU Engine" performance counters (one per
+    process and engine, ~1800 instances on a dual-GPU laptop) are read through PDH
+    P/Invoke instead of the `System.Diagnostics.PerformanceCounter` package (keeps
+    the app dependency-free). The card's load is its busiest engine, as in Task
+    Manager. Opening the query takes ~0.5 s, so it happens on a pool thread; a
+    sample afterwards costs ~2 ms (`ResourceSpike -- load`). No counters -> no GPU
+    figure, the CPU trigger still works. Only sampled while a parked tree may be
+    frozen under load.
   - *Sound*: the default output device's audio session list (hand-written COM,
     no package) names the processes with an active stream - on the test machine a
     Steam game and a tray tool. Audio of a browser lives in a helper child, so the

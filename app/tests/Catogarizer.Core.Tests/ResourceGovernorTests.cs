@@ -18,6 +18,7 @@ public sealed class ResourceGovernorTests
     private readonly FakeProcessTable _table = new();
     private readonly FakeProcessGovernor _governor = new();
     private readonly FakeSystemMemory _memory = new();
+    private readonly FakeSystemLoad _load = new();
     private readonly FakeAudioActivity _audio = new();
     private readonly FakeThrottleLedger _ledger = new();
     private readonly FakeResourceSettings _settings = new();
@@ -26,7 +27,7 @@ public sealed class ResourceGovernorTests
 
     public ResourceGovernorTests()
     {
-        _resources = new ResourceGovernor(_sessions, _table, _governor, _memory, _audio, _ledger, _settings, _clock, OwnPid);
+        _resources = new ResourceGovernor(_sessions, _table, _governor, _memory, _audio, _ledger, _settings, _clock, OwnPid, load: _load);
     }
 
     /// <summary>The usual picture: Work is active with one app, Comms is parked with one app.</summary>
@@ -568,6 +569,185 @@ public sealed class ResourceGovernorTests
         _resources.Tick();
 
         Assert.Equal([20], _governor.SuspendCalls);
+    }
+
+    // ---------------- Frozen under CPU / GPU load ----------------
+
+    private static readonly TimeSpan Look = TimeSpan.FromSeconds(10);
+    private TimeSpan _slackCpu;
+
+    /// <summary>Comms is parked and freezes "when the PC is under load"; one calm look so the baseline figures exist.</summary>
+    private void ParkedCommsFreezingUnderLoad()
+    {
+        WorkActiveCommsParked();
+        _settings.Modes[Comms] = FreezeMode.WhenTight;
+        _resources.Tick();
+        Later(Look);
+        _resources.Tick();
+    }
+
+    /// <summary>One look ten seconds later, in which the parked app used this share of the whole machine's CPU.</summary>
+    private void LookWhereSlackUses(double machineShare)
+    {
+        Later(Look);
+        _slackCpu += TimeSpan.FromSeconds(machineShare / 100 * Look.TotalSeconds * Environment.ProcessorCount);
+        _table.SetCpu(20, _slackCpu);
+        _resources.Tick();
+    }
+
+    [Fact]
+    public void Tick_AParkedAppThatCausesCpuLoad_IsFrozenOnceTheCpuStaysMaxedOutThirtySeconds()
+    {
+        ParkedCommsFreezingUnderLoad();
+        _load.CpuPercent = 95;
+
+        LookWhereSlackUses(40);
+        LookWhereSlackUses(40);
+        LookWhereSlackUses(40);
+        Assert.Empty(_governor.SuspendCalls);
+
+        LookWhereSlackUses(40);
+        Assert.Equal([20], _governor.SuspendCalls);
+        Assert.Equal(ResourceLevel.Frozen, _resources.Usage.Single(u => u.CategoryId == Comms).Level);
+    }
+
+    [Fact]
+    public void Tick_AParkedAppThatIsIdle_IsNotFrozenForLoadItDoesNotCause()
+    {
+        ParkedCommsFreezingUnderLoad();
+        _load.CpuPercent = 99;
+
+        for (var i = 0; i < 6; i++) LookWhereSlackUses(1);
+
+        Assert.Empty(_governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_AParkedAppThatCausesGpuLoad_IsFrozen_EvenWhenTheCpuIsCalm()
+    {
+        ParkedCommsFreezingUnderLoad();
+        _load.CpuPercent = 20;
+        _load.GpuPercent = 97;
+        _load.GpuByProcess[20] = 60;
+
+        for (var i = 0; i < 4; i++) LookWhereSlackUses(0);
+
+        Assert.Equal([20], _governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_GpuLoadCausedByAnotherProcess_DoesNotFreezeTheParkedApp()
+    {
+        ParkedCommsFreezingUnderLoad();
+        _load.GpuPercent = 97;
+        _load.GpuByProcess[10] = 90;
+        _load.GpuByProcess[20] = 2;
+
+        for (var i = 0; i < 6; i++) LookWhereSlackUses(0);
+
+        Assert.Empty(_governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_LoadThatDropsBelowEighty_StartsTheThirtySecondsOver()
+    {
+        ParkedCommsFreezingUnderLoad();
+        _load.CpuPercent = 95;
+        LookWhereSlackUses(40);
+        LookWhereSlackUses(40);
+
+        _load.CpuPercent = 70;
+        LookWhereSlackUses(40);
+        _load.CpuPercent = 95;
+        LookWhereSlackUses(40);
+        LookWhereSlackUses(40);
+        LookWhereSlackUses(40);
+        Assert.Empty(_governor.SuspendCalls);
+
+        LookWhereSlackUses(40);
+        Assert.Equal([20], _governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_LoadThatDipsOnlyBelowNinety_KeepsTheEpisodeGoing()
+    {
+        ParkedCommsFreezingUnderLoad();
+        _load.CpuPercent = 95;
+        LookWhereSlackUses(40);
+        _load.CpuPercent = 85;
+        LookWhereSlackUses(40);
+        LookWhereSlackUses(40);
+        LookWhereSlackUses(40);
+
+        Assert.Equal([20], _governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_ACategoryThatNeverFreezes_IsLeftAloneUnderLoad()
+    {
+        WorkActiveCommsParked();
+        _resources.Tick();
+        _load.CpuPercent = 100;
+
+        for (var i = 0; i < 6; i++) LookWhereSlackUses(50);
+
+        Assert.Empty(_governor.SuspendCalls);
+        Assert.Equal(0, _load.Samples);
+    }
+
+    [Fact]
+    public void Tick_AnAppAllowedToFreeze_IsFrozenUnderLoadLikeAWhenTightCategory()
+    {
+        WorkActiveCommsParked();
+        _settings.Freezable.Add("slack");
+        _resources.Tick();
+        _load.CpuPercent = 100;
+
+        for (var i = 0; i < 5; i++) LookWhereSlackUses(50);
+
+        Assert.Equal([20], _governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_AParkedAppThatPlaysSound_IsNotFrozenUnderLoad()
+    {
+        ParkedCommsFreezingUnderLoad();
+        _audio.Playing.Add(20);
+        _load.CpuPercent = 100;
+
+        for (var i = 0; i < 6; i++) LookWhereSlackUses(50);
+
+        Assert.Empty(_governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_LoadThatCannotBeRead_FreezesNothing()
+    {
+        ParkedCommsFreezingUnderLoad();
+        _load.CpuPercent = -1;
+        _load.GpuPercent = -1;
+
+        for (var i = 0; i < 6; i++) LookWhereSlackUses(50);
+
+        Assert.Empty(_governor.SuspendCalls);
+    }
+
+    [Fact]
+    public void Tick_WithoutALoadSource_OnlyMemoryPressureFreezes()
+    {
+        var resources = new ResourceGovernor(_sessions, _table, _governor, _memory, _audio, _ledger, _settings, _clock, OwnPid);
+        WorkActiveCommsParked();
+        _settings.Modes[Comms] = FreezeMode.WhenTight;
+        resources.Tick();
+
+        for (var i = 0; i < 6; i++)
+        {
+            Later(Look);
+            _table.SetCpu(20, _slackCpu += TimeSpan.FromSeconds(5 * Environment.ProcessorCount));
+            resources.Tick();
+        }
+
+        Assert.Empty(_governor.SuspendCalls);
     }
 
     [Fact]
