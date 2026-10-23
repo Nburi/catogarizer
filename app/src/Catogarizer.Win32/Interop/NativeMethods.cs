@@ -377,4 +377,43 @@ internal static class NativeMethods
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX buffer);
+
+    /// <summary>Time all processors spent idle / in the kernel (idle included) / in user mode, in 100 ns units since boot.</summary>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetSystemTimes(out long idle, out long kernel, out long user);
+
+    // ---- Performance Data Helper: the only way to read what the graphics card is doing without a vendor library ----
+
+    public const uint PDH_FMT_DOUBLE = 0x00000200;
+    public const uint PDH_MORE_DATA = 0x800007D2;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PDH_FMT_COUNTERVALUE
+    {
+        public uint CStatus;
+        public double doubleValue;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PDH_FMT_COUNTERVALUE_ITEM_W
+    {
+        public IntPtr szName;
+        public PDH_FMT_COUNTERVALUE FmtValue;
+    }
+
+    [DllImport("pdh.dll", CharSet = CharSet.Unicode)]
+    public static extern uint PdhOpenQueryW(string? dataSource, IntPtr userData, out IntPtr query);
+
+    [DllImport("pdh.dll", CharSet = CharSet.Unicode)]
+    public static extern uint PdhAddEnglishCounterW(IntPtr query, string fullCounterPath, IntPtr userData, out IntPtr counter);
+
+    [DllImport("pdh.dll")]
+    public static extern uint PdhCollectQueryData(IntPtr query);
+
+    [DllImport("pdh.dll", CharSet = CharSet.Unicode)]
+    public static extern uint PdhGetFormattedCounterArrayW(IntPtr counter, uint format, ref uint bufferSize, out uint itemCount, IntPtr buffer);
+
+    [DllImport("pdh.dll")]
+    public static extern uint PdhCloseQuery(IntPtr query);
 }

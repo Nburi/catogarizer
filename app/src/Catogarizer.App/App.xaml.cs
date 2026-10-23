@@ -132,7 +132,8 @@ public partial class App : Application
         // Before the windows come back: an app a crashed run left frozen must be running again by the time its
         // window is shown. Then it follows the sessions and slows parked categories down (value 1, nothing is lost).
         var resources = new ResourceGovernor(switchService, new ProcessTable(), new ProcessGovernor(), new SystemMemory(),
-            new AudioActivity(), new JsonThrottleLedger(DataFilePath("throttled.json")), new LibraryResourceSettings(library), autoRun: true);
+            new AudioActivity(), new JsonThrottleLedger(DataFilePath("throttled.json")), new LibraryResourceSettings(library), autoRun: true,
+            load: new SystemLoad());
         resources.Initialize();
         _resources = resources;
         switchService.Initialize();
