@@ -74,10 +74,20 @@ public partial class MainWindow : Window
             e.Handled = true;
     }
 
+    /// <summary>Right-click menu of a shelf tile: built per opening from the same entries the window menu uses.</summary>
+    private void ShelfTile_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: ShelfItem item, ContextMenu: { } menu })
+            menu.ItemsSource = MainViewModel.BuildShelfMenu(item);
+        else
+            e.Handled = true;
+    }
+
     /// <summary>Right-click menu of a shelf tile: close that category.</summary>
     private async void ShelfMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem { Parent: ContextMenu { PlacementTarget: FrameworkElement { DataContext: ShelfItem item } } })
+        if (sender is not MenuItem { DataContext: CloseCategoryMenuEntry } menuItem) return;
+        if (ItemsControl.ItemsControlFromItemContainer(menuItem) is ContextMenu { PlacementTarget: FrameworkElement { DataContext: ShelfItem item } })
             await _viewModel.CloseShelfCategoryAsync(item);
     }
 

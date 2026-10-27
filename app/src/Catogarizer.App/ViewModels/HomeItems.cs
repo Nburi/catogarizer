@@ -58,6 +58,9 @@ public sealed record PinMenuEntry(string Text) : WindowMenuEntry(Text);
 /// <summary>"Allow freezing while parked" or "Don't freeze this app", depending on whether the user allowed it already.</summary>
 public sealed record FreezeMenuEntry(string Text) : WindowMenuEntry(Text);
 
+/// <summary>"Close windows..." on a shelf tile.</summary>
+public sealed record CloseCategoryMenuEntry(string Text) : WindowMenuEntry(Text);
+
 public sealed record MenuHeaderEntry(string Text) : WindowMenuEntry(Text)
 {
     public override string Kind => "header";

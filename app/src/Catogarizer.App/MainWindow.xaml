@@ -568,10 +568,16 @@
                         <Button Style="{StaticResource ShelfTileStyle}" AutomationProperties.Name="{Binding AutomationName}"
                                 Command="{Binding DataContext.SwitchToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                 CommandParameter="{Binding}"
-                                ContextMenuService.IsEnabled="{Binding CanClose}">
+                                ContextMenuService.IsEnabled="{Binding CanClose}"
+                                ContextMenuOpening="ShelfTile_ContextMenuOpening">
                             <Button.ContextMenu>
+                                <!-- The themed item draws its label from the entry's Text, so the entries are set in code-behind. -->
                                 <ContextMenu Style="{StaticResource ThemedContextMenuStyle}">
-                                    <MenuItem Header="Close windows..." Style="{StaticResource ThemedMenuItemStyle}" Click="ShelfMenuItem_Click"/>
+                                    <ContextMenu.ItemContainerStyle>
+                                        <Style TargetType="MenuItem" BasedOn="{StaticResource ThemedMenuItemStyle}">
+                                            <EventSetter Event="Click" Handler="ShelfMenuItem_Click"/>
+                                        </Style>
+                                    </ContextMenu.ItemContainerStyle>
                                 </ContextMenu>
                             </Button.ContextMenu>
                             <StackPanel>

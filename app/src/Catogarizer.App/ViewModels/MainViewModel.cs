@@ -667,6 +667,9 @@ public partial class MainViewModel : ObservableObject
         return entries;
     }
 
+    public static IReadOnlyList<WindowMenuEntry> BuildShelfMenu(ShelfItem item) =>
+        item.CanClose ? [new CloseCategoryMenuEntry("Close windows...")] : [];
+
     /// <summary>Context menu on a window row: lets the app be suspended while its category is parked, or takes that back.</summary>
     public async Task ToggleFreezeAsync(WindowRow row)
     {
