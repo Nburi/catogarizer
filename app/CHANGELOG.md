@@ -70,6 +70,14 @@ category's windows and brings back the new one's.
   right-click): the windows are asked to close, never the processes; windows that
   stay open (a Save prompt, an app that keeps running in the tray) are named with
   a way to them.
+- **End program** for apps that don't close with a normal close. After
+  **Close windows**, each program that stayed gets a row saying why (probably
+  asking to save / doesn't react / keeps running in the background), with
+  **Show** and **End...**. Ending takes a second click in the same row, which
+  spells out the cost (unsaved work, windows in other categories that end with
+  the program). Right-click a window offers **End <app>...** too. Catogarizer
+  itself, the Windows shell and system processes are never ended, and an app
+  running as administrator is reported instead of failing silently.
 
 ### Changed
 - Blocking follows the active category only. The outgoing category's
@@ -84,6 +92,8 @@ category's windows and brings back the new one's.
 ### Fixed
 - Tray notifications (e.g. "app held back") could crash the app.
 - CLI commands sent while a switch was running could get lost.
+- The right-click menu on a category tile showed an empty item (the label was
+  bound to a property the tile doesn't have). It now reads "Close windows...".
 - After a category switch the keyboard focus sat on nothing (the old window
   was hidden), so you had to Alt+Tab once before typing. The switch now
   focuses the topmost window of the new category (or the topmost visible app

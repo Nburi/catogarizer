@@ -154,14 +154,31 @@ close the way a click on X does, so an app with unsaved work asks you first. Onl
 the windows close, never the programs: a chat app may stay in the tray.
 
 If some windows are still open after a few seconds, a note says "3 of 5 windows
-closed. 2 are still open" and **Show them** takes you there. Closing the category
-you're in takes you back to the one you came from (or Unsorted). The category itself
-stays, with its template. Unsorted can't be closed as a whole.
+closed. 1 program kept running" and lists each program with the reason it stayed.
+Closing the category you're in takes you back to the one you came from (or
+Unsorted). The category itself stays, with its template. Unsorted can't be closed
+as a whole.
 
-An app that keeps its window hidden in the tray when you close it (many chat apps)
-can't be told apart from a window Catogarizer parked, so it counts as "still
-open" and comes back when you next switch to that category. Quit such an app
-from its tray icon.
+### Programs that don't close
+
+Each program that stayed has a row with **Show** (takes you to its window) and
+**End...**. The row says why it stayed, as a good guess:
+- *Probably asking you to save* - it opened a dialog of its own. **Show** leads
+  here: answer it, or end the program and lose that work.
+- *Doesn't react to the close request* - its window is on screen and nothing happens.
+- *Keeps running in the background* - its window is out of sight, like a chat app
+  in the tray. Catogarizer can't tell that from a window it parked itself, so this
+  is also what a parked app looks like.
+
+**End...** asks once more in the same row and says what it costs: unsaved work is
+lost, and so are the program's other windows, also those in other categories (a
+browser has one process for all its windows). **End program** then ends it for good;
+**Cancel** leaves it alone. The same works for any window: right-click it on the
+home and choose **End <app>...**.
+
+Never ended from here: Catogarizer itself, the Windows shell (Explorer) and system
+processes. An app that runs as administrator can't be ended either, because
+Catogarizer never asks for admin rights - close it from its own window or Task Manager.
 
 ## Quick categories
 

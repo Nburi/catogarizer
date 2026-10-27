@@ -55,6 +55,8 @@ public sealed class StubbornProgramService
     {
         "explorer", "dwm", "csrss", "winlogon", "wininit", "services", "lsass", "smss", "svchost", "system", "idle",
         "sihost", "fontdrvhost", "ctfmon", "taskhostw", "SearchHost", "StartMenuExperienceHost", "ShellExperienceHost",
+        // Owns the window of every Store app: ending it would take unrelated apps (Settings, Calculator) along.
+        "ApplicationFrameHost",
     };
 
     private readonly LibraryService _library;

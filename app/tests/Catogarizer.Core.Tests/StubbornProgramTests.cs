@@ -135,6 +135,7 @@ public sealed class StubbornProgramTests
     [InlineData("explorer.exe")]
     [InlineData("dwm")]
     [InlineData("winlogon")]
+    [InlineData("ApplicationFrameHost")]
     public void Describe_TheShellAndSystemProcesses_AreProtected(string process)
     {
         var window = OpenIn(_work, 1, pid: 10, process);
