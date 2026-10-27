@@ -557,7 +557,12 @@ public partial class MainViewModel : ObservableObject
             ShowFailures(await Task.Run(() => _switcher.SwitchTo(report.CategoryId)));
         }
         var open = row.Program.Windows.FirstOrDefault(w => _services.WindowManager.IsWindowOpen(w.Handle));
-        if (open is not null) _services.WindowManager.BringToFront(open.Handle);
+        if (open is not null)
+        {
+            // A tray app hid its own window when it was asked to close; "Show" has to bring it back, not just activate it.
+            if (!_services.WindowManager.IsWindowVisible(open.Handle)) _services.WindowManager.Show(open.Handle);
+            _services.WindowManager.BringToFront(open.Handle);
+        }
         Refresh();
     }
 
