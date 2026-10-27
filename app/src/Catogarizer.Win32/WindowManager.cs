@@ -51,11 +51,34 @@ public sealed class WindowManager : IWindowManager
 
     public void CloseGraceful(IntPtr handle) => PostMessage(handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
 
-    public void ForceKill(IntPtr handle)
+    public ForceKillOutcome ForceKill(IntPtr handle)
     {
-        GetWindowThreadProcessId(handle, out var pid);
-        try { Process.GetProcessById(pid).Kill(); }
-        catch (ArgumentException) { /* already gone */ }
+        if (GetWindowThreadProcessId(handle, out var pid) == 0 || pid == 0) return ForceKillOutcome.AlreadyGone;
+        try
+        {
+            using var process = Process.GetProcessById(pid);
+            process.Kill();
+            // Kill only requests the end; wait so the windows are really gone when the caller looks.
+            process.WaitForExit(2000);
+            return ForceKillOutcome.Ended;
+        }
+        catch (ArgumentException) { return ForceKillOutcome.AlreadyGone; }
+        catch (System.ComponentModel.Win32Exception) { return ForceKillOutcome.AccessDenied; }
+        catch (InvalidOperationException) { return ForceKillOutcome.AlreadyGone; }
+        catch (NotSupportedException) { return ForceKillOutcome.Failed; }
+    }
+
+    public bool HasOpenDialog(IntPtr handle)
+    {
+        if (!IsWindow(handle)) return false;
+        var found = false;
+        EnumWindows((candidate, _) =>
+        {
+            if (candidate != handle && GetWindow(candidate, GW_OWNER) == handle && NativeMethods.IsWindowVisible(candidate))
+                found = true;
+            return !found;
+        }, IntPtr.Zero);
+        return found;
     }
 
     public bool IsWindowOpen(IntPtr handle) => IsWindow(handle);
