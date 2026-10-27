@@ -19,4 +19,5 @@ public sealed record EditorServices(
     TemporaryCategoryService Temporary,
     QuickCategoryFlow QuickCategory,
     ResourceGovernor Resources,
-    CategoryCloseService CloseService);
+    CategoryCloseService CloseService,
+    StubbornProgramService StubbornPrograms);

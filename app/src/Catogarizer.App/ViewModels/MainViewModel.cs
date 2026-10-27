@@ -56,6 +56,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string? _lastBlockedText;
 
     public ObservableCollection<WindowRow> ActiveWindows { get; } = new();
+
+    /// <summary>Programs that kept a window open after a close, each with its own way to show or end it.</summary>
+    public ObservableCollection<StubbornRow> StubbornRows { get; } = new();
     /// <summary>Where a window of the active category can be sent: every other category, plus Unsorted.</summary>
     public ObservableCollection<MoveTarget> MoveTargets { get; } = new();
     public ObservableCollection<HeldBackRow> HeldBack { get; } = new();
@@ -95,10 +98,14 @@ public partial class MainViewModel : ObservableObject
     /// <summary>The calm line after a close: "Comms closed - 5 windows." or what stayed open. Gone with the next switch.</summary>
     [ObservableProperty] private string? _closeReportText;
 
-    /// <summary>Some windows stayed open, so the banner offers a way to them.</summary>
-    [ObservableProperty] private bool _closeReportCanShow;
     private CloseReport? _closeReport;
     private Guid? _closeReportActiveId;
+
+    /// <summary>The banner goes away, and its rows with it.</summary>
+    partial void OnCloseReportTextChanged(string? value)
+    {
+        if (value is null) StubbornRows.Clear();
+    }
 
     // ---- Footer / chrome ----
     [ObservableProperty] private string? _nextTriggerText;
@@ -500,7 +507,7 @@ public partial class MainViewModel : ObservableObject
         {
             IsClosing = false;
         }
-        ShowCloseReport(report);
+        await ShowCloseReportAsync(report);
         Refresh();
     }
 
@@ -514,40 +521,125 @@ public partial class MainViewModel : ObservableObject
             : $"{title} - {app}";
     }
 
-    /// <summary>All closed is one calm line; windows that stayed are named, with a way to them.</summary>
-    private void ShowCloseReport(CloseReport? report)
+    /// <summary>All closed is one calm line; programs that stayed get a row each, with a way to them.</summary>
+    private async Task ShowCloseReportAsync(CloseReport? report)
     {
         if (report is null || report.Requested == 0) return;
 
         _closeReport = report;
         _closeReportActiveId = _switcher.ActiveCategoryId;
-        CloseReportCanShow = report.StillOpen.Count > 0;
-        var windows = report.Requested == 1 ? "1 window" : $"{report.Requested} windows";
-        if (report.StillOpen.Count == 0)
+        var programs = report.StillOpen.Count == 0
+            ? []
+            : await Task.Run(() => _services.StubbornPrograms.Describe(report.StillOpen));
+        if (programs.Count == 0)
         {
-            CloseReportText = $"{report.CategoryName} closed - {windows}.";
+            CloseReportText = ClosedLine(report);
             return;
         }
 
-        var names = string.Join(", ", report.StillOpen.Take(2).Select(WindowLabel));
-        var more = report.StillOpen.Count > 2 ? $" and {report.StillOpen.Count - 2} more" : "";
-        CloseReportText = $"{report.CategoryName}: {report.Closed} of {report.Requested} windows closed. "
-            + (report.StillOpen.Count == 1 ? "1 is" : $"{report.StillOpen.Count} are") + $" still open: {names}{more}. "
-            + "An app may be asking to save, or it keeps its window in the tray.";
+        var closed = report.Requested - programs.Sum(p => p.Windows.Count);
+        CloseReportText = $"{report.CategoryName}: {closed} of {report.Requested} windows closed. "
+            + (programs.Count == 1 ? "1 program" : $"{programs.Count} programs") + " kept running.";
+        Replace(StubbornRows, programs.Select(p => new StubbornRow(p)));
     }
 
-    /// <summary>"Show them": goes to the category if it is parked, and brings the first window that stayed to the front.</summary>
-    [RelayCommand]
-    private async Task ShowRemainingAsync()
-    {
-        if (_closeReport is not { StillOpen.Count: > 0 } report) return;
+    private static string ClosedLine(CloseReport report) =>
+        $"{report.CategoryName} closed - {(report.Requested == 1 ? "1 window" : $"{report.Requested} windows")}.";
 
-        CloseReportText = null;
-        if (_switcher.ActiveCategoryId != report.CategoryId)
+    /// <summary>"Show": goes to the category if it is parked, and brings the program's window to the front.</summary>
+    [RelayCommand]
+    private async Task ShowProgramAsync(StubbornRow row)
+    {
+        if (_closeReport is { } report && _switcher.ActiveCategoryId != report.CategoryId)
+        {
+            // The banner stays: the other rows are still open business.
+            _closeReportActiveId = report.CategoryId;
             ShowFailures(await Task.Run(() => _switcher.SwitchTo(report.CategoryId)));
-        var open = report.StillOpen.FirstOrDefault(w => _services.WindowManager.IsWindowOpen(w.Handle));
+        }
+        var open = row.Program.Windows.FirstOrDefault(w => _services.WindowManager.IsWindowOpen(w.Handle));
         if (open is not null) _services.WindowManager.BringToFront(open.Handle);
         Refresh();
+    }
+
+    /// <summary>First step of ending a program: looks again at what it would take along, then asks.</summary>
+    [RelayCommand]
+    private async Task ArmEndAsync(StubbornRow row)
+    {
+        row.ResultText = null;
+        var fresh = await Task.Run(() => _services.StubbornPrograms.Describe(row.Program.Windows));
+        if (fresh.FirstOrDefault(p => p.ProcessId == row.ProcessId) is not { } program)
+        {
+            // It went away on its own while the banner was up.
+            await RemoveRowAsync(row);
+            return;
+        }
+        row.Program = program;
+        row.IsConfirming = true;
+    }
+
+    [RelayCommand]
+    private void CancelEnd(StubbornRow row)
+    {
+        row.IsConfirming = false;
+        // Opened from a window's menu there is nothing else to show, so the banner goes too.
+        if (_closeReport is null) CloseReportText = null;
+    }
+
+    /// <summary>Second step: ends the process. What cannot be done is said in the row, in words that name what to do.</summary>
+    [RelayCommand]
+    private async Task EndProgramAsync(StubbornRow row)
+    {
+        row.IsConfirming = false;
+        row.IsEnding = true;
+        ProgramEndResult result;
+        try
+        {
+            result = await Task.Run(() => _services.StubbornPrograms.End(row.Program));
+        }
+        finally
+        {
+            row.IsEnding = false;
+        }
+
+        if (result.IsDone)
+        {
+            await RemoveRowAsync(row);
+            Refresh();
+            return;
+        }
+
+        row.ResultText = result.Outcome switch
+        {
+            ProgramEndOutcome.Protected => $"{row.Name} is never ended from here. Close it yourself.",
+            ProgramEndOutcome.AccessDenied => $"{row.Name} runs as administrator, so Catogarizer can't end it. Close it yourself or use Task Manager.",
+            _ => $"Couldn't end {row.Name}. Try again, or end it in Task Manager.",
+        };
+        Refresh();
+    }
+
+    /// <summary>The row fades out; when it was the last, the banner settles into the calm "closed" line.</summary>
+    private async Task RemoveRowAsync(StubbornRow row)
+    {
+        row.IsDissolving = true;
+        await Task.Delay(220);
+        StubbornRows.Remove(row);
+        if (StubbornRows.Count > 0) return;
+        CloseReportText = _closeReport is { } report ? ClosedLine(report) : $"{row.Name} ended.";
+    }
+
+    /// <summary>Right-click a window, "End program...": the same row as after a close, already at the second step.</summary>
+    public async Task EndProgramFromMenuAsync(WindowRow window)
+    {
+        var info = new OpenWindowInfo(window.Handle, window.Title, window.ProcessName, window.ProcessId);
+        var programs = await Task.Run(() => _services.StubbornPrograms.Describe([info]));
+        if (programs.Count == 0) return;
+
+        Notice = null;
+        _closeReport = null;
+        _closeReportActiveId = _switcher.ActiveCategoryId;
+        CloseReportText = "Ending a program closes all of its windows at once.";
+        Replace(StubbornRows, [new StubbornRow(programs[0]) { IsConfirming = !programs[0].IsProtected }]);
+        NoticeRaised?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -664,6 +756,8 @@ public partial class MainViewModel : ObservableObject
         }
         entries.Add(new PinMenuEntry(_switcher.FindPinned(row.ProcessName) is null ? "Pin app (always visible)" : "Unpin app"));
         entries.Add(new FreezeMenuEntry(_library.FindFreezableApp(row.ProcessName) is null ? "Allow freezing while parked (stops its sound too)" : "Don't freeze this app"));
+        entries.Add(new MenuSeparatorEntry());
+        entries.Add(new EndProgramMenuEntry($"End {row.AppName}..."));
         return entries;
     }
 

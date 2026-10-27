@@ -58,6 +58,9 @@ public sealed record PinMenuEntry(string Text) : WindowMenuEntry(Text);
 /// <summary>"Allow freezing while parked" or "Don't freeze this app", depending on whether the user allowed it already.</summary>
 public sealed record FreezeMenuEntry(string Text) : WindowMenuEntry(Text);
 
+/// <summary>"End Notepad..." on a window: ends the program, after its row asks once more.</summary>
+public sealed record EndProgramMenuEntry(string Text) : WindowMenuEntry(Text);
+
 /// <summary>"Close windows..." on a shelf tile.</summary>
 public sealed record CloseCategoryMenuEntry(string Text) : WindowMenuEntry(Text);
 

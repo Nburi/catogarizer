@@ -107,6 +107,9 @@ public partial class MainWindow : Window
             case FreezeMenuEntry:
                 await _viewModel.ToggleFreezeAsync(row);
                 break;
+            case EndProgramMenuEntry:
+                await _viewModel.EndProgramFromMenuAsync(row);
+                break;
         }
     }
 
