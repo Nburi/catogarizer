@@ -278,7 +278,7 @@
                                                    VerticalAlignment="Top" Margin="0,2,10,0"/>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock FontSize="12.5" TextTrimming="CharacterEllipsis">
-                                            <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/><Run Text="  ·  " Foreground="{DynamicResource MutedBrush}"/><Run Text="{Binding WindowsText, Mode=OneWay}" Foreground="{DynamicResource MutedBrush}"/>
+                                            <Run Text="{Binding Headline, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/><Run Text="  ·  " Foreground="{DynamicResource MutedBrush}"/><Run Text="{Binding Tail, Mode=OneWay}" Foreground="{DynamicResource MutedBrush}"/>
                                         </TextBlock>
                                         <TextBlock Text="{Binding DetailText}" Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"/>
                                     </StackPanel>

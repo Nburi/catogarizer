@@ -537,11 +537,13 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        var closed = report.Requested - programs.Sum(p => p.Windows.Count);
-        CloseReportText = $"{report.CategoryName}: {closed} of {report.Requested} windows closed. "
-            + (programs.Count == 1 ? "1 program" : $"{programs.Count} programs") + " kept running.";
+        CloseReportText = StayedLine(report, programs.Count, programs.Sum(p => p.Windows.Count));
         Replace(StubbornRows, programs.Select(p => new StubbornRow(p)));
     }
+
+    private static string StayedLine(CloseReport report, int programs, int windowsLeft) =>
+        $"{report.CategoryName}: {report.Requested - windowsLeft} of {report.Requested} windows closed. "
+        + (programs == 1 ? "1 program" : $"{programs} programs") + " kept running.";
 
     private static string ClosedLine(CloseReport report) =>
         $"{report.CategoryName} closed - {(report.Requested == 1 ? "1 window" : $"{report.Requested} windows")}.";
@@ -628,7 +630,13 @@ public partial class MainViewModel : ObservableObject
         row.IsDissolving = true;
         await Task.Delay(220);
         StubbornRows.Remove(row);
-        if (StubbornRows.Count > 0) return;
+        if (StubbornRows.Count > 0)
+        {
+            // The headline counts what is left, not what was left when the banner came up.
+            if (_closeReport is { } open)
+                CloseReportText = StayedLine(open, StubbornRows.Count, StubbornRows.Sum(r => r.Program.Windows.Count));
+            return;
+        }
         CloseReportText = _closeReport is { } report ? ClosedLine(report) : $"{row.Name} ended.";
     }
 

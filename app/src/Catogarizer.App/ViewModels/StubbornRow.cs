@@ -21,7 +21,7 @@ public sealed partial class StubbornRow : ObservableObject
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(WindowsText), nameof(ReasonText), nameof(ConfirmText), nameof(DetailText), nameof(CanEnd),
+    [NotifyPropertyChangedFor(nameof(WindowsText), nameof(Headline), nameof(Tail), nameof(ReasonText), nameof(ConfirmText), nameof(DetailText), nameof(CanEnd),
         nameof(ShowPrimary), nameof(ShowSecondary), nameof(ShowsEnd))]
     private StubbornProgram _program;
 
@@ -44,6 +44,17 @@ public sealed partial class StubbornRow : ObservableObject
     [ObservableProperty] private bool _isDissolving;
 
     public string Name => _name;
+
+    /// <summary>The window's own title when it is the only one and says more than the app's name - two Notepads must not look alike.</summary>
+    private string? SingleTitle =>
+        Program.Windows.Count == 1 && Program.Windows[0].Title.Trim() is { Length: > 0 } title
+        && !string.Equals(title, _name, StringComparison.OrdinalIgnoreCase)
+        && !title.EndsWith(" - " + _name, StringComparison.OrdinalIgnoreCase)
+            ? title
+            : null;
+
+    public string Headline => SingleTitle ?? Name;
+    public string Tail => SingleTitle is null ? WindowsText : Name;
     public int ProcessId => Program.ProcessId;
     public string WindowsText => Program.Windows.Count == 1 ? "1 window" : $"{Program.Windows.Count} windows";
     public bool CanEnd => !Program.IsProtected;
@@ -83,5 +94,5 @@ public sealed partial class StubbornRow : ObservableObject
 
     public string DetailText => ResultText ?? (IsEnding ? "Ending..." : IsConfirming ? ConfirmText : ReasonText);
 
-    public override string ToString() => $"{Name}, {WindowsText}, {ReasonText}";
+    public override string ToString() => $"{Headline}, {Tail}, {ReasonText}";
 }
