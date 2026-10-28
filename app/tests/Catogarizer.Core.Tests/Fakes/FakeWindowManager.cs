@@ -45,11 +45,25 @@ public sealed class FakeWindowManager : IWindowManager
         if (GracefulCloseWorks) _closedWindows.Add(handle);
     }
 
-    public void ForceKill(IntPtr handle)
+    public ForceKillOutcome ForceKillResult { get; set; } = ForceKillOutcome.Ended;
+
+    public ForceKillOutcome ForceKill(IntPtr handle)
     {
         ForceKillCalls.Add(handle);
-        _closedWindows.Add(handle);
+        if (ForceKillResult is ForceKillOutcome.Ended or ForceKillOutcome.AlreadyGone)
+        {
+            // A process takes all its windows with it.
+            var pid = GetProcessId(handle);
+            _closedWindows.Add(handle);
+            foreach (var other in ProcessIds.Where(p => p.Value == pid).Select(p => p.Key)) _closedWindows.Add(other);
+        }
+        return ForceKillResult;
     }
+
+    /// <summary>Windows that have a "Save changes?" style dialog open.</summary>
+    public HashSet<IntPtr> WithDialog { get; } = new();
+
+    public bool HasOpenDialog(IntPtr handle) => WithDialog.Contains(handle);
 
     public bool IsWindowOpen(IntPtr handle) => !_closedWindows.Contains(handle);
 

@@ -1,5 +1,14 @@
 namespace Catogarizer.Core.Services;
 
+public enum ForceKillOutcome
+{
+    Ended,
+    AlreadyGone,
+    /// <summary>The process runs with more rights than this app.</summary>
+    AccessDenied,
+    Failed,
+}
+
 /// <summary>
 /// Single-attempt Win32 window operations. Deliberately no retry policy in
 /// here - that's <see cref="WindowPositioningService"/>'s job, kept separate
@@ -30,7 +39,14 @@ public interface IWindowManager
     /// <summary>Sends WM_CLOSE - the same message a title-bar X button sends.</summary>
     void CloseGraceful(IntPtr handle);
 
-    void ForceKill(IntPtr handle);
+    /// <summary>
+    /// Ends the whole process behind the window - and with it every other window the process owns. Never throws:
+    /// the outcome says what happened.
+    /// </summary>
+    ForceKillOutcome ForceKill(IntPtr handle);
+
+    /// <summary>The window has a visible dialog of its own open - what an app shows to ask "Save changes?" after a close request.</summary>
+    bool HasOpenDialog(IntPtr handle);
 
     bool IsWindowOpen(IntPtr handle);
 

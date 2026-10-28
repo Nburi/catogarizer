@@ -159,9 +159,17 @@ change: `design/resource-saving-preview.html`.
   number counts down; returning reverses it. Reduced motion: fade only.
 - **Close a category** (hero button + Ctrl+W, tile context menu): windows are
   asked to close (`WM_CLOSE`), never the processes; confirm lists the windows;
-  windows still open after ~4 s are named in a banner with "Show them". Works
-  for every category except Unsorted. Same explicit per-category user action
-  as closing a quick category, so it stays within PRINCIPLES.md value 1.
+  windows still open after ~4 s are listed in a banner, one row per program,
+  with the reason it stayed and "Show" / "End...". Works for every category
+  except Unsorted. Same explicit per-category user action as closing a quick
+  category, so it stays within PRINCIPLES.md value 1.
+- **End program** (`StubbornProgramService`): the only place a process is ever
+  killed on the user's behalf, and only after a normal close was tried. Two
+  clicks in the row (End..., End program) with the cost spelled out; never
+  Catogarizer, the shell or system processes; failures (administrator apps) are
+  named in the row. Signature moment: the row says why the program stayed -
+  "probably asking you to save" puts Show first, so the expensive mistake (losing
+  unsaved work) is the harder one to make.
 - Out of scope for now: UWP apps (host-process windows), waking frozen chat
   apps for notifications, closing from palette/tray/CLI, thresholds as
   settings, GPU figures in the Resources card (the GPU is only read to decide
